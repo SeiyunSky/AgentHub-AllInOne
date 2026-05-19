@@ -1,0 +1,66 @@
+[
+  {
+    "name": "check_agent_name_collisions.py",
+    "path": "tools/check_agent_name_collisions.py",
+    "sha": "25548ad273bd4ad3cd962da2e4cb79ef3cf1bd41",
+    "size": 3844,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/tools/check_agent_name_collisions.py?ref=main",
+    "html_url": "https://github.com/wshobson/agents/blob/main/tools/check_agent_name_collisions.py",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/blobs/25548ad273bd4ad3cd962da2e4cb79ef3cf1bd41",
+    "download_url": "https://raw.githubusercontent.com/wshobson/agents/main/tools/check_agent_name_collisions.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/tools/check_agent_name_collisions.py?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/blobs/25548ad273bd4ad3cd962da2e4cb79ef3cf1bd41",
+      "html": "https://github.com/wshobson/agents/blob/main/tools/check_agent_name_collisions.py"
+    }
+  },
+  {
+    "name": "generate_gemini_commands.py",
+    "path": "tools/generate_gemini_commands.py",
+    "sha": "ffe5d6cffef40679f24e5038b9a04988534712d6",
+    "size": 13066,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/tools/generate_gemini_commands.py?ref=main",
+    "html_url": "https://github.com/wshobson/agents/blob/main/tools/generate_gemini_commands.py",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/blobs/ffe5d6cffef40679f24e5038b9a04988534712d6",
+    "download_url": "https://raw.githubusercontent.com/wshobson/agents/main/tools/generate_gemini_commands.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/tools/generate_gemini_commands.py?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/blobs/ffe5d6cffef40679f24e5038b9a04988534712d6",
+      "html": "https://github.com/wshobson/agents/blob/main/tools/generate_gemini_commands.py"
+    }
+  },
+  {
+    "name": "requirements.txt",
+    "path": "tools/requirements.txt",
+    "sha": "d40fdf5253e1bd1d57af7d449788b80b051bc1eb",
+    "size": 613,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/tools/requirements.txt?ref=main",
+    "html_url": "https://github.com/wshobson/agents/blob/main/tools/requirements.txt",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/blobs/d40fdf5253e1bd1d57af7d449788b80b051bc1eb",
+    "download_url": "https://raw.githubusercontent.com/wshobson/agents/main/tools/requirements.txt",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/tools/requirements.txt?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/blobs/d40fdf5253e1bd1d57af7d449788b80b051bc1eb",
+      "html": "https://github.com/wshobson/agents/blob/main/tools/requirements.txt"
+    }
+  },
+  {
+    "name": "yt-design-extractor.py",
+    "path": "tools/yt-design-extractor.py",
+    "sha": "3ab7fffb8e5f140ed3e245874caee3901198b992",
+    "size": 27899,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/tools/yt-design-extractor.py?ref=main",
+    "html_url": "https://github.com/wshobson/agents/blob/main/tools/yt-design-extractor.py",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/blobs/3ab7fffb8e5f140ed3e245874caee3901198b992",
+    "download_url": "https://raw.githubusercontent.com/wshobson/agents/main/tools/yt-design-extractor.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/tools/yt-design-extractor.py?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/blobs/3ab7fffb8e5f140ed3e245874caee3901198b992",
+      "html": "https://github.com/wshobson/agents/blob/main/tools/yt-design-extractor.py"
+    }
+  }
+]

@@ -1,0 +1,786 @@
+[
+  {
+    "name": "__init__.py",
+    "path": "src/agents/__init__.py",
+    "sha": "ce2f8fbca89775b1fd61dee47a2043f8a68345c1",
+    "size": 15390,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/__init__.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/__init__.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/ce2f8fbca89775b1fd61dee47a2043f8a68345c1",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/__init__.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/__init__.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/ce2f8fbca89775b1fd61dee47a2043f8a68345c1",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/__init__.py"
+    }
+  },
+  {
+    "name": "_config.py",
+    "path": "src/agents/_config.py",
+    "sha": "e5bdd3d0d79e7c8ee9da5d4a90f529ff052f3f27",
+    "size": 1704,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_config.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_config.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/e5bdd3d0d79e7c8ee9da5d4a90f529ff052f3f27",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/_config.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_config.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/e5bdd3d0d79e7c8ee9da5d4a90f529ff052f3f27",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_config.py"
+    }
+  },
+  {
+    "name": "_debug.py",
+    "path": "src/agents/_debug.py",
+    "sha": "963c296b806c52663f882e0bb44126ce6568dbba",
+    "size": 856,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_debug.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_debug.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/963c296b806c52663f882e0bb44126ce6568dbba",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/_debug.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_debug.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/963c296b806c52663f882e0bb44126ce6568dbba",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_debug.py"
+    }
+  },
+  {
+    "name": "_mcp_tool_metadata.py",
+    "path": "src/agents/_mcp_tool_metadata.py",
+    "sha": "8058c23209426c547682b9ee523f149ef69b0fd0",
+    "size": 2972,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_mcp_tool_metadata.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_mcp_tool_metadata.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8058c23209426c547682b9ee523f149ef69b0fd0",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/_mcp_tool_metadata.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_mcp_tool_metadata.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8058c23209426c547682b9ee523f149ef69b0fd0",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_mcp_tool_metadata.py"
+    }
+  },
+  {
+    "name": "_public_agent.py",
+    "path": "src/agents/_public_agent.py",
+    "sha": "e9550a31a2f73e33b0f02a6121ed96ec5cb425ae",
+    "size": 736,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_public_agent.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_public_agent.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/e9550a31a2f73e33b0f02a6121ed96ec5cb425ae",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/_public_agent.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_public_agent.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/e9550a31a2f73e33b0f02a6121ed96ec5cb425ae",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_public_agent.py"
+    }
+  },
+  {
+    "name": "_tool_identity.py",
+    "path": "src/agents/_tool_identity.py",
+    "sha": "af41093ff27b8681f3e5b79b2a189bd3bf66dcb3",
+    "size": 16533,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_tool_identity.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_tool_identity.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/af41093ff27b8681f3e5b79b2a189bd3bf66dcb3",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/_tool_identity.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/_tool_identity.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/af41093ff27b8681f3e5b79b2a189bd3bf66dcb3",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/_tool_identity.py"
+    }
+  },
+  {
+    "name": "agent.py",
+    "path": "src/agents/agent.py",
+    "sha": "602d84066c90bca9731dbd845b609e3eb37bc32d",
+    "size": 43379,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/agent.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/agent.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/602d84066c90bca9731dbd845b609e3eb37bc32d",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/agent.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/agent.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/602d84066c90bca9731dbd845b609e3eb37bc32d",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/agent.py"
+    }
+  },
+  {
+    "name": "agent_output.py",
+    "path": "src/agents/agent_output.py",
+    "sha": "182355b0f82d2138dec1abb74aa641b8ba93b61f",
+    "size": 7197,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/agent_output.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/agent_output.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/182355b0f82d2138dec1abb74aa641b8ba93b61f",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/agent_output.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/agent_output.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/182355b0f82d2138dec1abb74aa641b8ba93b61f",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/agent_output.py"
+    }
+  },
+  {
+    "name": "agent_tool_input.py",
+    "path": "src/agents/agent_tool_input.py",
+    "sha": "19a81e62e6fc7f1a0bbff5afb0a28ef7895b4262",
+    "size": 8430,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/agent_tool_input.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/agent_tool_input.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/19a81e62e6fc7f1a0bbff5afb0a28ef7895b4262",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/agent_tool_input.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/agent_tool_input.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/19a81e62e6fc7f1a0bbff5afb0a28ef7895b4262",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/agent_tool_input.py"
+    }
+  },
+  {
+    "name": "agent_tool_state.py",
+    "path": "src/agents/agent_tool_state.py",
+    "sha": "2ddb2c988464ed624b5c73347dc42f12cf866966",
+    "size": 7874,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/agent_tool_state.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/agent_tool_state.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/2ddb2c988464ed624b5c73347dc42f12cf866966",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/agent_tool_state.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/agent_tool_state.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/2ddb2c988464ed624b5c73347dc42f12cf866966",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/agent_tool_state.py"
+    }
+  },
+  {
+    "name": "apply_diff.py",
+    "path": "src/agents/apply_diff.py",
+    "sha": "4d35f6d7d4df2730d05b329bfafdc0847e7b7dbd",
+    "size": 10773,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/apply_diff.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/apply_diff.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/4d35f6d7d4df2730d05b329bfafdc0847e7b7dbd",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/apply_diff.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/apply_diff.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/4d35f6d7d4df2730d05b329bfafdc0847e7b7dbd",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/apply_diff.py"
+    }
+  },
+  {
+    "name": "computer.py",
+    "path": "src/agents/computer.py",
+    "sha": "14373b830ead8cae60ded2fe624b28e556be8caa",
+    "size": 4356,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/computer.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/computer.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/14373b830ead8cae60ded2fe624b28e556be8caa",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/computer.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/computer.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/14373b830ead8cae60ded2fe624b28e556be8caa",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/computer.py"
+    }
+  },
+  {
+    "name": "editor.py",
+    "path": "src/agents/editor.py",
+    "sha": "a6198bfd121fc8ffac1e2f3025d5d719214326b8",
+    "size": 1377,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/editor.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/editor.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/a6198bfd121fc8ffac1e2f3025d5d719214326b8",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/editor.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/editor.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/a6198bfd121fc8ffac1e2f3025d5d719214326b8",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/editor.py"
+    }
+  },
+  {
+    "name": "exceptions.py",
+    "path": "src/agents/exceptions.py",
+    "sha": "8c086b2c083839d1ea8b102192ebbe3949f8e919",
+    "size": 5478,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/exceptions.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/exceptions.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8c086b2c083839d1ea8b102192ebbe3949f8e919",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/exceptions.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/exceptions.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8c086b2c083839d1ea8b102192ebbe3949f8e919",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/exceptions.py"
+    }
+  },
+  {
+    "name": "extensions",
+    "path": "src/agents/extensions",
+    "sha": "5e546af0ae362ee21ff9834acf0340e744958d5c",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/extensions?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/extensions",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/5e546af0ae362ee21ff9834acf0340e744958d5c",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/extensions?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/5e546af0ae362ee21ff9834acf0340e744958d5c",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/extensions"
+    }
+  },
+  {
+    "name": "function_schema.py",
+    "path": "src/agents/function_schema.py",
+    "sha": "8fe52df3200ac5ca6a2b637cc1b2ec19d4669e09",
+    "size": 16110,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/function_schema.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/function_schema.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8fe52df3200ac5ca6a2b637cc1b2ec19d4669e09",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/function_schema.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/function_schema.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8fe52df3200ac5ca6a2b637cc1b2ec19d4669e09",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/function_schema.py"
+    }
+  },
+  {
+    "name": "guardrail.py",
+    "path": "src/agents/guardrail.py",
+    "sha": "7f5061c8c17c2fbf446933a8072f05215f36335b",
+    "size": 10169,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/guardrail.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/guardrail.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/7f5061c8c17c2fbf446933a8072f05215f36335b",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/guardrail.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/guardrail.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/7f5061c8c17c2fbf446933a8072f05215f36335b",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/guardrail.py"
+    }
+  },
+  {
+    "name": "handoffs",
+    "path": "src/agents/handoffs",
+    "sha": "58e56b336d8bf7650ef277b8fc89c14de6a042c0",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/handoffs?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/handoffs",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/58e56b336d8bf7650ef277b8fc89c14de6a042c0",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/handoffs?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/58e56b336d8bf7650ef277b8fc89c14de6a042c0",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/handoffs"
+    }
+  },
+  {
+    "name": "items.py",
+    "path": "src/agents/items.py",
+    "sha": "c761cc221ff22c52d5a4d266e911a8efe5a7ba12",
+    "size": 33686,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/items.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/items.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/c761cc221ff22c52d5a4d266e911a8efe5a7ba12",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/items.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/items.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/c761cc221ff22c52d5a4d266e911a8efe5a7ba12",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/items.py"
+    }
+  },
+  {
+    "name": "lifecycle.py",
+    "path": "src/agents/lifecycle.py",
+    "sha": "2ca74847395eb1862ff8dd273c3a95b982c6f2a5",
+    "size": 6189,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/lifecycle.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/lifecycle.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/2ca74847395eb1862ff8dd273c3a95b982c6f2a5",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/lifecycle.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/lifecycle.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/2ca74847395eb1862ff8dd273c3a95b982c6f2a5",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/lifecycle.py"
+    }
+  },
+  {
+    "name": "logger.py",
+    "path": "src/agents/logger.py",
+    "sha": "bd81a82716e6a58f123cba102935eb168502bb06",
+    "size": 60,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/logger.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/logger.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/bd81a82716e6a58f123cba102935eb168502bb06",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/logger.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/logger.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/bd81a82716e6a58f123cba102935eb168502bb06",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/logger.py"
+    }
+  },
+  {
+    "name": "mcp",
+    "path": "src/agents/mcp",
+    "sha": "26982151003d2401026be50308b4c9cb04a1cf66",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/mcp?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/mcp",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/26982151003d2401026be50308b4c9cb04a1cf66",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/mcp?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/26982151003d2401026be50308b4c9cb04a1cf66",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/mcp"
+    }
+  },
+  {
+    "name": "memory",
+    "path": "src/agents/memory",
+    "sha": "a470a4fc39c648544b1771dea7c6efd277420cfb",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/memory?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/memory",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/a470a4fc39c648544b1771dea7c6efd277420cfb",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/memory?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/a470a4fc39c648544b1771dea7c6efd277420cfb",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/memory"
+    }
+  },
+  {
+    "name": "model_settings.py",
+    "path": "src/agents/model_settings.py",
+    "sha": "1ef9822f528a31663a5267055b6c619ba2e680cf",
+    "size": 9483,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/model_settings.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/model_settings.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/1ef9822f528a31663a5267055b6c619ba2e680cf",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/model_settings.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/model_settings.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/1ef9822f528a31663a5267055b6c619ba2e680cf",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/model_settings.py"
+    }
+  },
+  {
+    "name": "models",
+    "path": "src/agents/models",
+    "sha": "54907d41ad4e10caf1d5fc59ee228e6760f57f2e",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/models?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/models",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/54907d41ad4e10caf1d5fc59ee228e6760f57f2e",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/models?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/54907d41ad4e10caf1d5fc59ee228e6760f57f2e",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/models"
+    }
+  },
+  {
+    "name": "prompts.py",
+    "path": "src/agents/prompts.py",
+    "sha": "02ea46c78fbe4308ca91236f5432bcb706b916c0",
+    "size": 2475,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/prompts.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/prompts.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/02ea46c78fbe4308ca91236f5432bcb706b916c0",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/prompts.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/prompts.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/02ea46c78fbe4308ca91236f5432bcb706b916c0",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/prompts.py"
+    }
+  },
+  {
+    "name": "py.typed",
+    "path": "src/agents/py.typed",
+    "sha": "8b137891791fe96927ad78e64b0aad7bded08bdc",
+    "size": 1,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/py.typed?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/py.typed",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8b137891791fe96927ad78e64b0aad7bded08bdc",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/py.typed",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/py.typed?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8b137891791fe96927ad78e64b0aad7bded08bdc",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/py.typed"
+    }
+  },
+  {
+    "name": "realtime",
+    "path": "src/agents/realtime",
+    "sha": "381d286cbed4f9561b03dc505656d063898c2214",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/realtime?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/realtime",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/381d286cbed4f9561b03dc505656d063898c2214",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/realtime?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/381d286cbed4f9561b03dc505656d063898c2214",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/realtime"
+    }
+  },
+  {
+    "name": "repl.py",
+    "path": "src/agents/repl.py",
+    "sha": "6b493dd56bb1ac159511e6a7890b97f0057a125c",
+    "size": 2843,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/repl.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/repl.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/6b493dd56bb1ac159511e6a7890b97f0057a125c",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/repl.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/repl.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/6b493dd56bb1ac159511e6a7890b97f0057a125c",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/repl.py"
+    }
+  },
+  {
+    "name": "responses_websocket_session.py",
+    "path": "src/agents/responses_websocket_session.py",
+    "sha": "3d0f18137d682304aeda0d42471595cf884e31d1",
+    "size": 5242,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/responses_websocket_session.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/responses_websocket_session.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/3d0f18137d682304aeda0d42471595cf884e31d1",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/responses_websocket_session.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/responses_websocket_session.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/3d0f18137d682304aeda0d42471595cf884e31d1",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/responses_websocket_session.py"
+    }
+  },
+  {
+    "name": "result.py",
+    "path": "src/agents/result.py",
+    "sha": "8ae407003ab4a4c9397fcf7c70a7bddbb35c1815",
+    "size": 39871,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/result.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/result.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8ae407003ab4a4c9397fcf7c70a7bddbb35c1815",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/result.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/result.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8ae407003ab4a4c9397fcf7c70a7bddbb35c1815",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/result.py"
+    }
+  },
+  {
+    "name": "retry.py",
+    "path": "src/agents/retry.py",
+    "sha": "4b122cbfa707f2d1780dbcbf34a24462edcc4232",
+    "size": 12220,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/retry.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/retry.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/4b122cbfa707f2d1780dbcbf34a24462edcc4232",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/retry.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/retry.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/4b122cbfa707f2d1780dbcbf34a24462edcc4232",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/retry.py"
+    }
+  },
+  {
+    "name": "run.py",
+    "path": "src/agents/run.py",
+    "sha": "0e9818591fcacd99fdbb41af28210672f62d9a93",
+    "size": 93363,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/0e9818591fcacd99fdbb41af28210672f62d9a93",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/run.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/0e9818591fcacd99fdbb41af28210672f62d9a93",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run.py"
+    }
+  },
+  {
+    "name": "run_config.py",
+    "path": "src/agents/run_config.py",
+    "sha": "a2058c26313bab5d799948874fcf9456e306f4b2",
+    "size": 13932,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_config.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run_config.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/a2058c26313bab5d799948874fcf9456e306f4b2",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/run_config.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_config.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/a2058c26313bab5d799948874fcf9456e306f4b2",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run_config.py"
+    }
+  },
+  {
+    "name": "run_context.py",
+    "path": "src/agents/run_context.py",
+    "sha": "1dd74a6040fd9d2bf941f1f5762efe23a9e74d90",
+    "size": 20062,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_context.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run_context.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/1dd74a6040fd9d2bf941f1f5762efe23a9e74d90",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/run_context.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_context.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/1dd74a6040fd9d2bf941f1f5762efe23a9e74d90",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run_context.py"
+    }
+  },
+  {
+    "name": "run_error_handlers.py",
+    "path": "src/agents/run_error_handlers.py",
+    "sha": "6f345852ebd05e41ca13bf12b812e487a2361207",
+    "size": 1633,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_error_handlers.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run_error_handlers.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/6f345852ebd05e41ca13bf12b812e487a2361207",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/run_error_handlers.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_error_handlers.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/6f345852ebd05e41ca13bf12b812e487a2361207",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run_error_handlers.py"
+    }
+  },
+  {
+    "name": "run_internal",
+    "path": "src/agents/run_internal",
+    "sha": "646361f1b3b1afb90847baa186c7a6a1bfdbbcd1",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_internal?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/run_internal",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/646361f1b3b1afb90847baa186c7a6a1bfdbbcd1",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_internal?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/646361f1b3b1afb90847baa186c7a6a1bfdbbcd1",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/run_internal"
+    }
+  },
+  {
+    "name": "run_state.py",
+    "path": "src/agents/run_state.py",
+    "sha": "c5bb8c9faf79637abbd875fc211f0bf98ee6662e",
+    "size": 129322,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_state.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run_state.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/c5bb8c9faf79637abbd875fc211f0bf98ee6662e",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/run_state.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/run_state.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/c5bb8c9faf79637abbd875fc211f0bf98ee6662e",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/run_state.py"
+    }
+  },
+  {
+    "name": "sandbox",
+    "path": "src/agents/sandbox",
+    "sha": "bc959dbf035b2c4bd78ca94ead98c1014b6f6c74",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/sandbox?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/sandbox",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/bc959dbf035b2c4bd78ca94ead98c1014b6f6c74",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/sandbox?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/bc959dbf035b2c4bd78ca94ead98c1014b6f6c74",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/sandbox"
+    }
+  },
+  {
+    "name": "stream_events.py",
+    "path": "src/agents/stream_events.py",
+    "sha": "ac04251ae3187ec20ba02cd7fe4ad56c08672a57",
+    "size": 1759,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/stream_events.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/stream_events.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/ac04251ae3187ec20ba02cd7fe4ad56c08672a57",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/stream_events.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/stream_events.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/ac04251ae3187ec20ba02cd7fe4ad56c08672a57",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/stream_events.py"
+    }
+  },
+  {
+    "name": "strict_schema.py",
+    "path": "src/agents/strict_schema.py",
+    "sha": "8ef6701453444f2d2f63147c3ba51f1f7da6ca0c",
+    "size": 6587,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/strict_schema.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/strict_schema.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8ef6701453444f2d2f63147c3ba51f1f7da6ca0c",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/strict_schema.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/strict_schema.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/8ef6701453444f2d2f63147c3ba51f1f7da6ca0c",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/strict_schema.py"
+    }
+  },
+  {
+    "name": "tool.py",
+    "path": "src/agents/tool.py",
+    "sha": "6dcfc5a60f83d874c770aeb6c2e736e4a5af2a84",
+    "size": 73451,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/tool.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/tool.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/6dcfc5a60f83d874c770aeb6c2e736e4a5af2a84",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/tool.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/tool.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/6dcfc5a60f83d874c770aeb6c2e736e4a5af2a84",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/tool.py"
+    }
+  },
+  {
+    "name": "tool_context.py",
+    "path": "src/agents/tool_context.py",
+    "sha": "eaad0cc16731d09ab209b63a01df23c5e15ccb5a",
+    "size": 6120,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/tool_context.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/tool_context.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/eaad0cc16731d09ab209b63a01df23c5e15ccb5a",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/tool_context.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/tool_context.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/eaad0cc16731d09ab209b63a01df23c5e15ccb5a",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/tool_context.py"
+    }
+  },
+  {
+    "name": "tool_guardrails.py",
+    "path": "src/agents/tool_guardrails.py",
+    "sha": "db308d20f1338ef002c8cb2e4808fb71b313f3ae",
+    "size": 8344,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/tool_guardrails.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/tool_guardrails.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/db308d20f1338ef002c8cb2e4808fb71b313f3ae",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/tool_guardrails.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/tool_guardrails.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/db308d20f1338ef002c8cb2e4808fb71b313f3ae",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/tool_guardrails.py"
+    }
+  },
+  {
+    "name": "tracing",
+    "path": "src/agents/tracing",
+    "sha": "acc0afdc81cdb93b6c9fc2bde25a3f15f91dd96c",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/tracing?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/tracing",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/acc0afdc81cdb93b6c9fc2bde25a3f15f91dd96c",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/tracing?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/acc0afdc81cdb93b6c9fc2bde25a3f15f91dd96c",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/tracing"
+    }
+  },
+  {
+    "name": "usage.py",
+    "path": "src/agents/usage.py",
+    "sha": "c3a75fd0ada8646adc237970e9e3c00b0195a82b",
+    "size": 12949,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/usage.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/usage.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/c3a75fd0ada8646adc237970e9e3c00b0195a82b",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/usage.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/usage.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/c3a75fd0ada8646adc237970e9e3c00b0195a82b",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/usage.py"
+    }
+  },
+  {
+    "name": "util",
+    "path": "src/agents/util",
+    "sha": "d89154e16b87d2ed42f2920200e86e2af8c5bc9a",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/util?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/util",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/d89154e16b87d2ed42f2920200e86e2af8c5bc9a",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/util?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/d89154e16b87d2ed42f2920200e86e2af8c5bc9a",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/util"
+    }
+  },
+  {
+    "name": "version.py",
+    "path": "src/agents/version.py",
+    "sha": "9b22499edd38c301cfbdb547c9119542fc531d53",
+    "size": 230,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/version.py?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/blob/main/src/agents/version.py",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/9b22499edd38c301cfbdb547c9119542fc531d53",
+    "download_url": "https://raw.githubusercontent.com/openai/openai-agents-python/main/src/agents/version.py",
+    "type": "file",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/version.py?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/blobs/9b22499edd38c301cfbdb547c9119542fc531d53",
+      "html": "https://github.com/openai/openai-agents-python/blob/main/src/agents/version.py"
+    }
+  },
+  {
+    "name": "voice",
+    "path": "src/agents/voice",
+    "sha": "f3d4df72758c525b3a7b05b5b1699ad63a50911b",
+    "size": 0,
+    "url": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/voice?ref=main",
+    "html_url": "https://github.com/openai/openai-agents-python/tree/main/src/agents/voice",
+    "git_url": "https://api.github.com/repos/openai/openai-agents-python/git/trees/f3d4df72758c525b3a7b05b5b1699ad63a50911b",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/openai/openai-agents-python/contents/src/agents/voice?ref=main",
+      "git": "https://api.github.com/repos/openai/openai-agents-python/git/trees/f3d4df72758c525b3a7b05b5b1699ad63a50911b",
+      "html": "https://github.com/openai/openai-agents-python/tree/main/src/agents/voice"
+    }
+  }
+]

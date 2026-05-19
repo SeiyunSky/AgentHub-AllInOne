@@ -1,0 +1,50 @@
+[
+  {
+    "name": ".claude-plugin",
+    "path": "plugins/full-stack-orchestration/.claude-plugin",
+    "sha": "e70d72041782f4919e85789509b8459ae184ebbf",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/full-stack-orchestration/.claude-plugin?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/full-stack-orchestration/.claude-plugin",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/e70d72041782f4919e85789509b8459ae184ebbf",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/full-stack-orchestration/.claude-plugin?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/e70d72041782f4919e85789509b8459ae184ebbf",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/full-stack-orchestration/.claude-plugin"
+    }
+  },
+  {
+    "name": "agents",
+    "path": "plugins/full-stack-orchestration/agents",
+    "sha": "2fde40bfa1e102d4508ea194797179ce2116d2a3",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/full-stack-orchestration/agents?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/full-stack-orchestration/agents",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/2fde40bfa1e102d4508ea194797179ce2116d2a3",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/full-stack-orchestration/agents?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/2fde40bfa1e102d4508ea194797179ce2116d2a3",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/full-stack-orchestration/agents"
+    }
+  },
+  {
+    "name": "commands",
+    "path": "plugins/full-stack-orchestration/commands",
+    "sha": "6f34fbce3b6311353376fca2cc78c732007b8c67",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/full-stack-orchestration/commands?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/full-stack-orchestration/commands",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/6f34fbce3b6311353376fca2cc78c732007b8c67",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/full-stack-orchestration/commands?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/6f34fbce3b6311353376fca2cc78c732007b8c67",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/full-stack-orchestration/commands"
+    }
+  }
+]

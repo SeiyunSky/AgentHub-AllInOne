@@ -1,0 +1,1298 @@
+[
+  {
+    "name": "accessibility-compliance",
+    "path": "plugins/accessibility-compliance",
+    "sha": "5a7f4fa807fe29f819df09fecda99ae125de7056",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/accessibility-compliance?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/accessibility-compliance",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/5a7f4fa807fe29f819df09fecda99ae125de7056",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/accessibility-compliance?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/5a7f4fa807fe29f819df09fecda99ae125de7056",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/accessibility-compliance"
+    }
+  },
+  {
+    "name": "agent-orchestration",
+    "path": "plugins/agent-orchestration",
+    "sha": "22167c6c42416e49ef8b89582073a7dbe9a5bbcd",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/agent-orchestration?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/agent-orchestration",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/22167c6c42416e49ef8b89582073a7dbe9a5bbcd",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/agent-orchestration?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/22167c6c42416e49ef8b89582073a7dbe9a5bbcd",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/agent-orchestration"
+    }
+  },
+  {
+    "name": "agent-teams",
+    "path": "plugins/agent-teams",
+    "sha": "286c82a3dfdf9fa0fbe8ae2489cc474c9ca6753f",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/agent-teams?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/agent-teams",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/286c82a3dfdf9fa0fbe8ae2489cc474c9ca6753f",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/agent-teams?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/286c82a3dfdf9fa0fbe8ae2489cc474c9ca6753f",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/agent-teams"
+    }
+  },
+  {
+    "name": "api-scaffolding",
+    "path": "plugins/api-scaffolding",
+    "sha": "c1f088518bf1d7b1d4f00e1897a63cbcc6b96584",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/api-scaffolding?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/api-scaffolding",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/c1f088518bf1d7b1d4f00e1897a63cbcc6b96584",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/api-scaffolding?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/c1f088518bf1d7b1d4f00e1897a63cbcc6b96584",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/api-scaffolding"
+    }
+  },
+  {
+    "name": "api-testing-observability",
+    "path": "plugins/api-testing-observability",
+    "sha": "0273e9ec1d0339bf643e3b67b16e59aa4e7d0b34",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/api-testing-observability?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/api-testing-observability",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/0273e9ec1d0339bf643e3b67b16e59aa4e7d0b34",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/api-testing-observability?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/0273e9ec1d0339bf643e3b67b16e59aa4e7d0b34",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/api-testing-observability"
+    }
+  },
+  {
+    "name": "application-performance",
+    "path": "plugins/application-performance",
+    "sha": "b8d0c3579785b42bff30d2cd29bddab684383250",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/application-performance?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/application-performance",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/b8d0c3579785b42bff30d2cd29bddab684383250",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/application-performance?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/b8d0c3579785b42bff30d2cd29bddab684383250",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/application-performance"
+    }
+  },
+  {
+    "name": "arm-cortex-microcontrollers",
+    "path": "plugins/arm-cortex-microcontrollers",
+    "sha": "2787d8ed2c7cf4bfe13425eab51268859db97b09",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/arm-cortex-microcontrollers?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/arm-cortex-microcontrollers",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/2787d8ed2c7cf4bfe13425eab51268859db97b09",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/arm-cortex-microcontrollers?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/2787d8ed2c7cf4bfe13425eab51268859db97b09",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/arm-cortex-microcontrollers"
+    }
+  },
+  {
+    "name": "backend-api-security",
+    "path": "plugins/backend-api-security",
+    "sha": "1c3397b9428c4e36c380d93db73d2f8d11484db3",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/backend-api-security?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/backend-api-security",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/1c3397b9428c4e36c380d93db73d2f8d11484db3",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/backend-api-security?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/1c3397b9428c4e36c380d93db73d2f8d11484db3",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/backend-api-security"
+    }
+  },
+  {
+    "name": "backend-development",
+    "path": "plugins/backend-development",
+    "sha": "be95cf73a895d91c7cf8f743cd28be699ca2c2a0",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/backend-development?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/backend-development",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/be95cf73a895d91c7cf8f743cd28be699ca2c2a0",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/backend-development?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/be95cf73a895d91c7cf8f743cd28be699ca2c2a0",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/backend-development"
+    }
+  },
+  {
+    "name": "block-no-verify",
+    "path": "plugins/block-no-verify",
+    "sha": "be215a9d401c5eca66575767c1a3fb84b3ce8a73",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/block-no-verify?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/block-no-verify",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/be215a9d401c5eca66575767c1a3fb84b3ce8a73",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/block-no-verify?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/be215a9d401c5eca66575767c1a3fb84b3ce8a73",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/block-no-verify"
+    }
+  },
+  {
+    "name": "blockchain-web3",
+    "path": "plugins/blockchain-web3",
+    "sha": "728cf3d08cf95ba69cafe3447c65c2c6ea352019",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/blockchain-web3?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/blockchain-web3",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/728cf3d08cf95ba69cafe3447c65c2c6ea352019",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/blockchain-web3?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/728cf3d08cf95ba69cafe3447c65c2c6ea352019",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/blockchain-web3"
+    }
+  },
+  {
+    "name": "brand-landingpage",
+    "path": "plugins/brand-landingpage",
+    "sha": "584164fcef390cfcac07c980ab79b6734c0fd4a5",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/brand-landingpage?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/brand-landingpage",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/584164fcef390cfcac07c980ab79b6734c0fd4a5",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/brand-landingpage?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/584164fcef390cfcac07c980ab79b6734c0fd4a5",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/brand-landingpage"
+    }
+  },
+  {
+    "name": "business-analytics",
+    "path": "plugins/business-analytics",
+    "sha": "b38192366d449b99a5312d818f13e430d3d38b7a",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/business-analytics?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/business-analytics",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/b38192366d449b99a5312d818f13e430d3d38b7a",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/business-analytics?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/b38192366d449b99a5312d818f13e430d3d38b7a",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/business-analytics"
+    }
+  },
+  {
+    "name": "c4-architecture",
+    "path": "plugins/c4-architecture",
+    "sha": "8258cceedd2feee5f44cea3475687af628f890b0",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/c4-architecture?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/c4-architecture",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/8258cceedd2feee5f44cea3475687af628f890b0",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/c4-architecture?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/8258cceedd2feee5f44cea3475687af628f890b0",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/c4-architecture"
+    }
+  },
+  {
+    "name": "cicd-automation",
+    "path": "plugins/cicd-automation",
+    "sha": "3a38e99502cb875484424298a886fcd95f813342",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/cicd-automation?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/cicd-automation",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/3a38e99502cb875484424298a886fcd95f813342",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/cicd-automation?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/3a38e99502cb875484424298a886fcd95f813342",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/cicd-automation"
+    }
+  },
+  {
+    "name": "cloud-infrastructure",
+    "path": "plugins/cloud-infrastructure",
+    "sha": "ffb27f99359f4f7f7e68bc22ae95c195ded8c824",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/cloud-infrastructure?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/cloud-infrastructure",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/ffb27f99359f4f7f7e68bc22ae95c195ded8c824",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/cloud-infrastructure?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/ffb27f99359f4f7f7e68bc22ae95c195ded8c824",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/cloud-infrastructure"
+    }
+  },
+  {
+    "name": "code-documentation",
+    "path": "plugins/code-documentation",
+    "sha": "ba241a9a8d552f46197d6da807a53b81d3222db8",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/code-documentation?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/code-documentation",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/ba241a9a8d552f46197d6da807a53b81d3222db8",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/code-documentation?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/ba241a9a8d552f46197d6da807a53b81d3222db8",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/code-documentation"
+    }
+  },
+  {
+    "name": "code-refactoring",
+    "path": "plugins/code-refactoring",
+    "sha": "5e46c1504cbc34146f8d2f13de0644d627bedc84",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/code-refactoring?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/code-refactoring",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/5e46c1504cbc34146f8d2f13de0644d627bedc84",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/code-refactoring?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/5e46c1504cbc34146f8d2f13de0644d627bedc84",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/code-refactoring"
+    }
+  },
+  {
+    "name": "codebase-cleanup",
+    "path": "plugins/codebase-cleanup",
+    "sha": "8a218e5d31ee8d36857312a5d111e07f2b2a8dbb",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/codebase-cleanup?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/codebase-cleanup",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/8a218e5d31ee8d36857312a5d111e07f2b2a8dbb",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/codebase-cleanup?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/8a218e5d31ee8d36857312a5d111e07f2b2a8dbb",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/codebase-cleanup"
+    }
+  },
+  {
+    "name": "comprehensive-review",
+    "path": "plugins/comprehensive-review",
+    "sha": "adb4d39e8fd4a461ada231821438ae189d43cd42",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/comprehensive-review?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/comprehensive-review",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/adb4d39e8fd4a461ada231821438ae189d43cd42",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/comprehensive-review?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/adb4d39e8fd4a461ada231821438ae189d43cd42",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/comprehensive-review"
+    }
+  },
+  {
+    "name": "conductor",
+    "path": "plugins/conductor",
+    "sha": "89de6a8ddf0235da6e103ec18def1f52e1fa825c",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/conductor?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/conductor",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/89de6a8ddf0235da6e103ec18def1f52e1fa825c",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/conductor?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/89de6a8ddf0235da6e103ec18def1f52e1fa825c",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/conductor"
+    }
+  },
+  {
+    "name": "content-marketing",
+    "path": "plugins/content-marketing",
+    "sha": "b7d578a28360c40f6c6b4f73622f336780ab2ca2",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/content-marketing?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/content-marketing",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/b7d578a28360c40f6c6b4f73622f336780ab2ca2",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/content-marketing?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/b7d578a28360c40f6c6b4f73622f336780ab2ca2",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/content-marketing"
+    }
+  },
+  {
+    "name": "context-management",
+    "path": "plugins/context-management",
+    "sha": "e7b1b33ef09e6dbfbdf1ef790bf50820f08adece",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/context-management?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/context-management",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/e7b1b33ef09e6dbfbdf1ef790bf50820f08adece",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/context-management?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/e7b1b33ef09e6dbfbdf1ef790bf50820f08adece",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/context-management"
+    }
+  },
+  {
+    "name": "customer-sales-automation",
+    "path": "plugins/customer-sales-automation",
+    "sha": "83d5a1296d5fa37d338376abed520ed1d0f15233",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/customer-sales-automation?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/customer-sales-automation",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/83d5a1296d5fa37d338376abed520ed1d0f15233",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/customer-sales-automation?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/83d5a1296d5fa37d338376abed520ed1d0f15233",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/customer-sales-automation"
+    }
+  },
+  {
+    "name": "data-engineering",
+    "path": "plugins/data-engineering",
+    "sha": "70b49f86d67d5be19b34445bd1ee623d08473d5d",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/data-engineering?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/data-engineering",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/70b49f86d67d5be19b34445bd1ee623d08473d5d",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/data-engineering?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/70b49f86d67d5be19b34445bd1ee623d08473d5d",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/data-engineering"
+    }
+  },
+  {
+    "name": "data-validation-suite",
+    "path": "plugins/data-validation-suite",
+    "sha": "0a4b0a38d1101d4112032db8831d0eb859ff3057",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/data-validation-suite?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/data-validation-suite",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/0a4b0a38d1101d4112032db8831d0eb859ff3057",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/data-validation-suite?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/0a4b0a38d1101d4112032db8831d0eb859ff3057",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/data-validation-suite"
+    }
+  },
+  {
+    "name": "database-cloud-optimization",
+    "path": "plugins/database-cloud-optimization",
+    "sha": "c43f00c74c6aa64440dd841a5aaef1cc73b13999",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/database-cloud-optimization?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/database-cloud-optimization",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/c43f00c74c6aa64440dd841a5aaef1cc73b13999",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/database-cloud-optimization?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/c43f00c74c6aa64440dd841a5aaef1cc73b13999",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/database-cloud-optimization"
+    }
+  },
+  {
+    "name": "database-design",
+    "path": "plugins/database-design",
+    "sha": "e80583dbb3f444ff274661b182f8326f7ef509cd",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/database-design?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/database-design",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/e80583dbb3f444ff274661b182f8326f7ef509cd",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/database-design?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/e80583dbb3f444ff274661b182f8326f7ef509cd",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/database-design"
+    }
+  },
+  {
+    "name": "database-migrations",
+    "path": "plugins/database-migrations",
+    "sha": "854e30229ba44566206b6db19be43a7c5412445a",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/database-migrations?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/database-migrations",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/854e30229ba44566206b6db19be43a7c5412445a",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/database-migrations?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/854e30229ba44566206b6db19be43a7c5412445a",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/database-migrations"
+    }
+  },
+  {
+    "name": "debugging-toolkit",
+    "path": "plugins/debugging-toolkit",
+    "sha": "9114e7a55a3d8ec5b8b1987215ec9339bb053fd9",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/debugging-toolkit?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/debugging-toolkit",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/9114e7a55a3d8ec5b8b1987215ec9339bb053fd9",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/debugging-toolkit?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/9114e7a55a3d8ec5b8b1987215ec9339bb053fd9",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/debugging-toolkit"
+    }
+  },
+  {
+    "name": "dependency-management",
+    "path": "plugins/dependency-management",
+    "sha": "37582566ef247405fd0ea80197da72c8d469414e",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/dependency-management?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/dependency-management",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/37582566ef247405fd0ea80197da72c8d469414e",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/dependency-management?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/37582566ef247405fd0ea80197da72c8d469414e",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/dependency-management"
+    }
+  },
+  {
+    "name": "deployment-strategies",
+    "path": "plugins/deployment-strategies",
+    "sha": "326c113f299af9d0eb7293e4ff5c1627f81d3607",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/deployment-strategies?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/deployment-strategies",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/326c113f299af9d0eb7293e4ff5c1627f81d3607",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/deployment-strategies?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/326c113f299af9d0eb7293e4ff5c1627f81d3607",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/deployment-strategies"
+    }
+  },
+  {
+    "name": "deployment-validation",
+    "path": "plugins/deployment-validation",
+    "sha": "53057f548b6b3335881364e9efa9459e6ecd4f47",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/deployment-validation?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/deployment-validation",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/53057f548b6b3335881364e9efa9459e6ecd4f47",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/deployment-validation?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/53057f548b6b3335881364e9efa9459e6ecd4f47",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/deployment-validation"
+    }
+  },
+  {
+    "name": "developer-essentials",
+    "path": "plugins/developer-essentials",
+    "sha": "b65fc82c9a3591ba585f842ed9a7eec3ed90485d",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/developer-essentials?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/developer-essentials",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/b65fc82c9a3591ba585f842ed9a7eec3ed90485d",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/developer-essentials?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/b65fc82c9a3591ba585f842ed9a7eec3ed90485d",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/developer-essentials"
+    }
+  },
+  {
+    "name": "distributed-debugging",
+    "path": "plugins/distributed-debugging",
+    "sha": "0ad2c3ec4391e58074ef10885406906e2a8938ac",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/distributed-debugging?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/distributed-debugging",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/0ad2c3ec4391e58074ef10885406906e2a8938ac",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/distributed-debugging?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/0ad2c3ec4391e58074ef10885406906e2a8938ac",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/distributed-debugging"
+    }
+  },
+  {
+    "name": "documentation-generation",
+    "path": "plugins/documentation-generation",
+    "sha": "d65e8cbadfc23f1eeb338e035a62a2fe8fd9ccd1",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/documentation-generation?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/documentation-generation",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/d65e8cbadfc23f1eeb338e035a62a2fe8fd9ccd1",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/documentation-generation?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/d65e8cbadfc23f1eeb338e035a62a2fe8fd9ccd1",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/documentation-generation"
+    }
+  },
+  {
+    "name": "documentation-standards",
+    "path": "plugins/documentation-standards",
+    "sha": "a0484750a77d8fad25d8ef16628231de56dd2098",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/documentation-standards?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/documentation-standards",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/a0484750a77d8fad25d8ef16628231de56dd2098",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/documentation-standards?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/a0484750a77d8fad25d8ef16628231de56dd2098",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/documentation-standards"
+    }
+  },
+  {
+    "name": "dotnet-contribution",
+    "path": "plugins/dotnet-contribution",
+    "sha": "3eba90037abd4c341fbe8550862f8169384cd70d",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/dotnet-contribution?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/dotnet-contribution",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/3eba90037abd4c341fbe8550862f8169384cd70d",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/dotnet-contribution?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/3eba90037abd4c341fbe8550862f8169384cd70d",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/dotnet-contribution"
+    }
+  },
+  {
+    "name": "error-debugging",
+    "path": "plugins/error-debugging",
+    "sha": "1f93a2bb8af5e093498dd7c6ec19beae292ea11c",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/error-debugging?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/error-debugging",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/1f93a2bb8af5e093498dd7c6ec19beae292ea11c",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/error-debugging?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/1f93a2bb8af5e093498dd7c6ec19beae292ea11c",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/error-debugging"
+    }
+  },
+  {
+    "name": "error-diagnostics",
+    "path": "plugins/error-diagnostics",
+    "sha": "ed5d34d9fdac88353464658d1665725faaaa0a50",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/error-diagnostics?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/error-diagnostics",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/ed5d34d9fdac88353464658d1665725faaaa0a50",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/error-diagnostics?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/ed5d34d9fdac88353464658d1665725faaaa0a50",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/error-diagnostics"
+    }
+  },
+  {
+    "name": "framework-migration",
+    "path": "plugins/framework-migration",
+    "sha": "ba0770c19017a0bad496ee46229611526da4bf5a",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/framework-migration?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/framework-migration",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/ba0770c19017a0bad496ee46229611526da4bf5a",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/framework-migration?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/ba0770c19017a0bad496ee46229611526da4bf5a",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/framework-migration"
+    }
+  },
+  {
+    "name": "frontend-mobile-development",
+    "path": "plugins/frontend-mobile-development",
+    "sha": "e68c5141abc85acca480d60a5cc2e7d424d86548",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/frontend-mobile-development?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/frontend-mobile-development",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/e68c5141abc85acca480d60a5cc2e7d424d86548",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/frontend-mobile-development?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/e68c5141abc85acca480d60a5cc2e7d424d86548",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/frontend-mobile-development"
+    }
+  },
+  {
+    "name": "frontend-mobile-security",
+    "path": "plugins/frontend-mobile-security",
+    "sha": "2798e552068c65d2b32ed841f9658561330e562f",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/frontend-mobile-security?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/frontend-mobile-security",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/2798e552068c65d2b32ed841f9658561330e562f",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/frontend-mobile-security?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/2798e552068c65d2b32ed841f9658561330e562f",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/frontend-mobile-security"
+    }
+  },
+  {
+    "name": "full-stack-orchestration",
+    "path": "plugins/full-stack-orchestration",
+    "sha": "7ef682d7fcc26dd760ae935a666f1d8d4c25cd9a",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/full-stack-orchestration?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/full-stack-orchestration",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/7ef682d7fcc26dd760ae935a666f1d8d4c25cd9a",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/full-stack-orchestration?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/7ef682d7fcc26dd760ae935a666f1d8d4c25cd9a",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/full-stack-orchestration"
+    }
+  },
+  {
+    "name": "functional-programming",
+    "path": "plugins/functional-programming",
+    "sha": "30c3c559ef4076b618c46cf3b3a9a5292248a193",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/functional-programming?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/functional-programming",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/30c3c559ef4076b618c46cf3b3a9a5292248a193",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/functional-programming?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/30c3c559ef4076b618c46cf3b3a9a5292248a193",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/functional-programming"
+    }
+  },
+  {
+    "name": "game-development",
+    "path": "plugins/game-development",
+    "sha": "207bc9b816637e561c6536458bf570bb54e0db8b",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/game-development?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/game-development",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/207bc9b816637e561c6536458bf570bb54e0db8b",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/game-development?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/207bc9b816637e561c6536458bf570bb54e0db8b",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/game-development"
+    }
+  },
+  {
+    "name": "git-pr-workflows",
+    "path": "plugins/git-pr-workflows",
+    "sha": "ca931aa98983a3f05a278de4736b81ff1717c723",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/git-pr-workflows?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/git-pr-workflows",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/ca931aa98983a3f05a278de4736b81ff1717c723",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/git-pr-workflows?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/ca931aa98983a3f05a278de4736b81ff1717c723",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/git-pr-workflows"
+    }
+  },
+  {
+    "name": "hr-legal-compliance",
+    "path": "plugins/hr-legal-compliance",
+    "sha": "b8a692388c87b32eb873faf85d5434b781d096c8",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/hr-legal-compliance?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/hr-legal-compliance",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/b8a692388c87b32eb873faf85d5434b781d096c8",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/hr-legal-compliance?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/b8a692388c87b32eb873faf85d5434b781d096c8",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/hr-legal-compliance"
+    }
+  },
+  {
+    "name": "incident-response",
+    "path": "plugins/incident-response",
+    "sha": "3bbf76a475183cee61e9398fdb155238f78c9f3b",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/incident-response?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/incident-response",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/3bbf76a475183cee61e9398fdb155238f78c9f3b",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/incident-response?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/3bbf76a475183cee61e9398fdb155238f78c9f3b",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/incident-response"
+    }
+  },
+  {
+    "name": "javascript-typescript",
+    "path": "plugins/javascript-typescript",
+    "sha": "6ae5ea4190b87ec8e0dd27077342c0fbf9cfcbd4",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/javascript-typescript?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/javascript-typescript",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/6ae5ea4190b87ec8e0dd27077342c0fbf9cfcbd4",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/javascript-typescript?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/6ae5ea4190b87ec8e0dd27077342c0fbf9cfcbd4",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/javascript-typescript"
+    }
+  },
+  {
+    "name": "julia-development",
+    "path": "plugins/julia-development",
+    "sha": "0787ecd06da96e0e2abc85ce27cfb7cf8978cc51",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/julia-development?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/julia-development",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/0787ecd06da96e0e2abc85ce27cfb7cf8978cc51",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/julia-development?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/0787ecd06da96e0e2abc85ce27cfb7cf8978cc51",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/julia-development"
+    }
+  },
+  {
+    "name": "jvm-languages",
+    "path": "plugins/jvm-languages",
+    "sha": "3d1d24fc228285f0c424abedbd15a8ea3bb81a41",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/jvm-languages?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/jvm-languages",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/3d1d24fc228285f0c424abedbd15a8ea3bb81a41",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/jvm-languages?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/3d1d24fc228285f0c424abedbd15a8ea3bb81a41",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/jvm-languages"
+    }
+  },
+  {
+    "name": "kubernetes-operations",
+    "path": "plugins/kubernetes-operations",
+    "sha": "abd9e054d6c8ba44ee3727f30a89e0e6c2cbd063",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/kubernetes-operations?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/kubernetes-operations",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/abd9e054d6c8ba44ee3727f30a89e0e6c2cbd063",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/kubernetes-operations?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/abd9e054d6c8ba44ee3727f30a89e0e6c2cbd063",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/kubernetes-operations"
+    }
+  },
+  {
+    "name": "llm-application-dev",
+    "path": "plugins/llm-application-dev",
+    "sha": "09e471e5bbf3e99a362d7c6995c3c01a11b4ad90",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/llm-application-dev?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/llm-application-dev",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/09e471e5bbf3e99a362d7c6995c3c01a11b4ad90",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/llm-application-dev?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/09e471e5bbf3e99a362d7c6995c3c01a11b4ad90",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/llm-application-dev"
+    }
+  },
+  {
+    "name": "machine-learning-ops",
+    "path": "plugins/machine-learning-ops",
+    "sha": "e37b295b3720349d62d40d7b68cec7d005284f60",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/machine-learning-ops?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/machine-learning-ops",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/e37b295b3720349d62d40d7b68cec7d005284f60",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/machine-learning-ops?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/e37b295b3720349d62d40d7b68cec7d005284f60",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/machine-learning-ops"
+    }
+  },
+  {
+    "name": "meigen-ai-design",
+    "path": "plugins/meigen-ai-design",
+    "sha": "41e798011398f75d5647440cd75230b04094da4d",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/meigen-ai-design?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/meigen-ai-design",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/41e798011398f75d5647440cd75230b04094da4d",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/meigen-ai-design?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/41e798011398f75d5647440cd75230b04094da4d",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/meigen-ai-design"
+    }
+  },
+  {
+    "name": "multi-platform-apps",
+    "path": "plugins/multi-platform-apps",
+    "sha": "2318d5588453a74bf6c124fdfde02bf78845776d",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/multi-platform-apps?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/multi-platform-apps",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/2318d5588453a74bf6c124fdfde02bf78845776d",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/multi-platform-apps?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/2318d5588453a74bf6c124fdfde02bf78845776d",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/multi-platform-apps"
+    }
+  },
+  {
+    "name": "observability-monitoring",
+    "path": "plugins/observability-monitoring",
+    "sha": "ae680faa1e89c0fef2d9eafa09906523e1019bfd",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/observability-monitoring?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/observability-monitoring",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/ae680faa1e89c0fef2d9eafa09906523e1019bfd",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/observability-monitoring?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/ae680faa1e89c0fef2d9eafa09906523e1019bfd",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/observability-monitoring"
+    }
+  },
+  {
+    "name": "payment-processing",
+    "path": "plugins/payment-processing",
+    "sha": "897482c4df0c3276117b9aaa559b9c27e89b50ee",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/payment-processing?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/payment-processing",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/897482c4df0c3276117b9aaa559b9c27e89b50ee",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/payment-processing?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/897482c4df0c3276117b9aaa559b9c27e89b50ee",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/payment-processing"
+    }
+  },
+  {
+    "name": "performance-testing-review",
+    "path": "plugins/performance-testing-review",
+    "sha": "333e00bfef9cabbc6b8680384df82a2ab70caa90",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/performance-testing-review?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/performance-testing-review",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/333e00bfef9cabbc6b8680384df82a2ab70caa90",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/performance-testing-review?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/333e00bfef9cabbc6b8680384df82a2ab70caa90",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/performance-testing-review"
+    }
+  },
+  {
+    "name": "plugin-eval",
+    "path": "plugins/plugin-eval",
+    "sha": "de5dde0f80104adf9f58e314ab94a46369574ce4",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/plugin-eval?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/plugin-eval",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/de5dde0f80104adf9f58e314ab94a46369574ce4",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/plugin-eval?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/de5dde0f80104adf9f58e314ab94a46369574ce4",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/plugin-eval"
+    }
+  },
+  {
+    "name": "protect-mcp",
+    "path": "plugins/protect-mcp",
+    "sha": "5f3e8dbfdabac3bd527c1304e0e725d28b709588",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/protect-mcp?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/protect-mcp",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/5f3e8dbfdabac3bd527c1304e0e725d28b709588",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/protect-mcp?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/5f3e8dbfdabac3bd527c1304e0e725d28b709588",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/protect-mcp"
+    }
+  },
+  {
+    "name": "python-development",
+    "path": "plugins/python-development",
+    "sha": "fa4538f76a222006273a37c51d18e59ed8471f04",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/python-development?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/python-development",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/fa4538f76a222006273a37c51d18e59ed8471f04",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/python-development?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/fa4538f76a222006273a37c51d18e59ed8471f04",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/python-development"
+    }
+  },
+  {
+    "name": "quantitative-trading",
+    "path": "plugins/quantitative-trading",
+    "sha": "5c0525567ba531453eee2531a2e060fabe249030",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/quantitative-trading?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/quantitative-trading",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/5c0525567ba531453eee2531a2e060fabe249030",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/quantitative-trading?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/5c0525567ba531453eee2531a2e060fabe249030",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/quantitative-trading"
+    }
+  },
+  {
+    "name": "reverse-engineering",
+    "path": "plugins/reverse-engineering",
+    "sha": "6029cd53e2537936484828641852affb52f18fe4",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/reverse-engineering?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/reverse-engineering",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/6029cd53e2537936484828641852affb52f18fe4",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/reverse-engineering?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/6029cd53e2537936484828641852affb52f18fe4",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/reverse-engineering"
+    }
+  },
+  {
+    "name": "review-agent-governance",
+    "path": "plugins/review-agent-governance",
+    "sha": "679e968b372a9c9eb29b6ee3b7755b7289e77920",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/review-agent-governance?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/review-agent-governance",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/679e968b372a9c9eb29b6ee3b7755b7289e77920",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/review-agent-governance?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/679e968b372a9c9eb29b6ee3b7755b7289e77920",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/review-agent-governance"
+    }
+  },
+  {
+    "name": "security-compliance",
+    "path": "plugins/security-compliance",
+    "sha": "b7a9495c2bf43c9db648dadd4b2682a2ebea0463",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/security-compliance?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/security-compliance",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/b7a9495c2bf43c9db648dadd4b2682a2ebea0463",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/security-compliance?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/b7a9495c2bf43c9db648dadd4b2682a2ebea0463",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/security-compliance"
+    }
+  },
+  {
+    "name": "security-scanning",
+    "path": "plugins/security-scanning",
+    "sha": "976388af089d5cac2655efd1fdf23357658be0ab",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/security-scanning?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/security-scanning",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/976388af089d5cac2655efd1fdf23357658be0ab",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/security-scanning?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/976388af089d5cac2655efd1fdf23357658be0ab",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/security-scanning"
+    }
+  },
+  {
+    "name": "seo-analysis-monitoring",
+    "path": "plugins/seo-analysis-monitoring",
+    "sha": "30fb4242d493e97a4de231e9d4db297a60994362",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/seo-analysis-monitoring?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/seo-analysis-monitoring",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/30fb4242d493e97a4de231e9d4db297a60994362",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/seo-analysis-monitoring?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/30fb4242d493e97a4de231e9d4db297a60994362",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/seo-analysis-monitoring"
+    }
+  },
+  {
+    "name": "seo-content-creation",
+    "path": "plugins/seo-content-creation",
+    "sha": "03fbdc7f53aa0d47e113d969588ca1db08a2c0d9",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/seo-content-creation?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/seo-content-creation",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/03fbdc7f53aa0d47e113d969588ca1db08a2c0d9",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/seo-content-creation?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/03fbdc7f53aa0d47e113d969588ca1db08a2c0d9",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/seo-content-creation"
+    }
+  },
+  {
+    "name": "seo-technical-optimization",
+    "path": "plugins/seo-technical-optimization",
+    "sha": "cdbb3c8ba9f5bd6455c11b6fa5b1bd74c0f3e4fa",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/seo-technical-optimization?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/seo-technical-optimization",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/cdbb3c8ba9f5bd6455c11b6fa5b1bd74c0f3e4fa",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/seo-technical-optimization?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/cdbb3c8ba9f5bd6455c11b6fa5b1bd74c0f3e4fa",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/seo-technical-optimization"
+    }
+  },
+  {
+    "name": "shell-scripting",
+    "path": "plugins/shell-scripting",
+    "sha": "53a3282afef64813c5c05f779fbebec5c512042c",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/shell-scripting?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/shell-scripting",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/53a3282afef64813c5c05f779fbebec5c512042c",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/shell-scripting?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/53a3282afef64813c5c05f779fbebec5c512042c",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/shell-scripting"
+    }
+  },
+  {
+    "name": "ship-mate",
+    "path": "plugins/ship-mate",
+    "sha": "54a17f53752134a72a44b6985ce59ea4ee5771bc",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/ship-mate?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/ship-mate",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/54a17f53752134a72a44b6985ce59ea4ee5771bc",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/ship-mate?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/54a17f53752134a72a44b6985ce59ea4ee5771bc",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/ship-mate"
+    }
+  },
+  {
+    "name": "signed-audit-trails",
+    "path": "plugins/signed-audit-trails",
+    "sha": "f36c5de64c4024070a421936e44f357e206bf635",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/signed-audit-trails?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/signed-audit-trails",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/f36c5de64c4024070a421936e44f357e206bf635",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/signed-audit-trails?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/f36c5de64c4024070a421936e44f357e206bf635",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/signed-audit-trails"
+    }
+  },
+  {
+    "name": "startup-business-analyst",
+    "path": "plugins/startup-business-analyst",
+    "sha": "6bb6636f31c213295a91f12f905b9895675d0c35",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/startup-business-analyst?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/startup-business-analyst",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/6bb6636f31c213295a91f12f905b9895675d0c35",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/startup-business-analyst?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/6bb6636f31c213295a91f12f905b9895675d0c35",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/startup-business-analyst"
+    }
+  },
+  {
+    "name": "systems-programming",
+    "path": "plugins/systems-programming",
+    "sha": "660f7d16bf7b3451ea0a4be2f0cb26cae296e349",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/systems-programming?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/systems-programming",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/660f7d16bf7b3451ea0a4be2f0cb26cae296e349",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/systems-programming?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/660f7d16bf7b3451ea0a4be2f0cb26cae296e349",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/systems-programming"
+    }
+  },
+  {
+    "name": "tdd-workflows",
+    "path": "plugins/tdd-workflows",
+    "sha": "ee81d216520b9fb925762ad7297c92db7becebf5",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/tdd-workflows?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/tdd-workflows",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/ee81d216520b9fb925762ad7297c92db7becebf5",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/tdd-workflows?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/ee81d216520b9fb925762ad7297c92db7becebf5",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/tdd-workflows"
+    }
+  },
+  {
+    "name": "team-collaboration",
+    "path": "plugins/team-collaboration",
+    "sha": "013d0e92cce6bc26a4df6f4995943c238231c706",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/team-collaboration?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/team-collaboration",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/013d0e92cce6bc26a4df6f4995943c238231c706",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/team-collaboration?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/013d0e92cce6bc26a4df6f4995943c238231c706",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/team-collaboration"
+    }
+  },
+  {
+    "name": "ui-design",
+    "path": "plugins/ui-design",
+    "sha": "069bedbf3fc47b2f1a48809cacae09c5eee6d6de",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/ui-design?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/ui-design",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/069bedbf3fc47b2f1a48809cacae09c5eee6d6de",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/ui-design?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/069bedbf3fc47b2f1a48809cacae09c5eee6d6de",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/ui-design"
+    }
+  },
+  {
+    "name": "unit-testing",
+    "path": "plugins/unit-testing",
+    "sha": "3cfc15bb49461bf0f872dcea65f1c4c26c1dd6ce",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/unit-testing?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/unit-testing",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/3cfc15bb49461bf0f872dcea65f1c4c26c1dd6ce",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/unit-testing?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/3cfc15bb49461bf0f872dcea65f1c4c26c1dd6ce",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/unit-testing"
+    }
+  },
+  {
+    "name": "web-scripting",
+    "path": "plugins/web-scripting",
+    "sha": "415dc460a4ec7bef3973dec4b1d6a07df450f4e5",
+    "size": 0,
+    "url": "https://api.github.com/repos/wshobson/agents/contents/plugins/web-scripting?ref=main",
+    "html_url": "https://github.com/wshobson/agents/tree/main/plugins/web-scripting",
+    "git_url": "https://api.github.com/repos/wshobson/agents/git/trees/415dc460a4ec7bef3973dec4b1d6a07df450f4e5",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/wshobson/agents/contents/plugins/web-scripting?ref=main",
+      "git": "https://api.github.com/repos/wshobson/agents/git/trees/415dc460a4ec7bef3973dec4b1d6a07df450f4e5",
+      "html": "https://github.com/wshobson/agents/tree/main/plugins/web-scripting"
+    }
+  }
+]

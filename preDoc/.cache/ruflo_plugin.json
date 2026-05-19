@@ -1,0 +1,98 @@
+[
+  {
+    "name": ".claude-plugin",
+    "path": "plugin/.claude-plugin",
+    "sha": "5fc75d035c8026466c920ab348341e024ccf7144",
+    "size": 0,
+    "url": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/.claude-plugin?ref=main",
+    "html_url": "https://github.com/ruvnet/ruflo/tree/main/plugin/.claude-plugin",
+    "git_url": "https://api.github.com/repos/ruvnet/ruflo/git/trees/5fc75d035c8026466c920ab348341e024ccf7144",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/.claude-plugin?ref=main",
+      "git": "https://api.github.com/repos/ruvnet/ruflo/git/trees/5fc75d035c8026466c920ab348341e024ccf7144",
+      "html": "https://github.com/ruvnet/ruflo/tree/main/plugin/.claude-plugin"
+    }
+  },
+  {
+    "name": "agents",
+    "path": "plugin/agents",
+    "sha": "0efb85ec44f4b0d50ff24a9b75d12ecd9a9e08d2",
+    "size": 17,
+    "url": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/agents?ref=main",
+    "html_url": "https://github.com/ruvnet/ruflo/blob/main/plugin/agents",
+    "git_url": "https://api.github.com/repos/ruvnet/ruflo/git/blobs/0efb85ec44f4b0d50ff24a9b75d12ecd9a9e08d2",
+    "download_url": "https://raw.githubusercontent.com/ruvnet/ruflo/main/plugin/agents",
+    "type": "symlink",
+    "_links": {
+      "self": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/agents?ref=main",
+      "git": "https://api.github.com/repos/ruvnet/ruflo/git/blobs/0efb85ec44f4b0d50ff24a9b75d12ecd9a9e08d2",
+      "html": "https://github.com/ruvnet/ruflo/blob/main/plugin/agents"
+    }
+  },
+  {
+    "name": "commands",
+    "path": "plugin/commands",
+    "sha": "0b631dd5b7212901024a1a70ecf91afbac0ea11b",
+    "size": 19,
+    "url": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/commands?ref=main",
+    "html_url": "https://github.com/ruvnet/ruflo/blob/main/plugin/commands",
+    "git_url": "https://api.github.com/repos/ruvnet/ruflo/git/blobs/0b631dd5b7212901024a1a70ecf91afbac0ea11b",
+    "download_url": "https://raw.githubusercontent.com/ruvnet/ruflo/main/plugin/commands",
+    "type": "symlink",
+    "_links": {
+      "self": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/commands?ref=main",
+      "git": "https://api.github.com/repos/ruvnet/ruflo/git/blobs/0b631dd5b7212901024a1a70ecf91afbac0ea11b",
+      "html": "https://github.com/ruvnet/ruflo/blob/main/plugin/commands"
+    }
+  },
+  {
+    "name": "hooks",
+    "path": "plugin/hooks",
+    "sha": "e25e08240f59a828df6fc3d5387edbd96e1542d9",
+    "size": 0,
+    "url": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/hooks?ref=main",
+    "html_url": "https://github.com/ruvnet/ruflo/tree/main/plugin/hooks",
+    "git_url": "https://api.github.com/repos/ruvnet/ruflo/git/trees/e25e08240f59a828df6fc3d5387edbd96e1542d9",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/hooks?ref=main",
+      "git": "https://api.github.com/repos/ruvnet/ruflo/git/trees/e25e08240f59a828df6fc3d5387edbd96e1542d9",
+      "html": "https://github.com/ruvnet/ruflo/tree/main/plugin/hooks"
+    }
+  },
+  {
+    "name": "scripts",
+    "path": "plugin/scripts",
+    "sha": "c6e85a11be4bccd2f7f33c74664d43b10094fa76",
+    "size": 0,
+    "url": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/scripts?ref=main",
+    "html_url": "https://github.com/ruvnet/ruflo/tree/main/plugin/scripts",
+    "git_url": "https://api.github.com/repos/ruvnet/ruflo/git/trees/c6e85a11be4bccd2f7f33c74664d43b10094fa76",
+    "download_url": null,
+    "type": "dir",
+    "_links": {
+      "self": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/scripts?ref=main",
+      "git": "https://api.github.com/repos/ruvnet/ruflo/git/trees/c6e85a11be4bccd2f7f33c74664d43b10094fa76",
+      "html": "https://github.com/ruvnet/ruflo/tree/main/plugin/scripts"
+    }
+  },
+  {
+    "name": "skills",
+    "path": "plugin/skills",
+    "sha": "454b8427cd757f30dc7fdb9a325d19c399770417",
+    "size": 17,
+    "url": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/skills?ref=main",
+    "html_url": "https://github.com/ruvnet/ruflo/blob/main/plugin/skills",
+    "git_url": "https://api.github.com/repos/ruvnet/ruflo/git/blobs/454b8427cd757f30dc7fdb9a325d19c399770417",
+    "download_url": "https://raw.githubusercontent.com/ruvnet/ruflo/main/plugin/skills",
+    "type": "symlink",
+    "_links": {
+      "self": "https://api.github.com/repos/ruvnet/ruflo/contents/plugin/skills?ref=main",
+      "git": "https://api.github.com/repos/ruvnet/ruflo/git/blobs/454b8427cd757f30dc7fdb9a325d19c399770417",
+      "html": "https://github.com/ruvnet/ruflo/blob/main/plugin/skills"
+    }
+  }
+]
