@@ -1,1 +1,304 @@
-小伙伴们一起协作吧！在Agent开发中，咕嘎一辈子
+# 开发日志 1 — 架构选型
+
+> 小伙伴们一起协作吧！在Agent开发中，咕嘎一辈子
+
+---
+
+## 背景
+
+AgentHub 是一个 IM 聊天式多 Agent 协作平台，用户像使用飞书/微信一样与多个 AI Agent 交互，支持单聊、多会话并行、群聊 @ 多 Agent 并行协作、产物内联预览。
+
+本文记录第一次架构评审的完整决策过程和结论。
+
+---
+
+## 一、系统分层架构
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          Client Layer                               │
+│                Web (Vue 3)  ·  Desktop (Electron/PWA)               │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  会话列表  |  聊天流(多Agent并行气泡)  |  产物预览卡片(iframe) │   │
+│  │  Diff卡片  |  审批Action  |  多窗口  |  Context Pin          │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│  技术栈：Vue 3 + TypeScript + Pinia + Tailwind CSS                  │
+│  消息状态机：Pinia store，messages: Map<messageId, Message>          │
+│             streamingIds: Set<messageId>                            │
+└──────────────────────────────▲──────────────────────────────────────┘
+                               │
+              SSE (内容流 token) │ WebSocket (状态推送 / 审批事件)
+              REST (CRUD 操作)  │
+                               │
+┌──────────────────────────────┴──────────────────────────────────────┐
+│                        AgentHub Platform                            │
+│                                                                     │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │                        IM Service                           │   │
+│  │                                                             │   │
+│  │  会话 CRUD  |  消息存储  |  未读 / 置顶 / 归档 / 搜索        │   │
+│  │  消息引用 / 回复 / 重新生成  |  Context Pin                  │   │
+│  │                                                             │   │
+│  │  持久化：MySQL（最终态）                                      │   │
+│  │  缓冲：  Redis（流式 token 缓冲 + 断点恢复，不做持久化）       │   │
+│  │                                                             │   │
+│  │  产物消息回流入口：                                           │   │
+│  │    Agent 产出 artifact → Adapter 识别 content_type           │   │
+│  │    → 构造 artifact 消息写入 IM Service → SSE 推前端渲染卡片   │   │
+│  └──────────────────────────────┬──────────────────────────────┘   │
+│                                 │                                   │
+│  ┌──────────────────────────────▼──────────────────────────────┐   │
+│  │                       Orchestrator                          │   │
+│  │                                                             │   │
+│  │  单聊：直接路由到目标 Adapter                                  │   │
+│  │  群聊：                                                      │   │
+│  │    1. 意图识别 (LLM) → 输出结构化 JSON 任务计划               │   │
+│  │       {"tasks":[{"agentId":"claude","prompt":"..."},...],    │   │
+│  │        "mode":"parallel"}                                   │   │
+│  │    2. 任务拆解 & 依赖分析                                     │   │
+│  │    3. 并行 / 串行调度 → 分发给 Thread Manager                 │   │
+│  │    4. 聚合回复 → 写回 IM Service                             │   │
+│  │    5. 失败降级  |  冲突事件接收（来自 Git FS 层上报）          │   │
+│  └──────────────────────────────┬──────────────────────────────┘   │
+│                                 │                                   │
+│  ┌──────────────────────────────▼──────────────────────────────┐   │
+│  │                      Thread Manager                         │   │
+│  │                                                             │   │
+│  │  职责：执行状态管理（与 Orchestrator 决策层分离）              │   │
+│  │                                                             │   │
+│  │  Thread 模型：                                               │   │
+│  │    thread_id / conversation_id / message_id / agent_id      │   │
+│  │    status: init | running | suspended | done | error        │   │
+│  │                                                             │   │
+│  │  • Thread ↔ Agent 绑定                                      │   │
+│  │  • 上下文窗口裁剪（token budget 管理）                        │   │
+│  │  • 断点恢复（checkpoint 存 Redis，同步落 MySQL）              │   │
+│  │  • 一条群聊消息 → 每个并行 Agent 各产生一个 Thread            │   │
+│  └──────────────────────────────┬──────────────────────────────┘   │
+│                                 │                                   │
+│  ┌──────────────────────────────▼──────────────────────────────┐   │
+│  │               Unified Agent Adapter Layer                   │   │
+│  │                                                             │   │
+│  │  统一接口：                                                   │   │
+│  │    stream(prompt, history) → AsyncGenerator[AgentEvent]     │   │
+│  │    get_capabilities() → {supports_diff, supports_approval}  │   │
+│  │                                                             │   │
+│  │  统一事件模型 (AgentEvent)：                                  │   │
+│  │    agent_start / token / artifact /                         │   │
+│  │    approval_request / agent_done / agent_error              │   │
+│  │                                                             │   │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌────────────┐  │   │
+│  │  │  ClaudeAdapter  │  │  CodexAdapter   │  │  Custom    │  │   │
+│  │  │                 │  │                 │  │  Agent     │  │   │
+│  │  │ Anthropic SDK   │  │ MCP Server 方案  │  │  Adapter   │  │   │
+│  │  │ Python 直调     │  │                 │  │            │  │   │
+│  │  │ 流式 SSE 透传   │  │ 启动子进程：     │  │ OpenAI     │  │   │
+│  │  │ approval 事件   │  │  codex mcp-server│  │ 兼容 API   │  │   │
+│  │  │ 映射            │  │                 │  │ 自定义      │  │   │
+│  │  │                 │  │ MCP Tool:        │  │ System     │  │   │
+│  │  │                 │  │  codex(prompt)   │  │ Prompt     │  │   │
+│  │  │                 │  │  codex-reply     │  │ + Tools    │  │   │
+│  │  │                 │  │  (thread_id)     │  │ + MCP      │  │   │
+│  │  │                 │  │                 │  │            │  │   │
+│  │  │                 │  │ 透传流式事件     │  │            │  │   │
+│  │  │                 │  │ → AgentEvent    │  │            │  │   │
+│  │  └─────────────────┘  └─────────────────┘  └────────────┘  │   │
+│  │                                                             │   │
+│  │  MCP Client 层（CodexAdapter 共用）：                        │   │
+│  │    Python MCP SDK  →  stdio 连接  →  codex mcp-server       │   │
+│  └──────────────────────────────┬──────────────────────────────┘   │
+└─────────────────────────────────┼───────────────────────────────────┘
+                                  │ 产物回流 + 执行结果写回 IM Service
+┌─────────────────────────────────▼───────────────────────────────────┐
+│                    Execution & Artifact Layer                       │
+│                                                                     │
+│  ┌─────────────┐  ┌──────────────┐  ┌───────────┐  ┌───────────┐  │
+│  │   Sandbox   │  │    Git FS    │  │  Preview  │  │  Deploy   │  │
+│  │  (Docker)   │  │  (bare repo) │  │  Service  │  │  Service  │  │
+│  │             │  │              │  │           │  │           │  │
+│  │ 代码隔离执行 │  │ commit       │  │ HTML/JS   │  │ Vercel    │  │
+│  │ 资源限制    │  │ branch       │  │ iframe    │  │ Docker    │  │
+│  │ 结果捕获    │  │ diff 生成    │  │ 静态渲染  │  │ 静态站    │  │
+│  │             │  │ 冲突检测     │  │           │  │           │  │
+│  │             │  │  → 上报      │  │           │  │           │  │
+│  │             │  │  Orchestrator│  │           │  │           │  │
+│  └─────────────┘  └──────────────┘  └───────────┘  └───────────┘  │
+│                                                                     │
+│  所有执行结果通过产物回流路径写回 IM Service 消息流，触发 SSE 推前端   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 二、技术选型决策
+
+### 前端
+
+| 项目 | 选型 | 决策理由 |
+|---|---|---|
+| 框架 | Vue 3 + TypeScript | 团队背景，上手成本低 |
+| 状态管理 | Pinia | Vue 3 官方推荐，比 Vuex 更简洁 |
+| UI 样式 | Tailwind CSS | 快速布局，无需自写样式体系 |
+| 产物预览 | sandboxed iframe | 参考 LobeChat Artifacts 方案，防 XSS |
+| 消息状态机 | Pinia store | messages Map + streamingIds Set，按 agentId 分拣并行流 |
+
+### 后端
+
+| 项目 | 选型 | 决策理由 |
+|---|---|---|
+| 框架 | Python FastAPI | asyncio 原生支持并行流，LLM SDK 生态完整 |
+| 多 Agent 并行 SSE | asyncio.Queue merge | 参考 Open WebUI merge_async_generators 模式 |
+| 消息持久化 | MySQL + SQLAlchemy | 团队熟悉，结构化消息查询 |
+| 流式缓冲 / 断点恢复 | Redis | token 缓冲 + checkpoint，不做持久化 |
+| 数据库迁移 | Alembic | SQLAlchemy 配套 |
+
+### Agent 接入
+
+| Agent | 接入方案 | 说明 |
+|---|---|---|
+| Claude | Anthropic Python SDK 直调 | 流式 SSE，approval 事件映射到 AgentEvent |
+| Codex | MCP Server 方案 | `codex mcp-server` 子进程，Python MCP SDK 连 stdio，调用 `codex` / `codex-reply` 两个 MCP Tool |
+| Custom Agent | OpenAI 兼容 API | 自定义 System Prompt + Tools + MCP，底层走任意 LLM |
+
+**Codex 选 MCP Server 而非 JSON-RPC AppServer 的原因：**
+- MCP 有 Python SDK，接入成本低
+- OpenAI 官方在推 MCP 集成，长期稳定
+- Claude 侧同样支持 MCP，两个 Adapter 可共用 MCP Client 层
+- JSON-RPC AppServer 需要自己维护协议绑定，20 天内风险高
+
+---
+
+## 三、SSE 事件协议（全局统一）
+
+所有 Agent 的输出统一转换为以下事件格式，前端按 `agentId` 分拣到对应气泡：
+
+```
+// Agent 开始说话（前端创建新气泡）
+data: {"type":"agent_start","agentId":"claude","agentName":"Claude","messageId":"msg_1"}
+
+// 普通 token 流（追加到对应气泡）
+data: {"type":"token","agentId":"claude","messageId":"msg_1","content":"你好"}
+
+// 产物事件（触发前端渲染预览卡片）
+data: {"type":"artifact","agentId":"claude","messageId":"msg_1",
+       "contentType":"artifact_html","content":"<html>...</html>"}
+
+// 审批请求（触发前端渲染 Action 按钮，等待用户确认）
+data: {"type":"approval_request","agentId":"codex","messageId":"msg_1",
+       "action":"run_command","detail":"npm install"}
+
+// Agent 完成
+data: {"type":"agent_done","agentId":"claude","messageId":"msg_1"}
+
+// Agent 出错
+data: {"type":"agent_error","agentId":"claude","messageId":"msg_1","error":"timeout"}
+
+// 本轮所有 Agent 完成
+data: {"type":"round_done"}
+```
+
+**设计原则：**
+- 内容走 SSE，状态 / 审批事件走 WebSocket
+- 每个事件带 `messageId`，支持断线重连后从 Redis 断点续传
+- `agentId` 全程透传，前端按此字段路由到对应气泡
+
+---
+
+## 四、数据模型（MySQL）
+
+```sql
+-- Agent 配置
+CREATE TABLE agents (
+  id            VARCHAR(36) PRIMARY KEY,
+  name          VARCHAR(100) NOT NULL,
+  type          ENUM('claude','codex','custom') NOT NULL,
+  system_prompt TEXT,
+  avatar_url    VARCHAR(255),
+  capabilities  JSON,   -- {"supports_diff":true,"supports_approval":true}
+  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 会话
+CREATE TABLE conversations (
+  id          VARCHAR(36) PRIMARY KEY,
+  title       VARCHAR(200),
+  mode        ENUM('single','group') NOT NULL,
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 会话参与 Agent（群聊支持多 Agent）
+CREATE TABLE conversation_agents (
+  conversation_id VARCHAR(36) NOT NULL,
+  agent_id        VARCHAR(36) NOT NULL,
+  PRIMARY KEY (conversation_id, agent_id)
+);
+
+-- 消息（独立表，支持消息级操作）
+CREATE TABLE messages (
+  id              VARCHAR(36) PRIMARY KEY,
+  conversation_id VARCHAR(36) NOT NULL,
+  parent_id       VARCHAR(36) NULL,       -- 支持重新生成 / 引用
+  agent_id        VARCHAR(36) NULL,       -- NULL = 用户消息
+  role            ENUM('user','assistant') NOT NULL,
+  content         TEXT NOT NULL,
+  content_type    ENUM('text','artifact_html','artifact_code','artifact_diff')
+                  DEFAULT 'text',
+  status          ENUM('streaming','done','error') DEFAULT 'done',
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_conv (conversation_id, created_at)
+);
+
+-- Thread（Thread Manager 管理执行状态）
+CREATE TABLE threads (
+  id              VARCHAR(36) PRIMARY KEY,
+  conversation_id VARCHAR(36) NOT NULL,
+  message_id      VARCHAR(36) NOT NULL,   -- 触发本 Thread 的用户消息
+  agent_id        VARCHAR(36) NOT NULL,
+  status          ENUM('init','running','suspended','done','error') DEFAULT 'init',
+  checkpoint      JSON NULL,              -- 断点数据（Redis 热缓存，MySQL 冷存储）
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## 五、各层参考来源
+
+| AgentHub 模块 | 参考项目 | 借鉴内容 |
+|---|---|---|
+| 前端 IM 布局 | LobeChat | 三栏布局、Agent 卡片 UI |
+| 消息状态机 | LobeChat store/chat/ | 多 streaming 气泡并行管理思路（迁移到 Pinia） |
+| 产物预览卡片 | LobeChat Artifacts | sandboxed iframe 内联渲染 |
+| SSE 并行合并流 | Open WebUI | asyncio.Queue merge_async_generators |
+| Adapter 接口设计 | Open WebUI Pipeline + LibreChat BaseClient | 统一 pipe() 抽象基类 + 继承体系 |
+| Orchestrator 协议 | langgraph-swarm | structured JSON 任务计划，active_agent 路由思路 |
+| Resumable SSE | LibreChat BaseClient | Redis checkpoint + resumeFrom 断点续传 |
+| 消息数据模型 | LibreChat Message 独立表 | parent_id + agentId + status 字段设计 |
+| 冲突检测上报 | OMC merge-orchestrator | Git FS 层检测，上报给 Orchestrator，不在 Orchestrator 内做 diff |
+| Agent 角色定义 | wshobson/agents | System Prompt as Code，markdown 格式版本化管理 |
+
+---
+
+## 六、待实现的阶段路径
+
+```
+Phase 1  Day 03-08   IM Service + ClaudeAdapter + 单聊 SSE 端到端跑通
+Phase 2  Day 09-11   CodexAdapter (MCP Server) + 第二路 Adapter 联调
+                     产物预览卡片（artifact_html iframe）
+Phase 3  Day 12-16   Orchestrator + Thread Manager + 群聊并行流
+                     多 Agent 交错气泡前端状态机
+Phase 4  Day 17-20   Execution Layer + 审批 Action + 文档 + Demo 视频
+```
+
+---
+
+## 七、当前未决事项
+
+| 事项 | 状态 | 说明 |
+|---|---|---|
+| Codex MCP Server 版本锁定 | 待确认 | 需确认 `codex mcp-server` 的稳定版本号，协议是否已稳定 |
+| 前端组件库 | 待选型 | Element Plus vs Naive UI vs 纯 Tailwind，取决于团队偏好 |
+| 团队分工 | 待定 | 前端/后端/Orchestrator 各模块负责人未分配 |
+| Execution Layer 优先级 | P2 | Sandbox/Deploy 不进 Phase 1-2 关键路径 |
