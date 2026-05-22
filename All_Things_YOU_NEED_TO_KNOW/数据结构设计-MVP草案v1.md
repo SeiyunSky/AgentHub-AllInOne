@@ -40,7 +40,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | VARCHAR(36) PRIMARY KEY | UUID |
-| user_id | VARCHAR(36) NULL | 创建者，NULL=系统内置 |
+| user_id | VARCHAR(36) NOT NULL | 创建者；值为 'GUGA' 表示系统内置 Agent |
 | name | VARCHAR(100) NOT NULL | 联系人列表展示名 |
 | description | VARCHAR(500) NULL | Agent 简介，联系人卡片副标题 |
 | type | ENUM('claude','codex','custom') | 路由到对应 Adapter |
@@ -73,7 +73,7 @@ INDEX(is_public, is_active)
 | description | VARCHAR(500) | frontmatter description，progressive disclosure 时塞进系统prompt |
 | category | VARCHAR(50) NULL | 分类（代码/安全/领域知识等），市场筛选用 |
 | file_path | VARCHAR(255) NOT NULL | 指向 `skills/{name}.md` |
-| author_id | VARCHAR(36) NULL | 创建者用户ID，NULL=系统内置 |
+| author_id | VARCHAR(36) NOT NULL | 创建者用户 ID；值为 'GUGA' 表示系统内置 |
 | is_public | TINYINT(1) DEFAULT 0 | 公开/私有，公开的所有人可挂载 |
 | is_active | TINYINT(1) DEFAULT 1 | 启用/停用，停用后不再注入 |
 | created_at | TIMESTAMP | |
@@ -184,7 +184,7 @@ INDEX(thread_id)
 | conversation_id | VARCHAR(36) NOT NULL | |
 | message_id | VARCHAR(36) NOT NULL | 触发本Thread的用户消息 |
 | agent_id | VARCHAR(36) NOT NULL | |
-| status | ENUM('init','running','suspended','done','error') | |
+| status | ENUM('init','running','suspended','done','error','cancelled') | |
 | checkpoint | JSON NULL | 冷存储（热缓存在Redis） |
 | started_at | TIMESTAMP NULL | 进入 running 的时间，统计耗时 |
 | finished_at | TIMESTAMP NULL | 进入 done/error 的时间 |

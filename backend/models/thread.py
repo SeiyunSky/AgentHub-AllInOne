@@ -30,7 +30,10 @@ class Thread(Base, TimestampMixin):
     message_id = Column(String(36), nullable=False, comment="触发本 Thread 的用户消息")
     agent_id = Column(String(36), nullable=False)
     status = Column(
-        Enum("init", "running", "suspended", "done", "error", name="thread_status"),
+        Enum(
+            "init", "running", "suspended", "done", "error", "cancelled",
+            name="thread_status",
+        ),
         nullable=False,
         default="init",
         server_default="init",

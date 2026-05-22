@@ -7,7 +7,7 @@ agents — Agent 配置表
 - tags 是给联系人列表展示的能力标签数组。
 - is_public + is_active 控制可见性：联系人列表查询条件为
   WHERE is_active = 1 AND (user_id = :me OR is_public = 1)
-- user_id 为 NULL 表示系统内置 Agent（如内置 Claude / Codex）。
+- user_id 必填；值为 'GUGA' 时表示系统内置 Agent（如内置 Claude / Codex）。
 
 队伍：咕嘎一辈子队
 修改者：Adam Zhang
@@ -23,7 +23,11 @@ class Agent(Base, TimestampMixin):
     __tablename__ = "agents"
 
     id = Column(String(36), primary_key=True, comment="UUID")
-    user_id = Column(String(36), nullable=True, comment="创建者，NULL=系统内置")
+    user_id = Column(
+        String(36),
+        nullable=False,
+        comment="创建者 user_id；'GUGA'=系统内置",
+    )
     name = Column(String(100), nullable=False, comment="联系人列表展示名")
     description = Column(String(500), nullable=True, comment="Agent 简介，联系人卡片副标题")
     type = Column(
