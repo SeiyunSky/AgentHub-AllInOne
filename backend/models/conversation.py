@@ -6,7 +6,7 @@ conversations — 会话表
 - is_pinned / is_archived 控制列表展示与排序。
 - last_message_preview / last_message_at 是冗余字段：
   发新消息时同步刷新，避免每次列表查询都要 LIMIT 1 取最后一条消息。
-- message_count / unread_count 是预留计数字段（MVP 暂不强制维护，留位）。
+- message_count / unread_count 是预留计数字段。
 - 索引 (user_id, last_message_at) 支持"我的会话按最近活跃排序"主查询路径。
 
 队伍：咕嘎一辈子队

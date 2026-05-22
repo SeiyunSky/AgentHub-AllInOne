@@ -36,6 +36,11 @@ class Thread(Base, TimestampMixin):
         server_default="init",
     )
     checkpoint = Column(JSON, nullable=True, comment="冷存储，热缓存在 Redis")
+    blocked_by = Column(
+        JSON,
+        nullable=True,
+        comment="任务依赖图：依赖的 thread_id 数组，全部 done 后该 Thread 才解锁启动",
+    )
     started_at = Column(TIMESTAMP, nullable=True, comment="进入 running 时间")
     finished_at = Column(TIMESTAMP, nullable=True, comment="进入 done/error 时间")
     error_message = Column(String(500), nullable=True)
