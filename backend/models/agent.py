@@ -27,7 +27,7 @@ class Agent(Base, TimestampMixin):
     name = Column(String(100), nullable=False, comment="联系人列表展示名")
     description = Column(String(500), nullable=True, comment="Agent 简介，联系人卡片副标题")
     type = Column(
-        Enum("claude", "codex", "custom", name="agent_type"),
+        Enum("claude", "codex", "opencode", "custom", name="agent_type"),
         nullable=False,
         comment="路由到对应 Adapter",
     )
