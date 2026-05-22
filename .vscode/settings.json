@@ -1,0 +1,15 @@
+{
+  "typescript.tsdk": "frontend/node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "volar.tsconfig": "frontend/tsconfig.app.json",
+  "[vue]": {
+    "editor.defaultFormatter": "Vue.volar"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "search.exclude": {
+    "frontend/node_modules": true,
+    "frontend/dist": true
+  }
+}
