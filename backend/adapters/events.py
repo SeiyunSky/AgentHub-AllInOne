@@ -84,6 +84,10 @@ class AgentErrorEvent(_CamelModel):
     error: str
 
 
+class RoundDoneEvent(_CamelModel):
+    type: Literal["round_done"] = "round_done"
+
+
 AgentEvent = Annotated[
     Union[
         AgentStartEvent,
@@ -96,6 +100,7 @@ AgentEvent = Annotated[
         DeployDoneEvent,
         AgentDoneEvent,
         AgentErrorEvent,
+        RoundDoneEvent,
     ],
     Field(discriminator="type"),
 ]

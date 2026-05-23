@@ -43,7 +43,7 @@
 | user_id | VARCHAR(36) NULL | 创建者，NULL=系统内置 |
 | name | VARCHAR(100) NOT NULL | 联系人列表展示名 |
 | description | VARCHAR(500) NULL | Agent 简介，联系人卡片副标题 |
-| type | ENUM('claude','codex','custom') | 路由到对应 Adapter |
+| type | ENUM('claude','codex','opencode','custom') | 路由到对应 Adapter |
 | system_prompt | TEXT | Agent 人格定义 |
 | capabilities | JSON | `{"supports_diff":true,"supports_approval":true}` |
 | tags | JSON | `["python","code-review"]` 联系人标签 |
@@ -186,6 +186,7 @@ INDEX(thread_id)
 | agent_id | VARCHAR(36) NOT NULL | |
 | status | ENUM('init','running','suspended','done','error') | |
 | checkpoint | JSON NULL | 冷存储（热缓存在Redis） |
+| blocked_by | JSON NULL | 任务依赖图：依赖的 thread_id 数组，全部 done 后该 Thread 才解锁启动 |
 | started_at | TIMESTAMP NULL | 进入 running 的时间，统计耗时 |
 | finished_at | TIMESTAMP NULL | 进入 done/error 的时间 |
 | error_message | VARCHAR(500) NULL | status=error 时的错误信息 |
@@ -198,6 +199,7 @@ INDEX(conversation_id, agent_id, updated_at DESC)  -- resume_or_create 查询用
 **判断**：
 - @个体特化要 `resume_or_create`，必须能查到历史Thread → 入库
 - checkpoint 冷热双写：Redis 是热缓存，MySQL 是冷存储防丢
+- blocked_by 是主Orchestrator的 DAG 调度字段（master 2026-05-22 新增）：Orchestrator 并行派发多个子任务时，设置依赖关系；thread_service.resume_or_create() 启动前需校验所有依赖 thread 均为 done
 
 ---
 
