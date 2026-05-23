@@ -58,8 +58,14 @@ const messages = ref<Message[]>([
     codeBlock: {
       filename: 'sales_q4.csv',
       language: 'python',
-      code: "import pandas as pd\ndf = pd.read_csv('sales_q4.csv')",
-      diff: { added: 142, removed: 3 },
+      oldCode: `def load_data():
+    data = []
+    return data`,
+      code: `def load_data():
+    import pandas as pd
+    df = pd.read_csv('sales_q4.csv')
+    data = df.to_dict('records')
+    return data`,
     },
   },
   {

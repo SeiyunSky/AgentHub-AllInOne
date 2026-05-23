@@ -21,7 +21,8 @@ export interface AgentMessage extends MessageBase {
     filename: string
     language: string
     code: string
-    diff?: { added: number; removed: number }
+    oldCode?: string  // Original code for diff view
+    diff?: { added: number; removed: number }  // Stats only, actual diff computed from code/oldCode
   }
 }
 
