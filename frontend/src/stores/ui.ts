@@ -23,13 +23,9 @@ export const useUIStore = defineStore('ui', () => {
   }
 
   function setSidebarTab(tab: typeof sidebarActiveTab.value) {
+    sidebarActiveTab.value = tab
     if (sidebarCollapsed.value) {
-      sidebarActiveTab.value = tab
       sidebarCollapsed.value = false
-    } else if (sidebarActiveTab.value === tab) {
-      sidebarCollapsed.value = true
-    } else {
-      sidebarActiveTab.value = tab
     }
   }
 

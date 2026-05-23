@@ -1,34 +1,72 @@
 <template>
-  <div class="border-t border-outline-variant px-4 py-3 bg-white">
-    <div class="flex items-end gap-3">
-      <!-- Input container -->
-      <div class="flex-1 relative">
-        <textarea
-          class="w-full min-h-[48px] max-h-[200px] px-4 py-3 bg-surface border border-outline-variant rounded-xl text-[13px] text-on-surface placeholder-on-surface-variant/60 outline-none resize-none focus:border-brand focus:shadow-glow transition-all duration-200 leading-relaxed pr-10"
-          placeholder="Ask Nexus anything..."
-          rows="1"
-        ></textarea>
-        <!-- Inline action buttons (left side) -->
-        <div class="absolute left-3 bottom-3 flex items-center gap-1">
-          <button class="w-7 h-7 rounded-md flex items-center justify-center text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-white transition-colors">
-            <el-icon :size="16"><Plus /></el-icon>
+  <div class="px-4 py-3 bg-white">
+    <div class="bg-surface border border-outline-variant rounded-2xl overflow-hidden focus-within:border-brand focus-within:shadow-glow transition-all duration-200">
+      <!-- Textarea -->
+      <textarea
+        :value="modelValue"
+        class="w-full min-h-[48px] max-h-[200px] px-4 pt-3 pb-1 bg-transparent text-[13px] text-on-surface placeholder-on-surface-variant/60 outline-none resize-none leading-relaxed"
+        placeholder="Ask Nexus anything..."
+        rows="1"
+        @input="onInput"
+        @keydown.enter.exact="onEnter"
+      ></textarea>
+
+      <!-- Bottom action bar -->
+      <div class="flex items-center justify-between px-2 py-1.5">
+        <!-- Left actions -->
+        <div class="flex items-center gap-0.5">
+          <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container transition-colors">
+            <el-icon :size="18"><Plus /></el-icon>
           </button>
-          <button class="w-7 h-7 rounded-md flex items-center justify-center text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-white transition-colors">
-            <el-icon :size="16"><Paperclip /></el-icon>
+          <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container transition-colors">
+            <el-icon :size="18"><Paperclip /></el-icon>
           </button>
         </div>
-      </div>
 
-      <!-- Send button -->
-      <button
-        class="w-10 h-10 rounded-xl bg-slate-700 flex items-center justify-center text-white shadow-soft hover:bg-slate-600 hover:shadow-float active:scale-95 transition-all duration-200"
-      >
-        <el-icon :size="20"><Promotion /></el-icon>
-      </button>
+        <!-- Send button -->
+        <button
+          class="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200"
+          :class="hasContent ? 'bg-slate-700 text-white hover:bg-slate-600' : 'text-on-surface-variant/40'"
+          :disabled="!hasContent"
+          @click="onSend"
+        >
+          <el-icon :size="18"><Promotion /></el-icon>
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Plus, Paperclip, Promotion } from '@element-plus/icons-vue'
+
+const props = defineProps<{
+  modelValue: string
+}>()
+
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+  send: [content: string]
+}>()
+
+const hasContent = computed(() => props.modelValue.trim().length > 0)
+
+function onInput(e: Event) {
+  emit('update:modelValue', (e.target as HTMLTextAreaElement).value)
+}
+
+function onEnter(e: KeyboardEvent) {
+  if (!e.shiftKey) {
+    e.preventDefault()
+    onSend()
+  }
+}
+
+function onSend() {
+  const content = props.modelValue.trim()
+  if (!content) return
+  emit('send', content)
+  emit('update:modelValue', '')
+}
 </script>
