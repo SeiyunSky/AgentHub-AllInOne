@@ -1,12 +1,21 @@
 <template>
   <div class="px-4 py-4">
-    <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">Active Agents</div>
+    <div class="flex items-center justify-between mb-3">
+      <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest">Active Agents</div>
+      <button
+        class="w-6 h-6 rounded-md flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+        @click="router.push({ name: 'agent-create' })"
+      >
+        <el-icon :size="14"><Plus /></el-icon>
+      </button>
+    </div>
     <div class="space-y-2">
       <div
         v-for="agent in mockAgents"
         :key="agent.id"
         class="group p-3 rounded-xl bg-white border border-outline-variant hover:border-brand hover:bg-brand-light/40 cursor-pointer transition-all duration-200 hover-lift"
         :class="{ 'list-active !border-brand': agent.active }"
+        @click="router.push({ name: 'agent-edit', params: { agentId: agent.id } })"
       >
         <div class="flex items-center gap-3">
           <div
@@ -31,7 +40,10 @@
 </template>
 
 <script setup lang="ts">
-import { User } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { User, Plus } from '@element-plus/icons-vue'
+
+const router = useRouter()
 
 const mockAgents = [
   { id: '1', name: 'Orchestrator', status: 'Primary Host', active: true },
