@@ -12,7 +12,7 @@
       <!-- Content: Chat + Right Panel via Splitpanes -->
       <main class="flex-1 overflow-hidden">
         <Splitpanes class="splitpanes-theme" @resized="onPaneResized">
-          <Pane :size="chatPaneSize" :min-size="chatPaneMinSize">
+          <Pane :size="chatPaneSize" :min-size="chatPaneMinSize" :max-size="chatPaneMaxSize">
             <ChatPanel />
           </Pane>
           <Pane v-if="uiStore.rightPanelVisible" :min-size="rightPaneMinSize">
@@ -38,8 +38,8 @@ const uiStore = useUIStore()
 // Splitpanes uses percentage sizes. Calculate from pixel defaults.
 // Chat panel ~420px out of ~1200px total ≈ 35%
 const chatPaneSize = computed(() => uiStore.chatPanePercent)
-const chatPaneMinSize = 25  // ~300px
-const rightPaneMinSize = 30 // ~360px
+const chatPaneMinSize = 35  // ~300px
+const rightPaneMinSize = 25 // ~360px
 
 function onPaneResized(event: ({ min: number; max: number; size: number })[]) {
   if (event.length > 0) {

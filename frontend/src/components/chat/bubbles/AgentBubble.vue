@@ -14,20 +14,81 @@
         <span class="text-[10px] text-on-surface-variant">{{ timeAgo }}</span>
       </div>
 
-      <!-- Bubble -->
-      <div class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft">
-        <p class="text-[13px] leading-relaxed text-on-surface whitespace-pre-wrap">{{ message.content }}</p>
+      <!-- Blocks mode -->
+      <div v-if="message.blocks && message.blocks.length > 0" class="space-y-2">
+        <!-- Text block -->
+        <div v-for="(block, i) in message.blocks" :key="i">
+          <div v-if="block.type === 'text'" class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft">
+            <p class="text-[13px] leading-relaxed text-on-surface whitespace-pre-wrap">{{ block.content }}</p>
+          </div>
 
-        <!-- Code block -->
-        <CodeBlock
-          v-if="message.codeBlock"
-          class="mt-3"
-          :code="message.codeBlock.code"
-          :filename="message.codeBlock.filename"
-          :language="message.codeBlock.language"
-          :old-code="message.codeBlock.oldCode"
-        />
+          <!-- Thinking block -->
+          <ThinkingBlock
+            v-else-if="block.type === 'thinking'"
+            :content="block.content"
+            :duration="block.duration"
+          />
+
+          <!-- Tool use block -->
+          <ToolUseBlock
+            v-else-if="block.type === 'tool_use'"
+            :tool-name="block.toolName"
+            :input="block.input"
+            :output="block.output"
+            :status="block.status"
+          />
+
+          <!-- Code block -->
+          <CodeBlockWrapper
+            v-else-if="block.type === 'code'"
+            :code="block.code"
+            :filename="block.filename"
+            :language="block.language"
+            :old-code="block.oldCode"
+          />
+
+          <!-- Deployment block -->
+          <DeploymentBlock
+            v-else-if="block.type === 'deployment'"
+            :title="block.title"
+            :status="block.status"
+            :url="block.url"
+            :logs="block.logs"
+            :progress="block.progress"
+          />
+
+          <!-- Image block -->
+          <ImageBlock
+            v-else-if="block.type === 'image'"
+            :src="block.src"
+            :alt="block.alt"
+            :caption="block.caption"
+          />
+
+          <!-- Artifacts block -->
+          <ArtifactsBlock
+            v-else-if="block.type === 'artifacts'"
+            :title="block.title"
+            :items="block.items"
+          />
+        </div>
       </div>
+
+      <!-- Legacy mode: single content + optional codeBlock -->
+      <template v-else>
+        <div class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft">
+          <p class="text-[13px] leading-relaxed text-on-surface whitespace-pre-wrap">{{ message.content }}</p>
+
+          <CodeBlock
+            v-if="message.codeBlock"
+            class="mt-3"
+            :code="message.codeBlock.code"
+            :filename="message.codeBlock.filename"
+            :language="message.codeBlock.language"
+            :old-code="message.codeBlock.oldCode"
+          />
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -37,6 +98,12 @@ import { computed } from 'vue'
 import type { AgentMessage } from '@/types/chat'
 import AgentAvatar from './AgentAvatar.vue'
 import CodeBlock from '../CodeBlock.vue'
+import ThinkingBlock from '../blocks/ThinkingBlock.vue'
+import ToolUseBlock from '../blocks/ToolUseBlock.vue'
+import CodeBlockWrapper from '../blocks/CodeBlockWrapper.vue'
+import DeploymentBlock from '../blocks/DeploymentBlock.vue'
+import ImageBlock from '../blocks/ImageBlock.vue'
+import ArtifactsBlock from '../blocks/ArtifactsBlock.vue'
 
 const props = defineProps<{
   message: AgentMessage
