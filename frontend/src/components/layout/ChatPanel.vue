@@ -1,6 +1,6 @@
 <template>
   <section
-    class="flex flex-col border-r border-outline-variant bg-surface-elevated h-full overflow-hidden"
+    class="flex flex-col bg-surface-elevated h-full overflow-hidden"
   >
     <!-- Header -->
     <ChatHeader />

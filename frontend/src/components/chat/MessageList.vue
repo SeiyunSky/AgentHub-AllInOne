@@ -20,11 +20,11 @@
     <!-- User message -->
     <div class="flex gap-3 justify-end message-enter">
       <div class="max-w-[70%]">
-        <div class="p-4 bg-gradient-to-br from-brand to-brand-dark text-white rounded-2xl rounded-tr-md shadow-soft">
+        <div class="p-4 bg-slate-700 text-white rounded-2xl rounded-tr-md shadow-soft">
           <p class="text-[13px] leading-relaxed">Can you help me process the Q4 sales data and generate a summary report?</p>
         </div>
       </div>
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-soft">U</div>
+      <div class="w-9 h-9 rounded-xl bg-slate-700 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-soft">U</div>
     </div>
 
     <!-- Agent message with processing status -->

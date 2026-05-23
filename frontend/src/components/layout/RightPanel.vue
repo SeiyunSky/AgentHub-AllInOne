@@ -1,7 +1,7 @@
 <template>
   <section class="flex flex-col flex-1 min-w-0 bg-surface relative overflow-hidden h-full">
     <!-- Tab Bar -->
-    <div class="flex items-center gap-1 bg-white border-b border-outline-variant h-11 shrink-0 px-3 py-1.5">
+    <div class="flex items-center gap-1 bg-white border-b border-outline-variant h-12 shrink-0 px-3 py-1.5">
       <button
         v-for="tab in tabs"
         :key="tab.id"

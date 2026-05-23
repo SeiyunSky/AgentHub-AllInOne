@@ -15,7 +15,7 @@
     <!-- Collapse Button -->
     <button
       class="absolute top-1/2 z-50 rounded-xl w-7 h-7 flex items-center justify-center bg-white border border-outline-variant shadow-card hover:bg-surface-container hover:border-brand hover:shadow-glow transition-all duration-300 text-on-surface-variant hover:text-brand"
-      :style="{ left: uiStore.sidebarCollapsed ? '68px' : '308px', transform: 'translate(-50%, -50%)' }"
+      :style="{ left: uiStore.sidebarCollapsed ? '160px' : '400px', transform: 'translate(-50%, -50%)' }"
       @click="uiStore.toggleSidebar"
     >
       <el-icon :size="14">

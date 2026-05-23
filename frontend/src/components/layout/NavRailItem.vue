@@ -1,14 +1,12 @@
 <template>
   <button
-    class="w-11 h-11 rounded-xl text-neutral-500 hover:text-white transition-all duration-200 relative group flex items-center justify-center"
-    :class="{ 'rail-active': active }"
+    class="w-full flex items-center gap-2.5 py-2.5 px-3 rounded-lg transition-all duration-200"
+    :class="active
+      ? 'text-white bg-white/10'
+      : 'text-white/50 hover:text-white/80 hover:bg-white/5'"
   >
-    <el-icon :size="22"><component :is="icon" /></el-icon>
-    <div
-      class="absolute left-full ml-3 px-2.5 py-1 bg-neutral-900 text-white text-[11px] font-medium rounded-lg opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-all duration-200 shadow-float border border-white/10"
-    >
-      {{ label }}
-    </div>
+    <el-icon :size="20"><component :is="icon" /></el-icon>
+    <span class="text-[13px] font-medium leading-none">{{ label }}</span>
   </button>
 </template>
 
