@@ -1,5 +1,5 @@
 <template>
-  <div class="flex gap-3 message-enter">
+  <div class="flex gap-3 message-enter group">
     <AgentAvatar :name="message.agentName" :color="avatarColor" />
 
     <div class="flex-1 min-w-0">
@@ -89,6 +89,18 @@
           />
         </div>
       </template>
+
+      <!-- Actions -->
+      <MessageActions
+        :message-id="message.id"
+        variant="agent"
+        :content="messageContent"
+        :reaction="message.reaction"
+        @reply="$emit('reply', $event)"
+        @copy="$emit('copy', $event)"
+        @react="(id, type) => $emit('react', id, type)"
+        @more="$emit('more', $event)"
+      />
     </div>
   </div>
 </template>
@@ -98,6 +110,7 @@ import { computed } from 'vue'
 import type { AgentMessage } from '@/types/chat'
 import AgentAvatar from './AgentAvatar.vue'
 import CodeBlock from '../CodeBlock.vue'
+import MessageActions from '../MessageActions.vue'
 import ThinkingBlock from '../blocks/ThinkingBlock.vue'
 import ToolUseBlock from '../blocks/ToolUseBlock.vue'
 import CodeBlockWrapper from '../blocks/CodeBlockWrapper.vue'
@@ -109,7 +122,24 @@ const props = defineProps<{
   message: AgentMessage
 }>()
 
+defineEmits<{
+  reply: [messageId: string]
+  copy: [messageId: string]
+  react: [messageId: string, type: 'like' | 'dislike']
+  more: [messageId: string]
+}>()
+
 const avatarColor = computed(() => props.message.agentRoleColor ?? 'brand')
+
+const messageContent = computed(() => {
+  if (props.message.blocks && props.message.blocks.length > 0) {
+    return props.message.blocks
+      .filter(b => b.type === 'text')
+      .map(b => b.content)
+      .join('\n')
+  }
+  return props.message.content
+})
 
 const roleBadgeClass = computed(() => {
   switch (props.message.agentRoleColor) {

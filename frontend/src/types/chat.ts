@@ -67,6 +67,7 @@ export type ContentBlock =
 export interface MessageBase {
   id: string
   timestamp: Date
+  reaction?: 'like' | 'dislike'
 }
 
 export interface UserMessage extends MessageBase {

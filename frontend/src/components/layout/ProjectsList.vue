@@ -2,6 +2,14 @@
   <div class="px-4 py-4">
     <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">Projects</div>
     <div class="space-y-2">
+      <!-- New Project -->
+      <div
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand hover:bg-brand-light/30 cursor-pointer transition-colors"
+      >
+        <el-icon :size="16"><Plus /></el-icon>
+        <span class="text-[13px] font-medium">New Project</span>
+      </div>
+      <!-- Projects list -->
       <div
         v-for="project in mockProjects"
         :key="project.id"
@@ -22,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { FolderOpened } from '@element-plus/icons-vue'
+import { FolderOpened, Plus } from '@element-plus/icons-vue'
 
 const mockProjects = [
   { id: '1', name: 'AgentHub-AllInOne', updatedAt: 'Updated 2h ago' },

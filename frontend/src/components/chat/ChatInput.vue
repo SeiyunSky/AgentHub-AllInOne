@@ -4,7 +4,7 @@
       <!-- Textarea -->
       <textarea
         :value="modelValue"
-        class="w-full min-h-[48px] max-h-[200px] px-4 pt-3 pb-1 bg-transparent text-[13px] text-on-surface placeholder-on-surface-variant/60 outline-none resize-none leading-relaxed"
+        class="w-full min-h-[80px] max-h-[200px] px-4 pt-3 pb-1 bg-transparent text-[13px] text-on-surface placeholder-on-surface-variant/60 outline-none resize-none leading-relaxed"
         placeholder="Ask Nexus anything..."
         rows="1"
         @input="onInput"

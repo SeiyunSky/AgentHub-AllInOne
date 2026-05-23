@@ -1,15 +1,16 @@
 <template>
   <div class="px-4 py-4">
-    <div class="flex items-center justify-between mb-3">
-      <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest">Active Agents</div>
-      <button
-        class="w-6 h-6 rounded-md flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+    <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">Active Agents</div>
+    <div class="space-y-2">
+      <!-- New Agent -->
+      <div
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand hover:bg-brand-light/30 cursor-pointer transition-colors"
         @click="router.push({ name: 'agent-create' })"
       >
-        <el-icon :size="14"><Plus /></el-icon>
-      </button>
-    </div>
-    <div class="space-y-2">
+        <el-icon :size="16"><Plus /></el-icon>
+        <span class="text-[13px] font-medium">New Agent</span>
+      </div>
+      <!-- Agent list -->
       <div
         v-for="agent in mockAgents"
         :key="agent.id"

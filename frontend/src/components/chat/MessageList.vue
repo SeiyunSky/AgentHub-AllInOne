@@ -1,8 +1,22 @@
 <template>
   <div class="px-5 py-6 space-y-5">
     <template v-for="msg in messages" :key="msg.id">
-      <AgentBubble v-if="msg.type === 'agent'" :message="msg" />
-      <UserBubble v-else-if="msg.type === 'user'" :message="msg" />
+      <AgentBubble
+        v-if="msg.type === 'agent'"
+        :message="msg"
+        @reply="$emit('reply', $event)"
+        @copy="$emit('copy', $event)"
+        @react="(id, type) => $emit('react', id, type)"
+        @more="$emit('more', $event)"
+      />
+      <UserBubble
+        v-else-if="msg.type === 'user'"
+        :message="msg"
+        @reply="$emit('reply', $event)"
+        @copy="$emit('copy', $event)"
+        @react="(id, type) => $emit('react', id, type)"
+        @more="$emit('more', $event)"
+      />
       <!-- Typing indicator -->
       <div v-else-if="msg.type === 'typing'" class="flex gap-3 message-enter">
         <AgentAvatar :name="msg.agentName" color="brand" />
@@ -30,5 +44,12 @@ import AgentAvatar from './bubbles/AgentAvatar.vue'
 
 defineProps<{
   messages: Message[]
+}>()
+
+defineEmits<{
+  reply: [messageId: string]
+  copy: [messageId: string]
+  react: [messageId: string, type: 'like' | 'dislike']
+  more: [messageId: string]
 }>()
 </script>

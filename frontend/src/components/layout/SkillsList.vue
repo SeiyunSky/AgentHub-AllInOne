@@ -2,6 +2,14 @@
   <div class="px-4 py-4">
     <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">Skills Library</div>
     <div class="space-y-2">
+      <!-- New Skill -->
+      <div
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand hover:bg-brand-light/30 cursor-pointer transition-colors"
+      >
+        <el-icon :size="16"><Plus /></el-icon>
+        <span class="text-[13px] font-medium">New Skill</span>
+      </div>
+      <!-- Skills list -->
       <div
         v-for="skill in mockSkills"
         :key="skill.id"
@@ -22,7 +30,7 @@
 </template>
 
 <script setup lang="ts">
-import { MagicStick } from '@element-plus/icons-vue'
+import { MagicStick, Plus } from '@element-plus/icons-vue'
 
 const mockSkills = [
   { id: '1', name: 'Code Review', description: 'Automated code analysis' },
