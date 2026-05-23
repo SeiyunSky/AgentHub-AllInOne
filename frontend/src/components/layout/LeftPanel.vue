@@ -1,18 +1,21 @@
 <template>
-  <aside
-    class="fixed left-0 top-0 h-full z-40 flex transition-transform duration-300"
-    :class="{ '-translate-x-full': uiStore.sidebarCollapsed }"
-    style="transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);"
-  >
-    <!-- Navigation Rail -->
+  <aside class="fixed left-0 top-0 h-full z-40 flex">
+    <!-- Navigation Rail - always visible -->
     <NavRail />
 
-    <!-- Secondary List Panel -->
-    <ListPanel />
+    <!-- Secondary List Panel - collapses via width -->
+    <div
+      class="h-full overflow-hidden transition-all duration-300"
+      style="transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);"
+      :style="{ width: uiStore.sidebarCollapsed ? '0px' : '240px' }"
+    >
+      <ListPanel />
+    </div>
 
     <!-- Collapse Button -->
     <button
-      class="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 bg-white border border-outline-variant shadow-card z-50 rounded-xl w-7 h-7 flex items-center justify-center hover:bg-surface-container hover:border-brand hover:shadow-glow transition-all duration-200 text-on-surface-variant hover:text-brand"
+      class="absolute top-1/2 z-50 rounded-xl w-7 h-7 flex items-center justify-center bg-white border border-outline-variant shadow-card hover:bg-surface-container hover:border-brand hover:shadow-glow transition-all duration-300 text-on-surface-variant hover:text-brand"
+      :style="{ left: uiStore.sidebarCollapsed ? '68px' : '308px', transform: 'translate(-50%, -50%)' }"
       @click="uiStore.toggleSidebar"
     >
       <el-icon :size="14">

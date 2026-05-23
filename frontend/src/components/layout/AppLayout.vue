@@ -22,21 +22,6 @@
         </div>
 
         <div class="flex-1" />
-
-        <!-- Right Actions -->
-        <div class="flex items-center gap-2">
-          <button class="w-9 h-9 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors relative">
-            <el-icon :size="18"><Monitor /></el-icon>
-          </button>
-          <button class="w-9 h-9 rounded-xl flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors relative">
-            <el-icon :size="18"><Bell /></el-icon>
-            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full ring-2 ring-white"></span>
-          </button>
-          <div class="w-px h-5 bg-outline-variant mx-1"></div>
-          <button class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-white text-xs font-bold shadow-soft hover:shadow-glow hover:scale-105 active:scale-95 transition-all duration-200">
-            A
-          </button>
-        </div>
       </header>
 
       <!-- Content: Chat + Right Panel via Splitpanes -->
@@ -62,7 +47,7 @@ import 'splitpanes/dist/splitpanes.css'
 import LeftPanel from './LeftPanel.vue'
 import ChatPanel from './ChatPanel.vue'
 import RightPanel from './RightPanel.vue'
-import { Search, Monitor, Bell } from '@element-plus/icons-vue'
+import { Search } from '@element-plus/icons-vue'
 
 const uiStore = useUIStore()
 
