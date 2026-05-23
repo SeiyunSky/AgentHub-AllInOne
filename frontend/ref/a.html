@@ -1,0 +1,480 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Nexus AI | Orchestration Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #bcdeff;
+            border-radius: 10px;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(8px);
+        }
+        .agent-pulse {
+            animation: pulse-animation 2s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { box-shadow: 0 0 0 0 rgba(110, 154, 183, 0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(110, 154, 183, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(110, 154, 183, 0); }
+        }
+        .node-connector {
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .rail-active {
+            color: #ffffff !important;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        .list-active {
+            background-color: #ecf4ff;
+            color: #6e9ab7 !important;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#6e9ab7",
+                        "on-primary": "#ffffff",
+                        "surface": "#f7f9ff",
+                        "surface-bright": "#f7f9ff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-low": "#ecf4ff",
+                        "surface-container": "#f1f5f9",
+                        "surface-container-high": "#e2e8f0",
+                        "surface-container-highest": "#cbd5e1",
+                        "outline": "#94a3b8",
+                        "outline-variant": "#e2e8f0",
+                        "on-surface": "#1e293b",
+                        "on-surface-variant": "#64748b",
+                        "on-background": "#0f172a",
+                        "brand": {
+                            "DEFAULT": '#6e9ab7',
+                            "light": '#ecf4ff',
+                            "dark": '#5a7f98',
+                        },
+                        "rail-bg": "#2e2e2e",
+                        "error": "#ef4444"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "custom": "8px"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "stack-xs": "4px",
+                        "stack-md": "20px",
+                        "margin-mobile": "16px",
+                        "gutter": "24px",
+                        "rail-width": "68px",
+                        "list-width": "240px",
+                        "margin-desktop": "32px",
+                        "stack-sm": "12px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "mono-md": ["JetBrains Mono"],
+                        "headline-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "mono-md": ["13px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "headline-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body-md overflow-hidden">
+<!-- WeChat Style Sidebar Container -->
+<div class="fixed left-0 top-0 h-full z-40 flex transition-transform duration-300" id="sidebar-container">
+<!-- Slim Navigation Rail -->
+<aside class="w-rail-width bg-rail-bg h-full flex flex-col items-center py-6 gap-6 shrink-0 border-r border-black/10">
+<!-- User Avatar / Logo -->
+<div class="relative group cursor-pointer">
+<img alt="Admin Avatar" class="w-10 h-10 rounded-lg border-2 border-white/10 shadow-lg" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuZ0HVG0NsWs6WjiyFjZF07YuzxxpG68vZKjyc8IeFPW4exsa9M9VXhCC98hAPr6dTp7Ztcrco0Qmsncn8YH6JDKmDJE383i8T8aF9QeqPo1TZgaQkBuvRaxObqZBXa0kbECJNtuLhW6CFhINxXiSoy6Ekvj9rf9E8ungnWWYNOmgs8wKocVFXcEobYwGK9-LMtw9MgWu0UtasUU5H2rX2BXNPZ2QY1z7r5rqA5JT6zyZFY0qXFjlUBqalTmOLBEqd5GqaDFX5SKJP">
+<div class="absolute left-full ml-3 px-2 py-1 bg-on-background text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity">Admin Workspace</div>
+</div>
+<!-- Primary Nav Icons -->
+<nav class="flex-1 flex flex-col items-center gap-4 w-full mt-4">
+<button class="p-3 rounded-lg text-slate-400 hover:text-white transition-colors relative group rail-active"><span class="material-symbols-outlined text-[24px]" style="font-variation-settings: &quot;FILL&quot; 1;">forum</span>
+<div class="absolute left-full ml-3 px-2 py-1 bg-on-background text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity">Chat</div></button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-white transition-colors relative group">
+<span class="material-symbols-outlined text-[24px]">smart_toy</span>
+<div class="absolute left-full ml-3 px-2 py-1 bg-on-background text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity">Agents</div>
+</button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-white transition-colors relative group"><span class="material-symbols-outlined text-[24px]">auto_awesome</span>
+<div class="absolute left-full ml-3 px-2 py-1 bg-on-background text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity">Skills</div></button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-white transition-colors relative group">
+<span class="material-symbols-outlined text-[24px]">folder_open</span>
+<div class="absolute left-full ml-3 px-2 py-1 bg-on-background text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity">Projects</div>
+</button>
+</nav>
+<!-- Bottom Icons -->
+<div class="flex flex-col items-center gap-4 w-full border-t border-white/5 pt-6">
+<button class="p-3 rounded-lg text-slate-400 hover:text-white transition-colors relative group">
+<span class="material-symbols-outlined text-[24px]">help</span>
+<div class="absolute left-full ml-3 px-2 py-1 bg-on-background text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity">Support</div>
+</button>
+<button class="p-3 rounded-lg text-slate-400 hover:text-white transition-colors relative group">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+<div class="absolute left-full ml-3 px-2 py-1 bg-on-background text-white text-[10px] rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none transition-opacity">Settings</div>
+</button>
+</div>
+</aside>
+<!-- Secondary List Panel -->
+<div class="w-list-width bg-white border-r border-outline-variant flex flex-col overflow-hidden">
+<div class="p-6 h-20 flex flex-col justify-center border-b border-outline-variant">
+<h1 class="text-xl font-bold text-on-surface tracking-tight">Nexus AI</h1>
+<p class="text-[10px] uppercase font-bold text-outline tracking-widest mt-0.5">Agent Orchestrator</p>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/30">
+<!-- Active Sessions / Context -->
+<div class="p-4">
+<p class="text-[10px] font-bold text-outline uppercase tracking-widest mb-3 px-2">Active Agents</p>
+<div class="space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg list-active transition-colors" href="#">
+<div class="w-8 h-8 rounded-md bg-brand-light flex items-center justify-center text-brand">
+<span class="material-symbols-outlined text-sm">precision_manufacturing</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-xs font-bold truncate">Orchestrator</p>
+<p class="text-[10px] text-brand-dark/70 font-medium">Primary Host</p>
+</div>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<div class="w-8 h-8 rounded-md bg-slate-200 flex items-center justify-center text-slate-600">
+<span class="material-symbols-outlined text-sm">analytics</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-xs font-bold truncate">Data Analyst</p>
+<p class="text-[10px] text-amber-600 font-bold">Processing...</p>
+</div>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors" href="#">
+<div class="w-8 h-8 rounded-md bg-slate-200 flex items-center justify-center text-slate-600">
+<span class="material-symbols-outlined text-sm">code</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-xs font-bold truncate">Lead Developer</p>
+<p class="text-[10px] text-outline font-medium">Idle</p>
+</div>
+</a>
+</div>
+</div>
+<div class="px-4 py-2 border-t border-outline-variant/50 mt-2">
+<p class="text-[10px] font-bold text-outline uppercase tracking-widest mb-3 px-2">Running Threads</p>
+<div class="space-y-2">
+<div class="px-3 py-2 rounded-lg bg-white border border-outline-variant/50 hover:border-brand/30 cursor-pointer shadow-sm">
+<div class="flex justify-between items-center mb-1">
+<span class="text-[11px] font-bold text-on-surface">Sales Automation</span>
+<div class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+</div>
+<p class="text-[10px] text-outline truncate">Generating Q3 reports...</p>
+</div>
+<div class="px-3 py-2 rounded-lg bg-white border border-outline-variant/50 hover:border-brand/30 cursor-pointer shadow-sm opacity-60">
+<div class="flex justify-between items-center mb-1">
+<span class="text-[11px] font-bold text-on-surface">Lead Gen Gen-4</span>
+<div class="w-2 h-2 rounded-full bg-amber-50"></div>
+</div>
+<p class="text-[10px] text-outline truncate">Workflow paused.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- User Workspace Label -->
+<div class="p-4 border-t border-outline-variant bg-white">
+<div class="p-3 bg-brand-light/50 rounded-custom flex items-center">
+<div class="w-2 h-2 rounded-full bg-brand mr-2"></div>
+<div class="overflow-hidden">
+<p class="text-[11px] font-bold text-on-surface truncate">Admin Workspace</p>
+<p class="text-[9px] text-brand-dark uppercase tracking-widest font-bold">Premium</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Collapse Button -->
+<button class="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 bg-white border border-outline-variant shadow-sm z-50 rounded-full w-8 h-8 flex items-center justify-center hover:bg-surface-container-low transition-all text-on-surface-variant" onclick="document.getElementById('sidebar-container').classList.add('-translate-x-full'); document.getElementById('expand-sidebar').classList.remove('hidden'); document.querySelector('header').style.left = '0'; document.querySelector('main').style.left = '0';">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+</div>
+<button class="hidden fixed left-4 top-3 z-50 p-2 bg-white border border-outline-variant rounded-full shadow-md text-on-surface-variant hover:text-brand transition-all active:scale-95" id="expand-sidebar" onclick="document.getElementById('sidebar-container').classList.remove('-translate-x-full'); this.classList.add('hidden'); document.querySelector('header').style.left = 'calc(var(--rail-width) + var(--list-width))'; document.querySelector('main').style.left = 'calc(var(--rail-width) + var(--list-width))';">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<!-- Top App Bar -->
+<header class="fixed top-0 right-0 h-14 z-30 bg-white/80 backdrop-blur-sm border-b border-outline-variant flex justify-between items-center px-6 transition-all duration-300" style="left: 308px;">
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-low border border-outline-variant rounded-custom px-3 py-1.5 w-80">
+<span class="material-symbols-outlined text-outline text-lg">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-[13px] w-full ml-2 placeholder-outline" placeholder="Search project assets..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all relative">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<div class="h-6 w-[1px] bg-outline-variant mx-1"></div>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant shadow-sm">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuZ0HVG0NsWs6WjiyFjZF07YuzxxpG68vZKjyc8IeFPW4exsa9M9VXhCC98hAPr6dTp7Ztcrco0Qmsncn8YH6JDKmDJE383i8T8aF9QeqPo1TZgaQkBuvRaxObqZBXa0kbECJNtuLhW6CFhINxXiSoy6Ekvj9rf9E8ungnWWYNOmgs8wKocVFXcEobYwGK9-LMtw9MgWu0UtasUU5H2rX2BXNPZ2QY1z7r5rqA5JT6zyZFY0qXFjlUBqalTmOLBEqd5GqaDFX5SKJP">
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="fixed inset-0 top-14 flex overflow-hidden transition-all duration-300 flex-row" style="left: 308px;">
+<!-- Pane 1: Chat -->
+<section class="flex flex-col border-r border-outline-variant bg-white w-1/3 min-w-[320px]">
+<div class="p-4 h-14 border-b border-outline-variant flex justify-between items-center shrink-0">
+<div class="flex flex-col">
+<h2 class="text-sm font-bold text-on-surface">Active Thread</h2>
+<p class="text-[10px] text-on-surface-variant flex items-center gap-1">
+<span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span> 3 agents listening
+                </p>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1.5 text-outline hover:text-brand transition-colors rounded">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+<button class="p-1.5 hover:bg-surface-container-low rounded text-on-surface-variant transition-colors" onclick="const chat = this.closest('section'); chat.classList.add('hidden'); document.getElementById('expand-chat').classList.remove('hidden');">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+<!-- Agent Message -->
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-custom bg-brand-light text-brand flex items-center justify-center shrink-0 border border-brand/10">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: &quot;FILL&quot; 1;">precision_manufacturing</span>
+</div>
+<div class="flex-1 space-y-1.5 group relative">
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold text-on-surface">Orchestrator</span>
+<span class="px-1.5 py-0.5 rounded text-[9px] bg-surface-container-low text-brand font-bold uppercase">Host</span>
+</div>
+<div class="p-3.5 rounded-custom rounded-tl-none bg-surface-container-low border border-brand/5 text-sm leading-relaxed text-on-surface">
+                        Initiating workflow for "Automating Sales Reports". I've allocated resources to Data Analyst for processing the Q3 CSV files.
+                    </div>
+</div>
+</div>
+<!-- User Message -->
+<div class="flex gap-4 justify-end">
+<div class="flex-1 space-y-1.5 text-right group relative">
+<p class="text-xs font-bold text-on-surface">Lead Developer</p>
+<div class="inline-block p-3.5 rounded-custom rounded-tr-none bg-brand text-white text-sm shadow-sm leading-relaxed">
+                        Sounds good. Make sure to generate visual charts for the executive summary section.
+                    </div>
+</div>
+<div class="w-8 h-8 rounded-custom border border-outline-variant overflow-hidden shrink-0 shadow-sm">
+<img alt="Lead Dev" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDiA_m6lY5taUku-YnvIr01vQXBJoXxeQtgEJ3Jc-4vrJQpxgWOWFO6MEnOf5YdZrILhE3ays0JRxGke8BVsXcbg11mgFVZThrBs8kVQ2sp5VlMD6fdN6SNW616DXCA4sZGKl4N2bYQbYQHV3pv4jwIkL2f_ls0nuIG7kwPN3p9vAPIBU8vcIb2VFJFbnu5LYozWku7ZuwDaeIlAI-W9OQ0ilq1Hdb-FpUfzD-vmloAUon9V4UYFzuXB57PhvQkm7hbsem61V4jK5TB">
+</div>
+</div>
+<!-- Agent Message -->
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-custom bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 border border-outline-variant">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: &quot;FILL&quot; 1;">analytics</span>
+</div>
+<div class="flex-1 space-y-1.5 group relative">
+<div class="flex items-center gap-2">
+<span class="text-xs font-bold text-on-surface">Data Analyst</span>
+<span class="px-1.5 py-0.5 rounded text-[9px] bg-amber-50 text-amber-700 font-bold uppercase">Processing</span>
+</div>
+<div class="p-3.5 rounded-custom rounded-tl-none bg-slate-50 border border-outline-variant text-sm text-on-surface leading-relaxed">
+                        Data fetched from CRM. Cleaning 14,000 records. Found a 12% discrepancy in regional tax IDs. Correcting...
+                        <div class="mt-4 bg-[#1e293b] rounded-lg font-mono text-[11px] leading-relaxed overflow-hidden shadow-inner">
+<div class="flex justify-between items-center px-3 py-2 bg-slate-800/50 border-b border-slate-700">
+<span class="text-slate-400">clean_tax_ids.py</span>
+<span class="text-emerald-400 font-bold">+12 -4</span>
+</div>
+<div class="p-3 text-slate-300">
+<div class=""><span class="text-sky-400">def</span> <span class="text-amber-200">validate_id</span>(val):</div>
+<div class="pl-4"> <span class="text-purple-400">if</span> <span class="text-sky-300">len</span>(val) != <span class="text-orange-300">9</span>:</div>
+<div class="pl-8"> <span class="text-purple-400">return</span> <span class="text-sky-400">False</span></div>
+<div class="pl-4"> <span class="text-purple-400">return</span> <span class="text-sky-300">str</span>(val).<span class="text-amber-200">isdigit</span>()</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="p-6 border-t border-outline-variant bg-white">
+<div class="relative group">
+<textarea class="w-full bg-slate-50 border border-outline-variant rounded-custom p-4 pb-12 text-sm focus:ring-1 focus:ring-brand focus:border-brand transition-all resize-none min-h-[100px] placeholder-outline" placeholder="Ask Nexus..."></textarea>
+<div class="absolute bottom-4 left-4 flex gap-2">
+<button class="p-1.5 hover:bg-surface-container-high rounded text-outline transition-colors"><span class="material-symbols-outlined text-[20px]">add</span></button>
+<button class="p-1.5 hover:bg-surface-container-high rounded text-outline transition-colors"><span class="material-symbols-outlined text-[20px]">attach_file</span></button>
+<button class="p-1.5 hover:bg-surface-container-high rounded text-outline transition-colors"><span class="material-symbols-outlined text-[20px]">mic</span></button>
+</div>
+<button class="absolute bottom-4 right-4 bg-brand text-white px-4 py-1.5 rounded-md text-xs font-bold shadow-sm hover:bg-brand-dark active:scale-95 transition-all">
+                    Send
+                </button>
+</div>
+</div>
+</section>
+<div class="w-[1px] hover:w-1 bg-outline-variant hover:bg-brand transition-all cursor-col-resize flex items-center justify-center relative group z-20 shrink-0 h-full" id="resizer">
+<div class="w-4 h-8 bg-white border border-outline-variant rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-[14px] text-outline">drag_handle</span>
+</div>
+</div>
+<!-- Pane 2: Workflow (Center) -->
+<button class="hidden sticky left-0 top-1/2 -translate-y-1/2 z-20 p-1 bg-white border border-l-0 border-outline-variant rounded-r-lg shadow-sm text-on-surface-variant hover:text-brand transition-all h-20 flex items-center justify-center" id="expand-chat" onclick="document.querySelector('section.w-1\\/3').classList.remove('hidden'); this.classList.add('hidden');">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+<section class="flex flex-col flex-1 min-w-0 bg-slate-50 relative overflow-hidden node-connector">
+<div class="flex bg-white border-b border-outline-variant h-10 shrink-0">
+<div class="flex items-center px-4 py-2 bg-slate-50 border-r border-outline-variant border-t-2 border-t-brand gap-3 cursor-pointer">
+<span class="material-symbols-outlined text-[16px] text-brand">account_tree</span>
+<span class="text-xs font-bold text-on-surface">Workflow</span>
+</div>
+<div class="flex items-center px-4 py-2 bg-white text-on-surface-variant border-r border-outline-variant gap-3 group cursor-pointer hover:bg-slate-50 transition-colors">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+<span class="text-xs font-medium">Preview</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col items-center justify-center p-8 gap-12 overflow-hidden">
+<div class="relative w-full max-w-[220px]">
+<div class="bg-white border border-outline-variant rounded-xl p-4 shadow-sm relative z-10 hover:shadow-md transition-shadow">
+<div class="flex items-center gap-3 mb-2">
+<div class="p-2 bg-brand-light rounded-custom text-brand"><span class="material-symbols-outlined text-[18px]">cloud_download</span></div>
+<span class="text-xs font-bold text-on-surface">Fetch Data</span>
+</div>
+<p class="text-[11px] text-on-surface-variant leading-relaxed">Source: Internal CRM &amp; CSV Storage</p>
+<div class="mt-4 flex items-center justify-between">
+<span class="text-[10px] text-emerald-600 font-bold tracking-tight">COMPLETED</span>
+<span class="text-[10px] text-outline font-medium">2.4s</span>
+</div>
+</div>
+<div class="absolute top-full left-1/2 w-[1px] h-12 bg-outline-variant -translate-x-1/2"></div>
+</div>
+<div class="relative w-full max-w-[220px]">
+<div class="bg-white border-2 border-brand rounded-xl p-4 shadow-lg relative z-10 agent-pulse" style="opacity: 1;">
+<div class="flex items-center gap-3 mb-2">
+<div class="p-2 bg-brand-light rounded-custom text-brand"><span class="material-symbols-outlined text-[18px]">transform</span></div>
+<span class="text-xs font-bold text-on-surface">Process CSV</span>
+</div>
+<p class="text-[11px] text-on-surface-variant leading-relaxed">Cleaning &amp; Mapping Schema</p>
+<div class="mt-4 w-full bg-slate-100 rounded-full h-1">
+<div class="bg-brand h-full rounded-full w-2/3 transition-all duration-1000"></div>
+</div>
+<div class="mt-3 flex items-center justify-between">
+<span class="text-[10px] text-brand font-bold tracking-tight">RUNNING</span>
+<span class="text-[10px] text-outline font-medium">Data Analyst</span>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute bottom-6 right-6 bg-white border border-outline-variant rounded-full shadow-lg p-1.5 flex gap-1 z-30">
+<button class="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-full text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</button>
+<div class="w-[1px] h-6 bg-outline-variant mx-1 my-auto"></div>
+<button class="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-full text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">zoom_in</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-full text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">center_focus_strong</span>
+</button>
+<div class="w-[1px] h-6 bg-outline-variant mx-1 my-auto"></div>
+<button class="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-full text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">layers</span>
+</button>
+</div>
+</section>
+</main>
+<!-- Command Palette -->
+<div class="hidden fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-sm flex items-start justify-center pt-[15vh]" id="command-palette">
+<div class="w-full max-w-xl bg-white border border-outline-variant rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+<div class="flex items-center p-4 border-b border-outline-variant">
+<span class="material-symbols-outlined text-outline mr-3">search</span>
+<input class="w-full bg-transparent border-none focus:ring-0 text-sm" placeholder="Command agent or search workspace..." type="text">
+<div class="flex gap-1 ml-2">
+<span class="px-1.5 py-0.5 rounded bg-slate-100 text-outline text-[10px] font-bold border border-outline-variant">CMD</span>
+<span class="px-1.5 py-0.5 rounded bg-slate-100 text-outline text-[10px] font-bold border border-outline-variant">K</span>
+</div>
+</div>
+<div class="p-2">
+<div class="px-3 py-2 text-[10px] font-bold text-outline uppercase tracking-widest">Suggestions</div>
+<div class="space-y-1 mt-1">
+<button class="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-brand-light rounded-lg transition-colors group text-left">
+<span class="material-symbols-outlined text-outline group-hover:text-brand transition-colors">rocket_launch</span>
+<span class="text-sm text-on-surface">Deploy new Analyst Agent</span>
+<span class="ml-auto text-[10px] text-outline font-medium uppercase">Action</span>
+</button>
+<button class="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-brand-light rounded-lg transition-colors group text-left">
+<span class="material-symbols-outlined text-outline group-hover:text-brand transition-colors">history</span>
+<span class="text-sm text-on-surface">View execution history</span>
+<span class="ml-auto text-[10px] text-outline font-medium uppercase">Logs</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+    // Micro-interactions and palette toggle
+    document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+            e.preventDefault();
+            const palette = document.getElementById('command-palette');
+            palette.classList.toggle('hidden');
+        }
+        if (e.key === 'Escape') {
+            document.getElementById('command-palette').classList.add('hidden');
+        }
+    });
+
+    // Close palette on backdrop click
+    document.getElementById('command-palette').addEventListener('click', (e) => {
+        if (e.target.id === 'command-palette') {
+            e.target.classList.add('hidden');
+        }
+    });
+
+    // Simple pulsing status effect for the running node
+    const runningNode = document.querySelector('.agent-pulse');
+    if (runningNode) {
+        let opacity = 1;
+        setInterval(() => {
+            opacity = opacity === 1 ? 0.9 : 1;
+            runningNode.style.opacity = opacity;
+        }, 1500);
+    }
+</script>
+
+
+
+
+</body></html>

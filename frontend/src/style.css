@@ -1,0 +1,256 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Neutral Palette ── */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+
+  /* ── Brand Colors ── */
+  --color-brand: #3b82f6;
+  --color-brand-light: #eff6ff;
+  --color-brand-dark: #1d4ed8;
+  --color-brand-subtle: #dbeafe;
+  --color-on-brand: #ffffff;
+
+  /* ── Primary / On-Primary ── */
+  --color-primary: #3b82f6;
+  --color-on-primary: #ffffff;
+
+  /* ── Surface System ── */
+  --color-surface: #f8fafc;
+  --color-surface-elevated: #ffffff;
+  --color-surface-overlay: rgba(255, 255, 255, 0.96);
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f1f5f9;
+  --color-surface-container: #f8fafc;
+  --color-surface-container-high: #e2e8f0;
+  --color-surface-container-highest: #cbd5e1;
+
+  /* ── Outline / Border ── */
+  --color-outline: #94a3b8;
+  --color-outline-variant: #e2e8f0;
+
+  /* ── On-Surface / Text ── */
+  --color-on-surface: #0f172a;
+  --color-on-surface-variant: #64748b;
+  --color-on-background: #0f172a;
+
+  /* ── Rail / Dark Navigation ── */
+  --color-rail-bg: #111111;
+  --color-rail-surface: #1a1a1a;
+  --color-rail-border: rgba(255, 255, 255, 0.06);
+
+  /* ── Semantic Colors ── */
+  --color-success: #22c55e;
+  --color-success-light: #f0fdf4;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fffbeb;
+  --color-error: #ef4444;
+  --color-error-light: #fef2f2;
+
+  /* ── Shadows ── */
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 8px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.12);
+
+  /* ── Typography ── */
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Fira Code', monospace;
+
+  /* ── Easing ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Base ── */
+html {
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Custom Scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ── Navigation Rail ── */
+.rail-active {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* ── List Item Active ── */
+.list-active {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: var(--color-brand-dark) !important;
+  border-color: var(--color-brand) !important;
+  box-shadow: var(--shadow-soft);
+}
+
+/* ── Agent Pulse ── */
+.agent-pulse {
+  animation: pulse-ring 2s ease-out infinite;
+}
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.3); }
+  70% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+/* ── Glass Panel ── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+/* ── Node Connector Dot Pattern ── */
+.node-connector {
+  background-image: radial-gradient(#e2e8f0 0.8px, transparent 0.8px);
+  background-size: 24px 24px;
+}
+
+/* ── Typing Indicator ── */
+.typing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  animation: typing-bounce 1.4s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Message Enter Animation ── */
+.message-enter {
+  animation: message-slide-in 0.3s var(--ease-out);
+}
+@keyframes message-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Hover Lift ── */
+.hover-lift {
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-float);
+}
+
+/* ── Shimmer / Loading ── */
+.shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255, 255, 255, 0.6) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Progress Bar Fill ── */
+.progress-fill {
+  background: linear-gradient(90deg, var(--color-brand), var(--color-brand-dark));
+  background-size: 200% 100%;
+  animation: progress-glow 2s ease-in-out infinite;
+}
+@keyframes progress-glow {
+  0% { background-position: 0% 0; }
+  50% { background-position: 100% 0; }
+  100% { background-position: 0% 0; }
+}
+
+/* ── Splitpanes Customization ── */
+.splitpanes-theme {
+  height: 100%;
+}
+
+.splitpanes-theme .splitpanes__pane {
+  background: transparent;
+  overflow: hidden;
+}
+
+.splitpanes-theme .splitpanes__splitter {
+  background: transparent;
+  border: none;
+  position: relative;
+}
+
+.splitpanes-theme .splitpanes__splitter::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 1px;
+  height: 100%;
+  background: var(--color-outline-variant);
+  transition: background 0.2s ease;
+}
+
+.splitpanes-theme .splitpanes__splitter:hover::before,
+.splitpanes-theme .splitpanes__splitter.active::before {
+  background: var(--color-brand);
+  width: 2px;
+}
+
+.splitpanes-theme .splitpanes__splitter::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: white;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+  box-shadow: var(--shadow-card);
+}
+
+.splitpanes-theme .splitpanes__splitter:hover::after,
+.splitpanes-theme .splitpanes__splitter.active::after {
+  opacity: 1;
+  border-color: var(--color-brand);
+}
+
+.splitpanes--vertical > .splitpanes__splitter {
+  width: 6px;
+  cursor: col-resize;
+}
+
+.splitpanes--horizontal > .splitpanes__splitter {
+  height: 6px;
+  cursor: row-resize;
+}

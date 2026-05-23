@@ -10,6 +10,8 @@ Vue 3 + TypeScript + Vite 实现的 AgentHub 前端，对接 FastAPI 后端（�
 | Vite | ^6.0 | 构建工具 / 开发服务器 |
 | Pinia | ^2.2 | 状态管理 |
 | Vue Router | ^4.5 | 客户端路由 |
+| Element Plus | ^2.9 | UI 组件库 |
+| Tailwind CSS | ^4.0 | 原子化 CSS |
 | Axios | ^1.7 | HTTP 客户端 |
 | markdown-it | ^14.1 | Markdown 渲染 |
 | TypeScript | ^5.7 | 类型系统 |
