@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[240px] bg-white border-r border-outline-variant flex flex-col overflow-hidden">
+  <div class="w-[240px] h-full bg-white border-r border-outline-variant flex flex-col overflow-hidden">
     <!-- Content based on active tab -->
     <div class="flex-1 overflow-y-auto custom-scrollbar bg-surface">
       <ConversationList v-if="uiStore.sidebarActiveTab === 'chat'" />

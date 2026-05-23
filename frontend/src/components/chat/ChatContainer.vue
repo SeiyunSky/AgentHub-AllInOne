@@ -1,7 +1,7 @@
 <template>
   <section class="flex flex-col bg-surface-elevated h-full overflow-hidden">
     <!-- Header -->
-    <ChatHeader :title="title" :status="status">
+    <ChatHeader :title="title" :status="status" :icon="ChatLineRound" variant="brand">
       <template #actions>
         <slot name="headerActions" />
       </template>
@@ -21,6 +21,7 @@ import type { Message } from '@/types/chat'
 import ChatHeader from '@/components/layout/ChatHeader.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
+import { ChatLineRound } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   title: string
