@@ -73,6 +73,8 @@ export interface MessageBase {
 export interface UserMessage extends MessageBase {
   type: 'user'
   content: string
+  replyToId?: string
+  mentions?: string[]
 }
 
 export interface AgentMessage extends MessageBase {
@@ -115,4 +117,11 @@ export interface ChatAgent {
   name: string
   role: string
   status: 'idle' | 'processing' | 'active' | 'error'
+}
+
+// Reply preview for input
+export interface ReplyPreview {
+  messageId: string
+  senderName: string
+  content: string
 }

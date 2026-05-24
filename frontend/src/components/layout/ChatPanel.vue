@@ -263,7 +263,7 @@ def create_comparison_chart(q3_data, q4_data):
   },
 ])
 
-function onSend(content: string) {
+function onSend(content: string, _mentions: string[], _replyToId?: string) {
   messages.value.push({
     id: String(Date.now()),
     type: 'user',

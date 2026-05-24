@@ -10,8 +10,11 @@
       <span class="text-[10px] text-neutral-400 font-mono">{{ filename }}</span>
       <span v-if="language" class="text-[9px] text-neutral-500 px-1.5 py-0.5 rounded bg-neutral-800">{{ language }}</span>
       <div class="flex-1" />
-      <button class="text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors px-1.5 py-0.5 rounded hover:bg-neutral-800">
-        Copy
+      <button
+        class="text-[10px] text-neutral-500 hover:text-neutral-300 transition-colors px-1.5 py-0.5 rounded hover:bg-neutral-800 cursor-pointer"
+        @click="handleCopy"
+      >
+        {{ copied ? 'Copied!' : 'Copy' }}
       </button>
     </div>
 
@@ -59,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import * as Diff from 'diff'
 
 const props = defineProps<{
@@ -135,5 +138,24 @@ function contentClass(type: string) {
     case 'removed': return 'text-red-300'
     default: return 'text-slate-300'
   }
+}
+
+const copied = ref(false)
+
+async function handleCopy() {
+  try {
+    await navigator.clipboard.writeText(props.code)
+  } catch {
+    const textarea = document.createElement('textarea')
+    textarea.value = props.code
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textarea)
+  }
+  copied.value = true
+  setTimeout(() => { copied.value = false }, 1500)
 }
 </script>

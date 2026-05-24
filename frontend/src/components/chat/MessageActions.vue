@@ -3,7 +3,7 @@
     <!-- Like -->
     <button
       class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-      :class="reaction === 'like' ? 'text-brand bg-brand-light/50' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
+      :class="reaction === 'like' ? 'text-brand bg-brand/20' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
       title="Like"
       @click="handleReact('like')"
     >
@@ -13,7 +13,7 @@
     <!-- Dislike -->
     <button
       class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-      :class="reaction === 'dislike' ? 'text-red-500 bg-red-50' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
+      :class="reaction === 'dislike' ? 'text-red-500 bg-red-200' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
       title="Dislike"
       @click="handleReact('dislike')"
     >
