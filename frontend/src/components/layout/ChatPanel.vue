@@ -256,6 +256,38 @@ def create_comparison_chart(q3_data, q4_data):
   },
   {
     id: '12',
+    type: 'agent',
+    agentId: 'orchestrator',
+    agentName: 'Orchestrator',
+    agentRole: 'Host',
+    agentRoleColor: 'brand',
+    content: `Here's a **markdown test** for you:
+
+- Item 1: \`inline code\` works
+- Item 2: [clickable link](https://example.com)
+- Item 3: **bold text** and *italic text*
+
+Code block example:
+
+\`\`\`python
+def hello():
+    print("Hello, World!")
+\`\`\`
+
+> This is a blockquote`,
+    timestamp: new Date(Date.now() - 5000),
+  },
+  {
+    id: '13',
+    type: 'user',
+    content: `User markdown test: **bold** and \`code\` and [link](https://test.com)
+
+1. First item
+2. Second item`,
+    timestamp: new Date(Date.now() - 3000),
+  },
+  {
+    id: '14',
     type: 'typing',
     agentId: 'report-generator',
     agentName: 'Report Generator',
