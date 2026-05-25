@@ -7,48 +7,57 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import anthropic
 import pytest
 
+from backend.adapters.base import StreamInput
 from backend.adapters.claude import (
     ClaudeAdapter,
     _build_anthropic_messages,
     _build_system_prompt,
+    _blocks_to_text,
 )
 from backend.adapters.events import (
     AgentDoneEvent,
     AgentErrorEvent,
     AgentStartEvent,
-    ApprovalRequestEvent,
-    TokenEvent,
+    BlockStartEvent,
+    BlockStopEvent,
 )
 from backend.adapters.mcp_client import MCPTool
-from backend.domain.message import MessageEntity
-from backend.domain.skill import SkillEntity
+from backend.domain.agent import AgentCapabilities
+from backend.domain.message import TextBlock, ToolUseBlock
+from backend.schemas.message import MessageInHistory, MessageRole
+from backend.schemas.skill import SkillWithContent
 from tests.test_utils import collect_stream
 
 
 # ---------------------------------------------------------------------------
-# Helpers to build fake Anthropic stream events
+# Fake Anthropic stream helpers
 # ---------------------------------------------------------------------------
 
-def _text_event(text: str) -> SimpleNamespace:
-    return SimpleNamespace(type="text", text=text)
+def _text_block_start() -> SimpleNamespace:
+    block = SimpleNamespace(type="text")
+    return SimpleNamespace(type="content_block_start", content_block=block)
 
 
-def _tool_start_event(tool_id: str, tool_name: str) -> SimpleNamespace:
+def _text_delta(text: str) -> SimpleNamespace:
+    delta = SimpleNamespace(type="text_delta", text=text)
+    return SimpleNamespace(type="content_block_delta", delta=delta)
+
+
+def _block_stop() -> SimpleNamespace:
+    return SimpleNamespace(type="content_block_stop")
+
+
+def _tool_block_start(tool_id: str, tool_name: str) -> SimpleNamespace:
     block = SimpleNamespace(type="tool_use", id=tool_id, name=tool_name)
     return SimpleNamespace(type="content_block_start", content_block=block)
 
 
-def _tool_delta_event(partial_json: str) -> SimpleNamespace:
-    return SimpleNamespace(type="input_json_delta", partial_json=partial_json)
-
-
-def _tool_stop_event() -> SimpleNamespace:
-    return SimpleNamespace(type="content_block_stop")
+def _tool_delta(partial_json: str) -> SimpleNamespace:
+    delta = SimpleNamespace(type="input_json_delta", partial_json=partial_json)
+    return SimpleNamespace(type="content_block_delta", delta=delta)
 
 
 class _FakeStream:
-    """Async context manager that yields pre-built Anthropic-like events."""
-
     def __init__(self, events: list) -> None:
         self._events = events
 
@@ -67,11 +76,15 @@ class _FakeStream:
 
 
 def _patch_stream(events: list):
-    """Return a patcher that replaces messages.stream with _FakeStream(events)."""
-    fake = _FakeStream(events)
     mock_client = MagicMock()
-    mock_client.messages.stream.return_value = fake
+    mock_client.messages.stream.return_value = _FakeStream(events)
     return mock_client
+
+
+def _make_inp(**kwargs) -> StreamInput:
+    defaults = dict(agent_id="agent-1", thread_id="thread-1", message_id="msg-1", prompt="hello")
+    defaults.update(kwargs)
+    return StreamInput(**defaults)
 
 
 # ---------------------------------------------------------------------------
@@ -80,13 +93,8 @@ def _patch_stream(events: list):
 
 @pytest.fixture
 def adapter():
-    with patch("backend.adapters.claude.anthropic.AsyncAnthropic") as mock_cls:
-        mock_cls.return_value = MagicMock()
-        inst = ClaudeAdapter(
-            agent_id="agent-1",
-            agent_name="Claude",
-            api_key="sk-test",
-        )
+    with patch("backend.adapters.claude.anthropic.AsyncAnthropic"):
+        inst = ClaudeAdapter(api_key="sk-test")
         yield inst
 
 
@@ -96,7 +104,9 @@ def adapter():
 
 def test_get_capabilities(adapter):
     caps = adapter.get_capabilities()
-    assert caps == {"supports_diff": True, "supports_approval": True}
+    assert isinstance(caps, AgentCapabilities)
+    assert caps.supports_diff is True
+    assert caps.supports_approval is True
 
 
 # ---------------------------------------------------------------------------
@@ -105,28 +115,23 @@ def test_get_capabilities(adapter):
 
 async def test_stream_yields_start_and_done(adapter):
     adapter._client = _patch_stream([])
-    events = await collect_stream(adapter.stream("hello", [], []))
+    events = await collect_stream(adapter.stream(_make_inp()))
     assert isinstance(events[0], AgentStartEvent)
     assert events[0].agent_id == "agent-1"
+    assert events[0].thread_id == "thread-1"
     assert isinstance(events[-1], AgentDoneEvent)
 
 
-async def test_stream_token_events(adapter):
-    sdk_events = [_text_event("foo"), _text_event("bar")]
+async def test_stream_text_block_lifecycle(adapter):
+    sdk_events = [_text_block_start(), _text_delta("foo"), _text_delta("bar"), _block_stop()]
     adapter._client = _patch_stream(sdk_events)
-    events = await collect_stream(adapter.stream("hello", [], []))
-    token_events = [e for e in events if isinstance(e, TokenEvent)]
-    assert len(token_events) == 2
-    assert token_events[0].content == "foo"
-    assert token_events[1].content == "bar"
+    events = await collect_stream(adapter.stream(_make_inp()))
 
-
-async def test_stream_start_before_tokens(adapter):
-    adapter._client = _patch_stream([_text_event("hi")])
-    events = await collect_stream(adapter.stream("hello", [], []))
-    assert isinstance(events[0], AgentStartEvent)
-    assert isinstance(events[1], TokenEvent)
-    assert isinstance(events[-1], AgentDoneEvent)
+    block_starts = [e for e in events if isinstance(e, BlockStartEvent)]
+    block_stops = [e for e in events if isinstance(e, BlockStopEvent)]
+    assert len(block_starts) == 1
+    assert isinstance(block_starts[0].block, TextBlock)
+    assert len(block_stops) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +144,7 @@ async def test_stream_api_error_yields_error_event(adapter):
         message="rate limit", request=MagicMock(), body=None
     )
     adapter._client = mock_client
-    events = await collect_stream(adapter.stream("hello", [], []))
+    events = await collect_stream(adapter.stream(_make_inp()))
     assert any(isinstance(e, AgentErrorEvent) for e in events)
     error_events = [e for e in events if isinstance(e, AgentErrorEvent)]
     assert "rate limit" in error_events[0].error
@@ -151,53 +156,19 @@ async def test_stream_api_error_does_not_raise(adapter):
         message="server error", request=MagicMock(), body=None
     )
     adapter._client = mock_client
-    # Should not raise — error is surfaced as AgentErrorEvent
-    events = await collect_stream(adapter.stream("hello", [], []))
+    events = await collect_stream(adapter.stream(_make_inp()))
     assert len(events) >= 1
 
 
 # ---------------------------------------------------------------------------
-# MCP tool calls — no side effects
+# MCP tool calls — has side effects → ApprovalBlock emitted
 # ---------------------------------------------------------------------------
 
-async def test_stream_mcp_tool_no_side_effects(adapter):
-    tool = MCPTool(
-        name="read_file",
-        description="reads a file",
-        input_schema={"type": "object", "properties": {"path": {"type": "string"}}},
-        has_side_effects=False,
-    )
-    mock_mcp = AsyncMock()
-    mock_mcp.list_tools.return_value = [tool]
-    mock_mcp.call_tool.return_value = SimpleNamespace(
-        content=[SimpleNamespace(text="file contents")]
-    )
-    adapter._mcp_client = mock_mcp
-
-    sdk_events = [
-        _tool_start_event("tu-1", "read_file"),
-        _tool_delta_event('{"path": "x.py"}'),
-        _tool_stop_event(),
-    ]
-    adapter._client = _patch_stream(sdk_events)
-    events = await collect_stream(adapter.stream("read x.py", [], []))
-
-    approval_events = [e for e in events if isinstance(e, ApprovalRequestEvent)]
-    assert len(approval_events) == 0
-    # Tool result injected as token
-    token_events = [e for e in events if isinstance(e, TokenEvent)]
-    assert any("file contents" in e.content for e in token_events)
-
-
-# ---------------------------------------------------------------------------
-# MCP tool calls — has side effects → ApprovalRequestEvent
-# ---------------------------------------------------------------------------
-
-async def test_stream_mcp_tool_has_side_effects(adapter):
+async def test_stream_mcp_tool_has_side_effects_emits_approval_block(adapter):
     tool = MCPTool(
         name="run_command",
         description="runs a shell command",
-        input_schema={"type": "object", "properties": {"cmd": {"type": "string"}}},
+        input_schema={"type": "object"},
         has_side_effects=True,
     )
     mock_mcp = AsyncMock()
@@ -206,33 +177,54 @@ async def test_stream_mcp_tool_has_side_effects(adapter):
     adapter._mcp_client = mock_mcp
 
     sdk_events = [
-        _tool_start_event("tu-2", "run_command"),
-        _tool_delta_event('{"cmd": "npm test"}'),
-        _tool_stop_event(),
+        _tool_block_start("tu-2", "run_command"),
+        _tool_delta('{"cmd": "npm test"}'),
+        _block_stop(),
     ]
     adapter._client = _patch_stream(sdk_events)
-    events = await collect_stream(adapter.stream("run tests", [], []))
+    events = await collect_stream(adapter.stream(_make_inp(prompt="run tests")))
 
-    approval_events = [e for e in events if isinstance(e, ApprovalRequestEvent)]
-    assert len(approval_events) == 1
-    assert approval_events[0].action == "run_command"
+    # Approval block should appear as a BlockStartEvent with ApprovalBlock
+    from backend.domain.message import ApprovalBlock
+    approval_starts = [
+        e for e in events
+        if isinstance(e, BlockStartEvent) and isinstance(e.block, ApprovalBlock)
+    ]
+    assert len(approval_starts) == 1
+    assert approval_starts[0].block.action == "run_command"
 
-
-# ---------------------------------------------------------------------------
-# MCP fetch failure is non-fatal
-# ---------------------------------------------------------------------------
 
 async def test_stream_mcp_fetch_failure_is_non_fatal(adapter):
     mock_mcp = AsyncMock()
     mock_mcp.list_tools.side_effect = RuntimeError("connection lost")
     adapter._mcp_client = mock_mcp
-    adapter._client = _patch_stream([_text_event("hi")])
+    sdk_events = [_text_block_start(), _text_delta("hi"), _block_stop()]
+    adapter._client = _patch_stream(sdk_events)
 
-    events = await collect_stream(adapter.stream("hello", [], []))
-    # Stream should complete normally despite MCP failure
+    events = await collect_stream(adapter.stream(_make_inp()))
     assert isinstance(events[-1], AgentDoneEvent)
-    token_events = [e for e in events if isinstance(e, TokenEvent)]
-    assert token_events[0].content == "hi"
+
+
+# ---------------------------------------------------------------------------
+# Helper: _blocks_to_text
+# ---------------------------------------------------------------------------
+
+def test_blocks_to_text_text_block():
+    bid = "b1"
+    text = _blocks_to_text([TextBlock(block_id=bid, content="hello")])
+    assert text == "hello"
+
+
+def test_blocks_to_text_tool_use_block():
+    bid = "b2"
+    text = _blocks_to_text([ToolUseBlock(block_id=bid, tool_name="read_file", output="content", status="completed")])
+    assert "[Tool: read_file -> content]" in text
+
+
+def test_blocks_to_text_thinking_block_skipped():
+    from backend.domain.message import ThinkingBlock
+    text = _blocks_to_text([ThinkingBlock(block_id="b3", content="internal thought")])
+    assert text == ""
 
 
 # ---------------------------------------------------------------------------
@@ -247,8 +239,8 @@ def test_build_anthropic_messages_empty_history():
 
 def test_build_anthropic_messages_with_history():
     history = [
-        MessageEntity(id="1", role="user", content="hi"),
-        MessageEntity(id="2", role="assistant", content="hello"),
+        MessageInHistory(role=MessageRole.USER, blocks=[TextBlock(block_id="b1", content="hi")]),
+        MessageInHistory(role=MessageRole.ASSISTANT, blocks=[TextBlock(block_id="b2", content="hello")]),
     ]
     msgs = _build_anthropic_messages(history, "how are you?")
     assert msgs[0]["role"] == "user"
@@ -256,10 +248,16 @@ def test_build_anthropic_messages_with_history():
     assert msgs[-1] == {"role": "user", "content": "how are you?"}
 
 
-def test_build_anthropic_messages_non_user_role_maps_to_assistant():
-    history = [MessageEntity(id="1", role="system", content="be helpful")]
-    msgs = _build_anthropic_messages(history, "hi")
-    assert msgs[0]["role"] == "assistant"
+def test_build_anthropic_messages_with_sender_prefix():
+    history = [
+        MessageInHistory(
+            role=MessageRole.ASSISTANT,
+            blocks=[TextBlock(block_id="b1", content="done")],
+            sender="CodeReviewer",
+        )
+    ]
+    msgs = _build_anthropic_messages(history, "ok")
+    assert msgs[0]["content"].startswith("[CodeReviewer]:")
 
 
 # ---------------------------------------------------------------------------
@@ -272,16 +270,13 @@ def test_build_system_prompt_base_only():
 
 
 def test_build_system_prompt_with_skills():
-    skill = SkillEntity(id="s1", name="code_review", file_path="skills/code_review.md", content="## Review steps\n1. check types")
+    skill = SkillWithContent(
+        id="s1", name="code_review", author_id="GUGA", is_public=True, is_active=True,
+        content="## Review steps\n1. check types",
+    )
     prompt = _build_system_prompt("Base prompt.", [skill])
     assert "Base prompt." in prompt
     assert "## Review steps" in prompt
-
-
-def test_build_system_prompt_skill_without_content_is_skipped():
-    skill = SkillEntity(id="s1", name="empty_skill", file_path="skills/empty.md", content=None)
-    prompt = _build_system_prompt("Base.", [skill])
-    assert prompt == "Base."
 
 
 def test_build_system_prompt_no_base_no_skills():

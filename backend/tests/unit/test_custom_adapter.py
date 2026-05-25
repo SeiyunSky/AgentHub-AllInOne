@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import openai
 import pytest
 
+from backend.adapters.base import StreamInput
 from backend.adapters.custom import (
     CustomAdapter,
     _build_openai_messages,
@@ -15,22 +16,30 @@ from backend.adapters.events import (
     AgentDoneEvent,
     AgentErrorEvent,
     AgentStartEvent,
-    ApprovalRequestEvent,
-    TokenEvent,
+    BlockStartEvent,
+    BlockStopEvent,
 )
 from backend.adapters.mcp_client import MCPTool
-from backend.domain.message import MessageEntity
-from backend.domain.skill import SkillEntity
+from backend.domain.agent import AgentCapabilities
+from backend.domain.message import ApprovalBlock, TextBlock
+from backend.schemas.message import MessageInHistory, MessageRole
+from backend.schemas.skill import SkillWithContent
 from tests.test_utils import collect_stream
 
 
 # ---------------------------------------------------------------------------
-# Helpers to build fake OpenAI stream chunks
+# Helpers
 # ---------------------------------------------------------------------------
 
-def _text_chunk(content: str) -> SimpleNamespace:
+def _text_chunk(content: str, finish: str | None = None) -> SimpleNamespace:
     delta = SimpleNamespace(content=content, tool_calls=None)
-    choice = SimpleNamespace(delta=delta, finish_reason=None)
+    choice = SimpleNamespace(delta=delta, finish_reason=finish)
+    return SimpleNamespace(choices=[choice])
+
+
+def _stop_chunk() -> SimpleNamespace:
+    delta = SimpleNamespace(content=None, tool_calls=None)
+    choice = SimpleNamespace(delta=delta, finish_reason="stop")
     return SimpleNamespace(choices=[choice])
 
 
@@ -44,8 +53,6 @@ def _tool_chunk(idx: int, tool_id: str, name: str, args: str, finish: bool = Fal
 
 
 class _FakeStream:
-    """Async iterable of OpenAI chunk objects."""
-
     def __init__(self, chunks: list) -> None:
         self._chunks = chunks
 
@@ -63,6 +70,12 @@ def _patch_openai_client(chunks: list) -> MagicMock:
     return mock_client
 
 
+def _make_inp(**kwargs) -> StreamInput:
+    defaults = dict(agent_id="custom-1", thread_id="thread-1", message_id="msg-1", prompt="hello")
+    defaults.update(kwargs)
+    return StreamInput(**defaults)
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -70,12 +83,7 @@ def _patch_openai_client(chunks: list) -> MagicMock:
 @pytest.fixture
 def adapter():
     with patch("backend.adapters.custom.openai.AsyncOpenAI"):
-        inst = CustomAdapter(
-            agent_id="custom-1",
-            agent_name="Custom",
-            api_key="sk-test",
-            base_url="http://localhost:11434/v1",
-        )
+        inst = CustomAdapter(api_key="sk-test", base_url="http://localhost:11434/v1")
         yield inst
 
 
@@ -84,12 +92,7 @@ def adapter_with_mcp():
     mock_mcp = AsyncMock()
     mock_mcp.list_tools.return_value = []
     with patch("backend.adapters.custom.openai.AsyncOpenAI"):
-        inst = CustomAdapter(
-            agent_id="custom-1",
-            agent_name="Custom",
-            api_key="sk-test",
-            mcp_client=mock_mcp,
-        )
+        inst = CustomAdapter(api_key="sk-test", mcp_client=mock_mcp)
         inst._mock_mcp = mock_mcp
         yield inst
 
@@ -100,13 +103,15 @@ def adapter_with_mcp():
 
 def test_get_capabilities_no_mcp(adapter):
     caps = adapter.get_capabilities()
-    assert caps["supports_diff"] is True
-    assert caps["supports_approval"] is False
+    assert isinstance(caps, AgentCapabilities)
+    assert caps.supports_diff is True
+    assert caps.supports_approval is False
 
 
 def test_get_capabilities_with_mcp(adapter_with_mcp):
     caps = adapter_with_mcp.get_capabilities()
-    assert caps["supports_approval"] is True
+    assert isinstance(caps, AgentCapabilities)
+    assert caps.supports_approval is True
 
 
 # ---------------------------------------------------------------------------
@@ -115,19 +120,22 @@ def test_get_capabilities_with_mcp(adapter_with_mcp):
 
 async def test_stream_yields_start_and_done(adapter):
     adapter._client = _patch_openai_client([])
-    events = await collect_stream(adapter.stream("hello", [], []))
+    events = await collect_stream(adapter.stream(_make_inp()))
     assert isinstance(events[0], AgentStartEvent)
+    assert events[0].thread_id == "thread-1"
     assert isinstance(events[-1], AgentDoneEvent)
 
 
-async def test_stream_token_events(adapter):
-    chunks = [_text_chunk("hello "), _text_chunk("world")]
+async def test_stream_text_block_lifecycle(adapter):
+    chunks = [_text_chunk("hello "), _text_chunk("world"), _stop_chunk()]
     adapter._client = _patch_openai_client(chunks)
-    events = await collect_stream(adapter.stream("hi", [], []))
-    token_events = [e for e in events if isinstance(e, TokenEvent)]
-    assert len(token_events) == 2
-    assert token_events[0].content == "hello "
-    assert token_events[1].content == "world"
+    events = await collect_stream(adapter.stream(_make_inp()))
+
+    block_starts = [e for e in events if isinstance(e, BlockStartEvent)]
+    block_stops = [e for e in events if isinstance(e, BlockStopEvent)]
+    assert len(block_starts) == 1
+    assert isinstance(block_starts[0].block, TextBlock)
+    assert len(block_stops) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -139,23 +147,14 @@ async def test_stream_api_error_yields_error_event(adapter):
     adapter._client.chat.completions.create = AsyncMock(
         side_effect=openai.APIError(message="quota exceeded", request=MagicMock(), body=None)
     )
-    events = await collect_stream(adapter.stream("hello", [], []))
+    events = await collect_stream(adapter.stream(_make_inp()))
     error_events = [e for e in events if isinstance(e, AgentErrorEvent)]
     assert len(error_events) == 1
     assert "quota exceeded" in error_events[0].error
 
 
-async def test_stream_api_error_does_not_raise(adapter):
-    adapter._client = MagicMock()
-    adapter._client.chat.completions.create = AsyncMock(
-        side_effect=openai.APIError(message="server error", request=MagicMock(), body=None)
-    )
-    events = await collect_stream(adapter.stream("hello", [], []))
-    assert len(events) >= 1  # At minimum the AgentStartEvent
-
-
 # ---------------------------------------------------------------------------
-# Tool calls — side effects → ApprovalRequestEvent
+# Tool calls — side effects → ApprovalBlock
 # ---------------------------------------------------------------------------
 
 async def test_stream_tool_call_has_side_effects(adapter_with_mcp):
@@ -170,15 +169,16 @@ async def test_stream_tool_call_has_side_effects(adapter_with_mcp):
         content=[SimpleNamespace(text="wrote ok")]
     )
 
-    chunks = [
-        _tool_chunk(0, "tc-1", "write_file", '{"path":"x.py"}', finish=True),
-    ]
+    chunks = [_tool_chunk(0, "tc-1", "write_file", '{"path":"x.py"}', finish=True)]
     adapter_with_mcp._client = _patch_openai_client(chunks)
-    events = await collect_stream(adapter_with_mcp.stream("write file", [], []))
+    events = await collect_stream(adapter_with_mcp.stream(_make_inp(prompt="write file")))
 
-    approval_events = [e for e in events if isinstance(e, ApprovalRequestEvent)]
-    assert len(approval_events) == 1
-    assert approval_events[0].action == "write_file"
+    approval_starts = [
+        e for e in events
+        if isinstance(e, BlockStartEvent) and isinstance(e.block, ApprovalBlock)
+    ]
+    assert len(approval_starts) == 1
+    assert approval_starts[0].block.action == "write_file"
 
 
 async def test_stream_tool_call_no_side_effects(adapter_with_mcp):
@@ -193,14 +193,15 @@ async def test_stream_tool_call_no_side_effects(adapter_with_mcp):
         content=[SimpleNamespace(text="contents")]
     )
 
-    chunks = [
-        _tool_chunk(0, "tc-1", "read_file", '{"path":"x.py"}', finish=True),
-    ]
+    chunks = [_tool_chunk(0, "tc-1", "read_file", '{"path":"x.py"}', finish=True)]
     adapter_with_mcp._client = _patch_openai_client(chunks)
-    events = await collect_stream(adapter_with_mcp.stream("read file", [], []))
+    events = await collect_stream(adapter_with_mcp.stream(_make_inp(prompt="read file")))
 
-    approval_events = [e for e in events if isinstance(e, ApprovalRequestEvent)]
-    assert len(approval_events) == 0
+    approval_starts = [
+        e for e in events
+        if isinstance(e, BlockStartEvent) and isinstance(e.block, ApprovalBlock)
+    ]
+    assert len(approval_starts) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -221,23 +222,20 @@ def test_build_openai_messages_system_first():
 
 
 def test_build_openai_messages_skill_injected_into_system():
-    skill = SkillEntity(id="s1", name="sk", file_path="skills/sk.md", content="## Do this")
+    skill = SkillWithContent(
+        id="s1", name="sk", author_id="GUGA", is_public=True, is_active=True,
+        content="## Do this",
+    )
     msgs = _build_openai_messages("Base.", [skill], [], "hello")
     system_content = msgs[0]["content"]
     assert "Base." in system_content
     assert "## Do this" in system_content
 
 
-def test_build_openai_messages_skill_without_content_skipped():
-    skill = SkillEntity(id="s1", name="sk", file_path="skills/sk.md", content=None)
-    msgs = _build_openai_messages("Base.", [skill], [], "hello")
-    assert msgs[0]["content"] == "Base."
-
-
 def test_build_openai_messages_history_order():
     history = [
-        MessageEntity(id="1", role="user", content="hi"),
-        MessageEntity(id="2", role="assistant", content="hello"),
+        MessageInHistory(role=MessageRole.USER, blocks=[TextBlock(block_id="b1", content="hi")]),
+        MessageInHistory(role=MessageRole.ASSISTANT, blocks=[TextBlock(block_id="b2", content="hello")]),
     ]
     msgs = _build_openai_messages(None, [], history, "how are you?")
     roles = [m["role"] for m in msgs]

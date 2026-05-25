@@ -6,6 +6,7 @@ when agents are created or deleted through agent_service.
 from __future__ import annotations
 
 import logging
+import os
 from typing import TYPE_CHECKING
 
 from backend.adapters.base import AgentAdapter
@@ -77,12 +78,7 @@ class AdapterRegistry:
         logger.info("AdapterRegistry seeded: %d agents loaded", len(self._registry))
 
     async def shutdown(self) -> None:
-        """Call close() on every adapter, then clear the registry."""
-        for adapter in list(self._registry.values()):
-            try:
-                await adapter.close()
-            except Exception as exc:
-                logger.warning("Error closing adapter: %s", exc)
+        """Clear the registry on shutdown."""
         self._registry.clear()
 
 
@@ -92,53 +88,30 @@ class AdapterRegistry:
 
 def _build_adapter(row: "AgentModel") -> AgentAdapter:  # type: ignore[name-defined]
     """Build the correct adapter from an ORM Agent row."""
-    from backend.config import settings
-
     agent_type: str = row.type
 
     if agent_type == "claude":
         from backend.adapters.claude import ClaudeAdapter
-        return ClaudeAdapter(
-            agent_id=row.id,
-            agent_name=row.name,
-            system_prompt=row.system_prompt,
-            api_key=settings.anthropic_api_key,
-            base_url=settings.anthropic_base_url,
-        )
+        return ClaudeAdapter()
 
     if agent_type == "codex":
         from backend.adapters.codex import CodexAdapter
         from backend.adapters.mcp_client import MCPRegistry
-        # Use MCP server mode if a connection is already established
         mcp_client = MCPRegistry.get("codex")
-        return CodexAdapter(
-            agent_id=row.id,
-            agent_name=row.name,
-            bin_path=settings.codex_bin_path,
-            mcp_client=mcp_client,
-        )
+        return CodexAdapter(mcp_client=mcp_client)
 
     if agent_type == "custom":
         from backend.adapters.custom import CustomAdapter
         capabilities: dict = row.capabilities or {}
-        # Extract optional per-agent overrides stored in capabilities JSON
         return CustomAdapter(
-            agent_id=row.id,
-            agent_name=row.name,
             model=capabilities.get("model"),
-            api_key=capabilities.get("api_key") or settings.openai_api_key,
-            base_url=capabilities.get("base_url") or settings.openai_base_url,
-            system_prompt=row.system_prompt,
+            api_key=capabilities.get("api_key"),
+            base_url=capabilities.get("base_url"),
         )
 
     if agent_type == "opencode":
-        # Placeholder until OpenCodeAdapter is implemented
         from backend.adapters.codex import CodexAdapter
-        return CodexAdapter(
-            agent_id=row.id,
-            agent_name=row.name,
-            bin_path=settings.opencode_bin_path,
-        )
+        return CodexAdapter(bin_path=os.environ.get("OPENCODE_BIN_PATH", "opencode"))
 
     raise ValueError(f"Unknown agent type: {agent_type!r}")
 

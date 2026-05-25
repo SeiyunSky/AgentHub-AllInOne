@@ -5,25 +5,27 @@ Works with any OpenAI-compatible endpoint: OpenAI, Ollama, vLLM, Together, etc.
 from __future__ import annotations
 
 import json
-import uuid
 import logging
-from typing import Any, AsyncGenerator
+import os
+from typing import Any, AsyncIterator
 
 import openai
 
-from backend.adapters.base import AgentAdapter
+from backend.adapters.base import AgentAdapter, StreamInput
 from backend.adapters.events import (
     AgentDoneEvent,
     AgentErrorEvent,
     AgentEvent,
     AgentStartEvent,
-    ApprovalRequestEvent,
-    TokenEvent,
+    BlockDeltaEvent,
+    BlockStartEvent,
+    BlockStopEvent,
 )
 from backend.adapters.mcp_client import MCPClient, MCPTool
-from backend.config import settings
-from backend.domain.message import MessageEntity
-from backend.domain.skill import SkillEntity
+from backend.core.utils import gen_uuid
+from backend.domain.agent import AgentCapabilities
+from backend.domain.message import ApprovalBlock, ContentBlock, TextBlock, ToolUseBlock
+from backend.schemas.message import MessageInHistory
 
 logger = logging.getLogger(__name__)
 
@@ -37,44 +39,34 @@ class CustomAdapter(AgentAdapter):
 
     def __init__(
         self,
-        agent_id: str,
-        agent_name: str,
         model: str | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
-        system_prompt: str | None = None,
         mcp_client: MCPClient | None = None,
     ) -> None:
-        self.agent_id = agent_id
-        self.agent_name = agent_name
-        self.model = model or settings.openai_model_id
-        self.system_prompt = system_prompt
+        self.model = model or os.environ.get("OPENAI_MODEL_ID", "gpt-4o")
         self._mcp_client = mcp_client
         self._client = openai.AsyncOpenAI(
-            api_key=api_key or settings.openai_api_key or "sk-placeholder",
-            base_url=base_url or settings.openai_base_url,
+            api_key=api_key or os.environ.get("OPENAI_API_KEY") or "sk-placeholder",
+            base_url=base_url or os.environ.get("OPENAI_BASE_URL") or None,
         )
 
-    def get_capabilities(self) -> dict[str, bool]:
-        return {
-            "supports_diff": True,
-            "supports_approval": self._mcp_client is not None,
-        }
+    def get_capabilities(self) -> AgentCapabilities:
+        return AgentCapabilities(
+            supports_code=True,
+            supports_diff=True,
+            supports_approval=self._mcp_client is not None,
+        )
 
-    async def stream(
-        self,
-        prompt: str,
-        history: list[MessageEntity],
-        skills: list[SkillEntity],
-    ) -> AsyncGenerator[AgentEvent, None]:
-        message_id = str(uuid.uuid4())
+    async def stream(self, inp: StreamInput) -> AsyncIterator[AgentEvent]:
         yield AgentStartEvent(
-            agent_id=self.agent_id,
-            agent_name=self.agent_name,
-            message_id=message_id,
+            agent_id=inp.agent_id,
+            thread_id=inp.thread_id,
+            message_id=inp.message_id,
+            agent_name=inp.agent_id,
         )
 
-        messages = _build_openai_messages(self.system_prompt, skills, history, prompt)
+        messages = _build_openai_messages(inp.system_prompt, inp.skills, inp.history, inp.prompt)
 
         tool_definitions: list[dict[str, Any]] = []
         mcp_tools_by_name: dict[str, MCPTool] = {}
@@ -85,11 +77,14 @@ class CustomAdapter(AgentAdapter):
                     tool_definitions.append(_mcp_tool_to_openai(t))
                     mcp_tools_by_name[t.name] = t
             except Exception as exc:
-                logger.warning("Failed to fetch MCP tools for %s: %s", self.agent_id, exc)
+                logger.warning("Failed to fetch MCP tools for %s: %s", inp.agent_id, exc)
+
+        def _base() -> dict[str, str]:
+            return {"agent_id": inp.agent_id, "thread_id": inp.thread_id, "message_id": inp.message_id}
 
         try:
-            # Collect tool calls during streaming (delta accumulation)
             pending_tool_calls: dict[int, dict[str, Any]] = {}
+            text_block_id: str | None = None
 
             create_kwargs: dict[str, Any] = dict(
                 model=self.model,
@@ -100,31 +95,35 @@ class CustomAdapter(AgentAdapter):
                 create_kwargs["tools"] = tool_definitions
                 create_kwargs["tool_choice"] = "auto"
 
-            stream = await self._client.chat.completions.create(**create_kwargs)
+            sdk_stream = await self._client.chat.completions.create(**create_kwargs)
 
-            async for chunk in stream:
+            async for chunk in sdk_stream:
+                if inp.cancel_event and inp.cancel_event.is_set():
+                    yield AgentErrorEvent(**_base(), error="cancelled")
+                    return
+
                 if not chunk.choices:
                     continue
                 delta = chunk.choices[0].delta
 
-                # Text token
                 if delta.content:
-                    yield TokenEvent(
-                        agent_id=self.agent_id,
-                        message_id=message_id,
-                        content=delta.content,
+                    if text_block_id is None:
+                        text_block_id = gen_uuid()
+                        yield BlockStartEvent(
+                            **_base(),
+                            block=TextBlock(block_id=text_block_id, content=""),
+                        )
+                    yield BlockDeltaEvent(
+                        **_base(),
+                        block_id=text_block_id,
+                        delta={"content": delta.content},
                     )
 
-                # Tool call delta accumulation
                 if delta.tool_calls:
                     for tc_delta in delta.tool_calls:
                         idx = tc_delta.index
                         if idx not in pending_tool_calls:
-                            pending_tool_calls[idx] = {
-                                "id": tc_delta.id or "",
-                                "name": "",
-                                "args_str": "",
-                            }
+                            pending_tool_calls[idx] = {"id": "", "name": "", "args_str": ""}
                         entry = pending_tool_calls[idx]
                         if tc_delta.id:
                             entry["id"] = tc_delta.id
@@ -135,7 +134,17 @@ class CustomAdapter(AgentAdapter):
                                 entry["args_str"] += tc_delta.function.arguments
 
                 finish_reason = chunk.choices[0].finish_reason
+
+                if finish_reason == "stop" and text_block_id is not None:
+                    yield BlockStopEvent(**_base(), block_id=text_block_id)
+                    text_block_id = None
+
                 if finish_reason == "tool_calls":
+                    # Close any open text block first
+                    if text_block_id is not None:
+                        yield BlockStopEvent(**_base(), block_id=text_block_id)
+                        text_block_id = None
+
                     for entry in pending_tool_calls.values():
                         tool_name = entry["name"]
                         try:
@@ -144,49 +153,91 @@ class CustomAdapter(AgentAdapter):
                             tool_input = {}
 
                         mcp_tool = mcp_tools_by_name.get(tool_name)
+                        tool_bid = gen_uuid()
 
                         if mcp_tool and mcp_tool.has_side_effects:
-                            yield ApprovalRequestEvent(
-                                agent_id=self.agent_id,
-                                message_id=message_id,
-                                action=tool_name,
-                                detail=str(tool_input),
+                            approval_bid = gen_uuid()
+                            yield BlockStartEvent(
+                                **_base(),
+                                block=ApprovalBlock(
+                                    block_id=approval_bid,
+                                    action=tool_name,
+                                    detail=str(tool_input),
+                                    status="pending",
+                                ),
+                            )
+                            yield BlockStopEvent(
+                                **_base(),
+                                block_id=approval_bid,
+                                final_fields={"status": "approved"},
                             )
 
+                        yield BlockStartEvent(
+                            **_base(),
+                            block=ToolUseBlock(block_id=tool_bid, tool_name=tool_name, status="running"),
+                        )
+
+                        result_text: str | None = None
                         if mcp_tool and self._mcp_client is not None:
                             try:
                                 result = await self._mcp_client.call_tool(tool_name, tool_input)
                                 result_text = _extract_tool_result_text(result)
-                                yield TokenEvent(
-                                    agent_id=self.agent_id,
-                                    message_id=message_id,
-                                    content=f"\n[Tool result: {result_text}]\n",
-                                )
                             except Exception as exc:
                                 logger.error("MCP tool call failed (%s): %s", tool_name, exc)
+                                result_text = f"error: {exc}"
+
+                        yield BlockStopEvent(
+                            **_base(),
+                            block_id=tool_bid,
+                            final_fields={
+                                "input": tool_input,
+                                "output": result_text,
+                                "status": "completed" if result_text is not None else "error",
+                            },
+                        )
 
                     pending_tool_calls.clear()
 
+            # Close text block if stream ended without finish_reason="stop"
+            if text_block_id is not None:
+                yield BlockStopEvent(**_base(), block_id=text_block_id)
+
         except openai.APIError as exc:
-            logger.error("OpenAI API error for agent %s: %s", self.agent_id, exc)
-            yield AgentErrorEvent(
-                agent_id=self.agent_id,
-                message_id=message_id,
-                error=str(exc),
-            )
+            logger.error("OpenAI API error for agent %s: %s", inp.agent_id, exc)
+            yield AgentErrorEvent(**_base(), error=str(exc))
             return
 
-        yield AgentDoneEvent(agent_id=self.agent_id, message_id=message_id)
+        yield AgentDoneEvent(**_base())
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _blocks_to_text(blocks: list[ContentBlock]) -> str:
+    parts: list[str] = []
+    for b in blocks:
+        if b.type == "text":
+            parts.append(b.content)
+        elif b.type == "thinking":
+            pass
+        elif b.type == "tool_use":
+            output = b.output or "pending"
+            parts.append(f"[Tool: {b.tool_name} -> {output}]")
+        elif b.type == "code":
+            fname = b.filename or "file"
+            add = b.additions or 0
+            delete = b.deletions or 0
+            parts.append(f"[Code: {fname} +{add}/-{delete}]")
+        elif b.type == "approval":
+            parts.append(f"[Approval: {b.action} ({b.status})]")
+    return "\n".join(parts)
+
+
 def _build_openai_messages(
     system_prompt: str | None,
-    skills: list[SkillEntity],
-    history: list[MessageEntity],
+    skills: list,
+    history: list[MessageInHistory],
     prompt: str,
 ) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = []
@@ -202,7 +253,12 @@ def _build_openai_messages(
 
     for msg in history:
         role = "user" if msg.role == "user" else "assistant"
-        messages.append({"role": role, "content": msg.content})
+        text = _blocks_to_text(msg.blocks)
+        if msg.sender and role == "assistant":
+            text = f"[{msg.sender}]: {text}"
+        if text:
+            messages.append({"role": role, "content": text})
+
     messages.append({"role": "user", "content": prompt})
     return messages
 

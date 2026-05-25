@@ -1,25 +1,28 @@
 """ClaudeAdapter — Anthropic SDK streaming with MCP tool support."""
 from __future__ import annotations
 
-import uuid
+import json as _json
 import logging
-from typing import Any, AsyncGenerator
+import os
+from typing import Any, AsyncIterator
 
 import anthropic
 
-from backend.adapters.base import AgentAdapter
+from backend.adapters.base import AgentAdapter, StreamInput
 from backend.adapters.events import (
     AgentDoneEvent,
     AgentErrorEvent,
     AgentEvent,
     AgentStartEvent,
-    ApprovalRequestEvent,
-    TokenEvent,
+    BlockDeltaEvent,
+    BlockStartEvent,
+    BlockStopEvent,
 )
 from backend.adapters.mcp_client import MCPClient, MCPTool
-from backend.config import settings
-from backend.domain.message import MessageEntity
-from backend.domain.skill import SkillEntity
+from backend.core.utils import gen_uuid
+from backend.domain.agent import AgentCapabilities
+from backend.domain.message import ApprovalBlock, ContentBlock, TextBlock, ThinkingBlock, ToolUseBlock
+from backend.schemas.message import MessageInHistory
 
 logger = logging.getLogger(__name__)
 
@@ -28,50 +31,42 @@ class ClaudeAdapter(AgentAdapter):
     """Streams Claude responses using the Anthropic Python SDK.
 
     Optionally attaches an MCPClient to expose MCP tools to Claude.
-    Tools with side effects surface as ApprovalRequestEvent and pause
+    Tools with side effects surface as an ApprovalBlock and pause
     execution; read-only tools are called transparently.
     """
 
     def __init__(
         self,
-        agent_id: str,
-        agent_name: str,
         model: str | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
-        system_prompt: str | None = None,
         mcp_client: MCPClient | None = None,
     ) -> None:
-        self.agent_id = agent_id
-        self.agent_name = agent_name
-        self.model = model or settings.anthropic_model_id
-        self.system_prompt = system_prompt
+        self.model = model or os.environ.get("ANTHROPIC_MODEL_ID", "claude-sonnet-4-6")
         self._mcp_client = mcp_client
         self._client = anthropic.AsyncAnthropic(
-            api_key=api_key or settings.anthropic_api_key,
-            base_url=base_url or settings.anthropic_base_url,
+            api_key=api_key or os.environ.get("ANTHROPIC_API_KEY"),
+            base_url=base_url or os.environ.get("ANTHROPIC_BASE_URL") or None,
         )
 
-    def get_capabilities(self) -> dict[str, bool]:
-        return {"supports_diff": True, "supports_approval": True}
+    def get_capabilities(self) -> AgentCapabilities:
+        return AgentCapabilities(
+            supports_code=True,
+            supports_diff=True,
+            supports_approval=True,
+        )
 
-    async def stream(
-        self,
-        prompt: str,
-        history: list[MessageEntity],
-        skills: list[SkillEntity],
-    ) -> AsyncGenerator[AgentEvent, None]:
-        message_id = str(uuid.uuid4())
+    async def stream(self, inp: StreamInput) -> AsyncIterator[AgentEvent]:
         yield AgentStartEvent(
-            agent_id=self.agent_id,
-            agent_name=self.agent_name,
-            message_id=message_id,
+            agent_id=inp.agent_id,
+            thread_id=inp.thread_id,
+            message_id=inp.message_id,
+            agent_name=inp.agent_id,
         )
 
-        messages = _build_anthropic_messages(history, prompt)
-        system = _build_system_prompt(self.system_prompt, skills)
+        messages = _build_anthropic_messages(inp.history, inp.prompt)
+        system = _build_system_prompt(inp.system_prompt, inp.skills)
 
-        # Resolve MCP tools (if any) into Anthropic tool format
         tool_definitions: list[dict[str, Any]] = []
         mcp_tools_by_name: dict[str, MCPTool] = {}
         if self._mcp_client is not None:
@@ -81,7 +76,10 @@ class ClaudeAdapter(AgentAdapter):
                     tool_definitions.append(_mcp_tool_to_anthropic(t))
                     mcp_tools_by_name[t.name] = t
             except Exception as exc:
-                logger.warning("Failed to fetch MCP tools for %s: %s", self.agent_id, exc)
+                logger.warning("Failed to fetch MCP tools for %s: %s", inp.agent_id, exc)
+
+        def _base() -> dict[str, str]:
+            return {"agent_id": inp.agent_id, "thread_id": inp.thread_id, "message_id": inp.message_id}
 
         try:
             async with self._client.messages.stream(
@@ -90,98 +88,166 @@ class ClaudeAdapter(AgentAdapter):
                 system=system or anthropic.NOT_GIVEN,
                 messages=messages,
                 tools=tool_definitions or anthropic.NOT_GIVEN,
-            ) as stream:
-                current_tool_use: dict[str, Any] | None = None
+            ) as sdk_stream:
+                # Per-block accumulation state
+                current_block_id: str | None = None
+                current_tool_input_str: str = ""
+                current_tool_name: str = ""
 
-                async for event in stream:
-                    event_type = event.type
+                async for event in sdk_stream:
+                    if inp.cancel_event and inp.cancel_event.is_set():
+                        yield AgentErrorEvent(**_base(), error="cancelled")
+                        return
 
-                    if event_type == "text":
-                        yield TokenEvent(
-                            agent_id=self.agent_id,
-                            message_id=message_id,
-                            content=event.text,
-                        )
+                    et = event.type
 
-                    elif event_type == "content_block_start":
+                    if et == "content_block_start":
                         block = event.content_block
-                        if block.type == "tool_use":
-                            current_tool_use = {
-                                "id": block.id,
-                                "name": block.name,
-                                "input_str": "",
-                            }
+                        bid = gen_uuid()
+                        current_block_id = bid
 
-                    elif event_type == "input_json_delta" and current_tool_use is not None:
-                        current_tool_use["input_str"] += event.partial_json
-
-                    elif event_type == "content_block_stop" and current_tool_use is not None:
-                        import json as _json
-                        try:
-                            tool_input = _json.loads(current_tool_use["input_str"] or "{}")
-                        except _json.JSONDecodeError:
-                            tool_input = {}
-
-                        tool_name = current_tool_use["name"]
-                        mcp_tool = mcp_tools_by_name.get(tool_name)
-
-                        if mcp_tool and mcp_tool.has_side_effects:
-                            yield ApprovalRequestEvent(
-                                agent_id=self.agent_id,
-                                message_id=message_id,
-                                action=tool_name,
-                                detail=str(tool_input),
+                        if block.type == "thinking":
+                            yield BlockStartEvent(
+                                **_base(),
+                                block=ThinkingBlock(block_id=bid, content=""),
                             )
-                            # In a full implementation, thread_service suspends here
-                            # and resumes after WebSocket approval. For now we call through.
+                        elif block.type == "text":
+                            yield BlockStartEvent(
+                                **_base(),
+                                block=TextBlock(block_id=bid, content=""),
+                            )
+                        elif block.type == "tool_use":
+                            current_tool_name = block.name
+                            current_tool_input_str = ""
+                            yield BlockStartEvent(
+                                **_base(),
+                                block=ToolUseBlock(block_id=bid, tool_name=block.name, status="running"),
+                            )
 
-                        if mcp_tool and self._mcp_client is not None:
+                    elif et == "content_block_delta" and current_block_id:
+                        d = event.delta
+                        if d.type == "thinking_delta":
+                            yield BlockDeltaEvent(
+                                **_base(),
+                                block_id=current_block_id,
+                                delta={"content": d.thinking},
+                            )
+                        elif d.type == "text_delta":
+                            yield BlockDeltaEvent(
+                                **_base(),
+                                block_id=current_block_id,
+                                delta={"content": d.text},
+                            )
+                        elif d.type == "input_json_delta":
+                            current_tool_input_str += d.partial_json
+
+                    elif et == "content_block_stop" and current_block_id:
+                        bid = current_block_id
+
+                        # Resolve and execute tool if this was a tool_use block
+                        if current_tool_name:
                             try:
-                                result = await self._mcp_client.call_tool(tool_name, tool_input)
-                                result_text = _extract_tool_result_text(result)
-                                # Inject tool result as a token so the frontend sees it
-                                yield TokenEvent(
-                                    agent_id=self.agent_id,
-                                    message_id=message_id,
-                                    content=f"\n[Tool result: {result_text}]\n",
-                                )
-                            except Exception as exc:
-                                logger.error("MCP tool call failed (%s): %s", tool_name, exc)
+                                tool_input = _json.loads(current_tool_input_str or "{}")
+                            except _json.JSONDecodeError:
+                                tool_input = {}
 
-                        current_tool_use = None
+                            mcp_tool = mcp_tools_by_name.get(current_tool_name)
+
+                            if mcp_tool and mcp_tool.has_side_effects:
+                                # Emit approval block before executing
+                                approval_bid = gen_uuid()
+                                yield BlockStartEvent(
+                                    **_base(),
+                                    block=ApprovalBlock(
+                                        block_id=approval_bid,
+                                        action=current_tool_name,
+                                        detail=str(tool_input),
+                                        status="pending",
+                                    ),
+                                )
+                                yield BlockStopEvent(
+                                    **_base(),
+                                    block_id=approval_bid,
+                                    final_fields={"status": "approved"},
+                                )
+
+                            result_text: str | None = None
+                            if mcp_tool and self._mcp_client is not None:
+                                try:
+                                    result = await self._mcp_client.call_tool(
+                                        current_tool_name, tool_input
+                                    )
+                                    result_text = _extract_tool_result_text(result)
+                                except Exception as exc:
+                                    logger.error("MCP tool call failed (%s): %s", current_tool_name, exc)
+                                    result_text = f"error: {exc}"
+
+                            yield BlockStopEvent(
+                                **_base(),
+                                block_id=bid,
+                                final_fields={
+                                    "input": tool_input,
+                                    "output": result_text,
+                                    "status": "completed" if result_text is not None else "error",
+                                },
+                            )
+                            current_tool_name = ""
+                            current_tool_input_str = ""
+                        else:
+                            yield BlockStopEvent(**_base(), block_id=bid)
+
+                        current_block_id = None
 
         except anthropic.APIError as exc:
-            logger.error("Anthropic API error for agent %s: %s", self.agent_id, exc)
-            yield AgentErrorEvent(
-                agent_id=self.agent_id,
-                message_id=message_id,
-                error=str(exc),
-            )
+            logger.error("Anthropic API error for agent %s: %s", inp.agent_id, exc)
+            yield AgentErrorEvent(**_base(), error=str(exc))
             return
 
-        yield AgentDoneEvent(agent_id=self.agent_id, message_id=message_id)
+        yield AgentDoneEvent(**_base())
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _blocks_to_text(blocks: list[ContentBlock]) -> str:
+    """Serialize ContentBlock list to natural language for LLM context."""
+    parts: list[str] = []
+    for b in blocks:
+        if b.type == "text":
+            parts.append(b.content)
+        elif b.type == "thinking":
+            pass  # skip — don't feed internal thinking back to LLM
+        elif b.type == "tool_use":
+            output = b.output or "pending"
+            parts.append(f"[Tool: {b.tool_name} -> {output}]")
+        elif b.type == "code":
+            fname = b.filename or "file"
+            add = b.additions or 0
+            delete = b.deletions or 0
+            parts.append(f"[Code: {fname} +{add}/-{delete}]")
+        elif b.type == "approval":
+            parts.append(f"[Approval: {b.action} ({b.status})]")
+    return "\n".join(parts)
+
+
 def _build_anthropic_messages(
-    history: list[MessageEntity],
+    history: list[MessageInHistory],
     prompt: str,
 ) -> list[dict[str, Any]]:
     messages: list[dict[str, Any]] = []
     for msg in history:
         role = "user" if msg.role == "user" else "assistant"
-        messages.append({"role": role, "content": msg.content})
+        text = _blocks_to_text(msg.blocks)
+        if msg.sender and role == "assistant":
+            text = f"[{msg.sender}]: {text}"
+        if text:
+            messages.append({"role": role, "content": text})
     messages.append({"role": "user", "content": prompt})
     return messages
 
 
-def _build_system_prompt(
-    base: str | None,
-    skills: list[SkillEntity],
-) -> str:
+def _build_system_prompt(base: str | None, skills: list) -> str:
     parts: list[str] = []
     if base:
         parts.append(base)

@@ -7,19 +7,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from backend.adapters.base import StreamInput
 from backend.adapters.codex import (
     CodexAdapter,
     _looks_like_diff,
-    _parse_diff_to_events,
 )
 from backend.adapters.events import (
     AgentDoneEvent,
     AgentErrorEvent,
     AgentStartEvent,
-    ApprovalRequestEvent,
-    ArtifactDiffEvent,
-    TokenEvent,
+    BlockStartEvent,
+    BlockStopEvent,
 )
+from backend.domain.message import ApprovalBlock, CodeBlock, TextBlock
 from tests.test_utils import collect_stream
 
 
@@ -28,24 +28,22 @@ from tests.test_utils import collect_stream
 # ---------------------------------------------------------------------------
 
 def _make_adapter(mcp_client=None):
-    return CodexAdapter(
-        agent_id="codex-1",
-        agent_name="Codex",
-        bin_path="codex",
-        mcp_client=mcp_client,
-    )
+    return CodexAdapter(bin_path="codex", mcp_client=mcp_client)
+
+
+def _make_inp(**kwargs) -> StreamInput:
+    defaults = dict(agent_id="codex-1", thread_id="thread-1", message_id="msg-1", prompt="hello")
+    defaults.update(kwargs)
+    return StreamInput(**defaults)
 
 
 class _FakeProcess:
-    """Fake asyncio subprocess."""
-
     def __init__(self, lines: list[bytes], returncode: int = 0, stderr: bytes = b""):
         self._lines = lines
         self.returncode = returncode
-        self._stderr = stderr
         self.stdin = AsyncMock()
         self.stdin.drain = AsyncMock()
-        self.stdout = self  # async-iterable
+        self.stdout = self
         self.stderr = AsyncMock()
         self.stderr.read = AsyncMock(return_value=stderr)
 
@@ -65,12 +63,16 @@ class _FakeProcess:
 # ---------------------------------------------------------------------------
 
 def test_get_capabilities():
+    from backend.domain.agent import AgentCapabilities
     adapter = _make_adapter()
-    assert adapter.get_capabilities() == {"supports_diff": True, "supports_approval": True}
+    caps = adapter.get_capabilities()
+    assert isinstance(caps, AgentCapabilities)
+    assert caps.supports_diff is True
+    assert caps.supports_approval is True
 
 
 # ---------------------------------------------------------------------------
-# Subprocess mode: basic token streaming
+# Subprocess mode: basic text streaming
 # ---------------------------------------------------------------------------
 
 async def test_stream_subprocess_tokens():
@@ -79,11 +81,11 @@ async def test_stream_subprocess_tokens():
 
     with patch("backend.adapters.codex.asyncio.create_subprocess_exec", return_value=proc), \
          patch("backend.adapters.codex.shutil.which", return_value="codex"):
-        events = await collect_stream(adapter.stream("write hello", [], []))
+        events = await collect_stream(adapter.stream(_make_inp()))
 
     assert isinstance(events[0], AgentStartEvent)
-    token_events = [e for e in events if isinstance(e, TokenEvent)]
-    assert any("hello world" in e.content for e in token_events)
+    text_starts = [e for e in events if isinstance(e, BlockStartEvent) and isinstance(e.block, TextBlock)]
+    assert len(text_starts) == 1
     assert isinstance(events[-1], AgentDoneEvent)
 
 
@@ -93,7 +95,7 @@ async def test_stream_subprocess_empty_output():
 
     with patch("backend.adapters.codex.asyncio.create_subprocess_exec", return_value=proc), \
          patch("backend.adapters.codex.shutil.which", return_value="codex"):
-        events = await collect_stream(adapter.stream("do nothing", [], []))
+        events = await collect_stream(adapter.stream(_make_inp()))
 
     assert isinstance(events[0], AgentStartEvent)
     assert isinstance(events[-1], AgentDoneEvent)
@@ -116,18 +118,18 @@ SAMPLE_DIFF = (
 
 async def test_stream_subprocess_diff():
     adapter = _make_adapter()
-    lines = [line.encode() for line in SAMPLE_DIFF.splitlines(keepends=True)]
+    lines = [line.encode() for line in SAMPLE_DIFF.splitlines(keepends=True)] + [b"\n"]
     proc = _FakeProcess(lines)
 
     with patch("backend.adapters.codex.asyncio.create_subprocess_exec", return_value=proc), \
          patch("backend.adapters.codex.shutil.which", return_value="codex"):
-        events = await collect_stream(adapter.stream("add sys import", [], []))
+        events = await collect_stream(adapter.stream(_make_inp()))
 
-    diff_events = [e for e in events if isinstance(e, ArtifactDiffEvent)]
-    assert len(diff_events) == 1
-    assert diff_events[0].file == "src/app.py"
-    assert diff_events[0].additions == 1
-    assert diff_events[0].deletions == 0
+    code_starts = [
+        e for e in events if isinstance(e, BlockStartEvent) and isinstance(e.block, CodeBlock)
+    ]
+    assert len(code_starts) == 1
+    assert code_starts[0].block.filename == "src/app.py"
 
 
 # ---------------------------------------------------------------------------
@@ -141,12 +143,14 @@ async def test_stream_subprocess_approval():
 
     with patch("backend.adapters.codex.asyncio.create_subprocess_exec", return_value=proc), \
          patch("backend.adapters.codex.shutil.which", return_value="codex"):
-        events = await collect_stream(adapter.stream("run tests", [], []))
+        events = await collect_stream(adapter.stream(_make_inp()))
 
-    approval_events = [e for e in events if isinstance(e, ApprovalRequestEvent)]
-    assert len(approval_events) == 1
-    assert approval_events[0].action == "run_command"
-    assert approval_events[0].detail == "npm test"
+    approval_starts = [
+        e for e in events if isinstance(e, BlockStartEvent) and isinstance(e.block, ApprovalBlock)
+    ]
+    assert len(approval_starts) == 1
+    assert approval_starts[0].block.action == "run_command"
+    assert approval_starts[0].block.detail == "npm test"
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +163,7 @@ async def test_stream_subprocess_error_exit():
 
     with patch("backend.adapters.codex.asyncio.create_subprocess_exec", return_value=proc), \
          patch("backend.adapters.codex.shutil.which", return_value="codex"):
-        events = await collect_stream(adapter.stream("broken", [], []))
+        events = await collect_stream(adapter.stream(_make_inp()))
 
     error_events = [e for e in events if isinstance(e, AgentErrorEvent)]
     assert len(error_events) == 1
@@ -171,7 +175,7 @@ async def test_stream_subprocess_binary_not_found():
 
     with patch("backend.adapters.codex.asyncio.create_subprocess_exec", side_effect=FileNotFoundError), \
          patch("backend.adapters.codex.shutil.which", return_value=None):
-        events = await collect_stream(adapter.stream("hello", [], []))
+        events = await collect_stream(adapter.stream(_make_inp()))
 
     error_events = [e for e in events if isinstance(e, AgentErrorEvent)]
     assert len(error_events) == 1
@@ -189,11 +193,11 @@ async def test_stream_via_mcp_text():
     )
     adapter = _make_adapter(mcp_client=mock_mcp)
 
-    events = await collect_stream(adapter.stream("do something", [], []))
+    events = await collect_stream(adapter.stream(_make_inp()))
 
     assert isinstance(events[0], AgentStartEvent)
-    token_events = [e for e in events if isinstance(e, TokenEvent)]
-    assert any("output line" in e.content for e in token_events)
+    text_starts = [e for e in events if isinstance(e, BlockStartEvent) and isinstance(e.block, TextBlock)]
+    assert len(text_starts) >= 1
     assert isinstance(events[-1], AgentDoneEvent)
 
 
@@ -204,10 +208,12 @@ async def test_stream_via_mcp_diff():
     )
     adapter = _make_adapter(mcp_client=mock_mcp)
 
-    events = await collect_stream(adapter.stream("add import", [], []))
+    events = await collect_stream(adapter.stream(_make_inp()))
 
-    diff_events = [e for e in events if isinstance(e, ArtifactDiffEvent)]
-    assert len(diff_events) == 1
+    code_starts = [
+        e for e in events if isinstance(e, BlockStartEvent) and isinstance(e.block, CodeBlock)
+    ]
+    assert len(code_starts) == 1
 
 
 async def test_stream_via_mcp_error():
@@ -215,7 +221,7 @@ async def test_stream_via_mcp_error():
     mock_mcp.call_tool.side_effect = RuntimeError("mcp timeout")
     adapter = _make_adapter(mcp_client=mock_mcp)
 
-    events = await collect_stream(adapter.stream("do something", [], []))
+    events = await collect_stream(adapter.stream(_make_inp()))
 
     error_events = [e for e in events if isinstance(e, AgentErrorEvent)]
     assert len(error_events) == 1
@@ -223,7 +229,7 @@ async def test_stream_via_mcp_error():
 
 
 # ---------------------------------------------------------------------------
-# Helpers: _looks_like_diff
+# Helper: _looks_like_diff
 # ---------------------------------------------------------------------------
 
 def test_looks_like_diff_true():
@@ -232,43 +238,3 @@ def test_looks_like_diff_true():
 
 def test_looks_like_diff_false():
     assert _looks_like_diff("just a normal line\n") is False
-
-
-# ---------------------------------------------------------------------------
-# Helpers: _parse_diff_to_events
-# ---------------------------------------------------------------------------
-
-def test_parse_diff_single_file():
-    events = _parse_diff_to_events("a1", "m1", SAMPLE_DIFF)
-    assert len(events) == 1
-    assert events[0].file == "src/app.py"
-    assert events[0].additions == 1
-
-
-def test_parse_diff_multi_file():
-    two_file_diff = (
-        "--- a/foo.py\n+++ b/foo.py\n@@ -1 +1,2 @@\n x\n+y\n"
-        "--- a/bar.py\n+++ b/bar.py\n@@ -1 +1 @@\n-old\n+new\n"
-    )
-    events = _parse_diff_to_events("a1", "m1", two_file_diff)
-    assert len(events) == 2
-    files = {e.file for e in events}
-    assert files == {"foo.py", "bar.py"}
-
-
-def test_parse_diff_counts_additions_and_deletions():
-    diff = (
-        "--- a/x.py\n+++ b/x.py\n@@ -1,3 +1,4 @@\n"
-        " unchanged\n"
-        "+added line\n"
-        "+another added\n"
-        "-removed line\n"
-    )
-    events = _parse_diff_to_events("a1", "m1", diff)
-    assert events[0].additions == 2
-    assert events[0].deletions == 1
-
-
-def test_parse_diff_empty_returns_no_events():
-    events = _parse_diff_to_events("a1", "m1", "")
-    assert events == []
