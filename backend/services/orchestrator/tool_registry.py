@@ -63,7 +63,7 @@ def register_tool(
     用作装饰器:
 
         @register_tool(name="dispatch_to_agent", description="...", input_model=DispatchInput)
-        async def dispatch_to_agent(input: dict, *, ctx: ToolContext) -> dict:
+        async def dispatch_to_agent(tool_input: dict, *, ctx: ToolContext) -> dict:
             ...
 
     - name 必须在 19 个工具命名内,重复注册抛 ValueError
