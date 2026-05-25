@@ -1,2 +1,7 @@
-<!-- TODO: /chat/:conversationId 路由页面 -->
-<template></template>
+<template>
+  <AppLayout />
+</template>
+
+<script setup lang="ts">
+import AppLayout from '@/components/layout/AppLayout.vue'
+</script>

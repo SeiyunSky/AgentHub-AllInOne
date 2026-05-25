@@ -1,2 +1,3 @@
-<!-- TODO: /agents Agent 管理页面 -->
-<template></template>
+<template>
+  <div>AgentsView</div>
+</template>
