@@ -2,3 +2,32 @@
 
 # 参考项目源码
 According to/
+
+# 环境变量(含真实密码 / API Key)
+.env
+**/.env
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# 运行时数据
+backend/runtime/
+logs/
+
+# Node / 前端
+node_modules/
+dist/
+.next/
