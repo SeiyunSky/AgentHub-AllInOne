@@ -1,40 +1,45 @@
 <template>
   <CollapsibleBlock
-    :label="title"
+    :label="artifact.name"
     :icon="Files"
-    variant="default"
-    :badge="`${items.length} items`"
+    variant="artifact"
+    :badge="artifact.type"
     :default-expanded="defaultExpanded"
   >
-    <div class="px-3 py-2 space-y-1.5">
-      <div
-        v-for="(item, i) in items"
-        :key="i"
-        class="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-slate-50/80 hover:bg-slate-100/80 transition-colors"
+    <CodeBlock :code="artifact.preview ?? ''" :filename="artifact.name" :language="artifact.type" />
+
+    <template #actions>
+      <el-button
+        v-if="artifact.preview"
+        text
+        size="small"
+        class="!text-[11px] !text-brand"
+        @click.stop="openPreview"
       >
-        <el-icon :size="14" class="text-on-surface-variant shrink-0">
-          <Document />
-        </el-icon>
-        <span class="text-[12px] text-on-surface flex-1 truncate">{{ item.name }}</span>
-        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-200/60 text-on-surface-variant shrink-0">{{ item.type }}</span>
-      </div>
-    </div>
+        Preview
+      </el-button>
+    </template>
   </CollapsibleBlock>
 </template>
 
 <script setup lang="ts">
-import { Files, Document } from '@element-plus/icons-vue'
+import { Files } from '@element-plus/icons-vue'
 import CollapsibleBlock from './CollapsibleBlock.vue'
+import CodeBlock from '../CodeBlock.vue'
+import { useArtifactPreview } from '@/composables/useArtifactPreview'
+import type { ArtifactItem } from '@/types/artifact'
 
-withDefaults(defineProps<{
-  title: string
-  items: Array<{
-    name: string
-    type: string
-    preview?: string
-  }>
+const props = withDefaults(defineProps<{
+  messageId: string
+  artifact: ArtifactItem
   defaultExpanded?: boolean
 }>(), {
   defaultExpanded: true,
 })
+
+const { openArtifact } = useArtifactPreview()
+
+function openPreview() {
+  openArtifact(props.messageId, props.artifact, 0)
+}
 </script>

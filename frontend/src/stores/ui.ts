@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import type { ActiveArtifact, ArtifactItem } from '@/types/artifact'
 
 export const useUIStore = defineStore('ui', () => {
   // Sidebar
@@ -12,6 +13,9 @@ export const useUIStore = defineStore('ui', () => {
   // Right panel
   const rightPanelActiveTab = ref<'workflow' | 'preview'>('workflow')
   const rightPanelVisible = ref(true)
+
+  // Artifact preview
+  const activeArtifact = ref<ActiveArtifact | null>(null)
 
   // Legacy - no longer used for resizing, but kept for compatibility
   const isResizing = ref(false)
@@ -26,6 +30,28 @@ export const useUIStore = defineStore('ui', () => {
     sidebarActiveTab.value = tab
     if (sidebarCollapsed.value) {
       sidebarCollapsed.value = false
+    }
+  }
+
+  function openArtifact(messageId: string, item: ArtifactItem, itemIndex: number) {
+    activeArtifact.value = {
+      id: `${messageId}-${itemIndex}`,
+      messageId,
+      item,
+      mode: 'preview',
+    }
+    rightPanelActiveTab.value = 'preview'
+    rightPanelVisible.value = true
+  }
+
+  function closeArtifact() {
+    activeArtifact.value = null
+    rightPanelActiveTab.value = 'workflow'
+  }
+
+  function setPreviewMode(mode: 'preview' | 'code') {
+    if (activeArtifact.value) {
+      activeArtifact.value.mode = mode
     }
   }
 
@@ -48,10 +74,14 @@ export const useUIStore = defineStore('ui', () => {
     chatPanePercent,
     rightPanelActiveTab,
     rightPanelVisible,
+    activeArtifact,
     isResizing,
     sidebarWidth,
     toggleSidebar,
     setSidebarTab,
+    openArtifact,
+    closeArtifact,
+    setPreviewMode,
     startResizing,
     stopResizing,
     updatePanelWidths,

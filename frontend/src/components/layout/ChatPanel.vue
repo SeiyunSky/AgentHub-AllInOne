@@ -220,12 +220,11 @@ def create_comparison_chart(q3_data, q4_data):
       },
       {
         type: 'artifacts',
-        title: 'Generated Artifacts',
-        items: [
-          { name: 'q4_sales_report.pdf', type: 'PDF' },
-          { name: 'comparison_chart.png', type: 'Image' },
-          { name: 'quarter_comparison.py', type: 'Code' },
-        ],
+        item: {
+          name: 'sales_dashboard.html',
+          type: 'HTML',
+          preview: '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>Q4 Sales Dashboard</title>\n  <style>\n    body { padding: 24px; font-family: system-ui, sans-serif; }\n    .metric { flex: 1; border-radius: 8px; padding: 16px; }\n    .metric-label { font-size: 12px; color: #64748b; margin: 0; }\n    .metric-value { font-size: 24px; font-weight: 700; margin: 4px 0 0; }\n    .row { display: flex; gap: 12px; }\n  </style>\n</head>\n<body>\n  <h1 style="color:#1e293b;margin:0 0 12px">Q4 Sales Dashboard</h1>\n  <div class="row">\n    <div class="metric" style="background:#eff6ff">\n      <p class="metric-label">Revenue</p>\n      <p class="metric-value" style="color:#1e40af">$1.2M</p>\n    </div>\n    <div class="metric" style="background:#f0fdf4">\n      <p class="metric-label">Growth</p>\n      <p class="metric-value" style="color:#166534">+15%</p>\n    </div>\n  </div>\n</body>\n</html>',
+        },
       },
     ],
   },

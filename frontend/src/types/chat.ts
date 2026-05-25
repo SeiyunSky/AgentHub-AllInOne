@@ -45,12 +45,12 @@ export interface ImageBlockData {
 
 export interface ArtifactsBlockData {
   type: 'artifacts'
-  title: string
-  items: Array<{
+  title?: string
+  item: {
     name: string
     type: string
     preview?: string
-  }>
+  }
 }
 
 export type ContentBlock =

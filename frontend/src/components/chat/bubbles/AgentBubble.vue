@@ -68,8 +68,8 @@
           <!-- Artifacts block -->
           <ArtifactsBlock
             v-else-if="block.type === 'artifacts'"
-            :title="block.title"
-            :items="block.items"
+            :message-id="message.id"
+            :artifact="block.item"
           />
         </div>
       </div>
