@@ -23,7 +23,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from backend.core.utils import now_utc
 
@@ -93,6 +93,10 @@ class HookResult(BaseModel):
     """
     同步 Hook 的返回值。
     HookManager 按 decision 决定主流程走向;异步 Hook 没有返回值,本类型不适用。
+
+    协议约束:同一个 HookResult 不允许同时表达 inject 与 replace_input。
+    一个 hook 要么改输入、要么注入消息,二选一。需要两种效果时拆成两个 hook。
+    HookManager 在聚合多个 hook 决策时同样遵守此规则,违反会 raise。
     """
 
     decision: Literal["continue", "block", "inject", "replace_input"] = Field(
@@ -116,6 +120,28 @@ class HookResult(BaseModel):
         default=None,
         description="decision=replace_input 时填,替换原 tool_input",
     )
+
+    @model_validator(mode="after")
+    def _check_decision_payload(self) -> "HookResult":
+        """
+        校验 decision 与对应字段的一致性:
+        - block 必须带 block_reason
+        - inject 必须带 injected_message
+        - replace_input 必须带 updated_input
+        - inject 与 replace_input 不允许同时出现
+        """
+        if self.injected_message is not None and self.updated_input is not None:
+            raise ValueError(
+                "HookResult: inject 与 replace_input 不允许同时出现,"
+                "拆分成两个 hook 分别表达"
+            )
+        if self.decision == "block" and not self.block_reason:
+            raise ValueError("HookResult: decision=block 必须填 block_reason")
+        if self.decision == "inject" and not self.injected_message:
+            raise ValueError("HookResult: decision=inject 必须填 injected_message")
+        if self.decision == "replace_input" and self.updated_input is None:
+            raise ValueError("HookResult: decision=replace_input 必须填 updated_input")
+        return self
 
 
 # ============================================================
