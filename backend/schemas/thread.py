@@ -146,6 +146,10 @@ class ThreadCreate(BaseModel):
         default_factory=list,
         description="依赖的 thread_id 数组",
     )
+    dispatch_prompt: Optional[str] = Field(
+        default=None,
+        description="主 Agent 派活时给子 Agent 的指令,Adapter 启动时塞进 StreamInput.prompt",
+    )
 
 
 class ThreadUpdate(BaseModel):
@@ -187,6 +191,10 @@ class ThreadResponse(BaseModel):
     message_id: str
     agent_id: str
     status: ThreadStatus
+    dispatch_prompt: Optional[str] = Field(
+        default=None,
+        description="主 Agent 派活时给子 Agent 的指令",
+    )
     result_summary: Optional[str] = Field(
         default=None,
         description="该 Thread 的简短摘要(done 时由 orchestrator_service / Adapter 生成),主 Agent 默认读这个",
