@@ -1,6 +1,6 @@
 <template>
   <div class="flex gap-3 justify-end message-enter group">
-    <div class="max-w-[70%]">
+    <div class="max-w-[70%] relative pb-3">
       <div class="p-4 bg-slate-700 text-white rounded-2xl rounded-tr-md shadow-soft">
         <div class="text-[13px] leading-relaxed markdown-body-dark" v-html="renderMarkdown(message.content)"></div>
       </div>

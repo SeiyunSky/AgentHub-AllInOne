@@ -2,7 +2,7 @@
   <div class="flex gap-3 message-enter group">
     <AgentAvatar :name="message.agentName" :color="avatarColor" />
 
-    <div class="flex-1 min-w-0">
+    <div class="flex-1 min-w-0 relative pb-3">
       <!-- Header -->
       <div class="flex items-center gap-2 mb-1.5">
         <span class="text-[12px] font-semibold text-on-surface">{{ message.agentName }}</span>

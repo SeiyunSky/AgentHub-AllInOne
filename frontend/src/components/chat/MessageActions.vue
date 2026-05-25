@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center gap-0.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200" :class="variant === 'user' ? 'justify-end' : ''">
+  <div class="absolute -bottom-3 flex items-center gap-0.5 px-1 py-0.5 rounded-lg bg-white/90 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto" :class="variant === 'user' ? 'right-0' : 'left-0'">
     <!-- Like -->
     <button
       class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
