@@ -173,7 +173,7 @@
 | 工具 | 用途 |
 |---|---|
 | `dispatch_to_agent(agent_id, prompt, role_hint, blocked_by=[])` | 异步派任务给某个 Agent，可声明依赖；返回 thread_id |
-| `read_thread_status(thread_id)` | 查 Thread 当前状态（init/running/suspended/done/error） |
+| `read_thread_status(thread_id)` | 查 Thread 当前状态（init/running/suspended/done/error/cancelled） |
 | `read_thread_result(thread_id)` | 读取 Thread 完整结果（含中间产物） |
 | `cancel_thread(thread_id)` | 主动中止某个子 Thread |
 
@@ -518,7 +518,7 @@ applicable_to: orchestrator
 | 字段 | 含义 |
 |---|---|
 | id | Thread ID |
-| status | init / running / suspended / done / error |
+| status | init / running / suspended / done / error / cancelled |
 | blocked_by | JSON 数组，存依赖的 thread_id |
 
 ### 3. 调度流程
@@ -600,23 +600,46 @@ MVP 默认 **传播**，主Agent 可按需手动 add_task 补救。
 | 3 | `mode == group` 且 mention 数 = 1 | @个体特化流程（resume_or_create） |
 | 4 | 其他 | 群聊全员流程（走主Agent） |
 
-### 2. 单聊流程（直通）
+### 2. 用户在 round 进行中再次发消息
+
+采用 **队列式**：新消息排队，等当前轮结束后自动取出处理；继承当前轮的完整上下文（不丢中间产物）。
+
+判定流程（在路由判定之前执行）：
+
+1. 收到新 ChatRequest
+2. 检查 conversation 锁
+3. 如果有人持锁（说明上一轮还在跑）：
+   - 写入 `pending_messages:{conversation_id}` 队列（Redis List 或内存队列）
+   - 推 SSE 事件 `message_queued` 通知前端
+   - 直接返回，不继续路由
+4. 当前轮 `round_done` 推送后：
+   - 释放锁
+   - pop 队列首条消息
+   - 拿新锁，进入正常路由分发
+5. 队列里有多条 → 依次处理
+
+**显式中止入口（紧急逃生）**：
+
+- 用户点"停止"按钮（独立于发消息流程） → 调 `POST /api/v1/chat/stop` → `stream_service.abort(conversation_id)`
+- 仅此场景下立即 cancel 所有 Thread，推 `round_done`，释放锁，处理队列后续消息
+
+### 3. 单聊流程（直通）
 
 - 直接走 `thread_service.create_thread` + 对应 Adapter
 - 不进主Agent loop（单聊没有调度需求）
 
-### 3. @个体特化流程
+### 4. @个体特化流程
 
 - `thread_service.resume_or_create(agent_id, conversation_id)` 找历史 Thread
 - 复用上下文继续跑该 Agent
 - 不打扰其他 Agent
 
-### 4. 群聊全员流程
+### 5. 群聊全员流程
 
 - 进入主Agent loop（创建 orchestrator Thread）
 - 主Agent 自己决定派给哪些子 Agent
 
-### 5. 局部修改流程
+### 6. 局部修改流程
 
 - prompt_service 加载 `prompts/local_edit.md` 模板
 - 渲染：file / start / end / selected_code / user_intent

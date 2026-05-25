@@ -1,53 +1,37 @@
+"""
+全局配置 —— 从 .env 加载
+
+队伍:咕嘎一辈子队
+修改者:Adam Zhang
+修改日期:2026-05-25
+"""
+
+from pathlib import Path
+
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+_BACKEND_ROOT = Path(__file__).resolve().parent
+
+
 class Settings(BaseSettings):
-    # Runtime
-    env: str = "development"
-    host: str = "0.0.0.0"
-    port: int = 8000
-
-    # Database
-    db_url: str = "mysql+pymysql://root:password@localhost:3306/agenthub"
-    db_pool_size: int = 10
-    db_max_overflow: int = 20
-
-    # JWT
-    jwt_secret: str = "change-me-in-production"
-    jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 1440
-
-    # Redis
-    redis_url: str | None = None
-    rate_limit_backend: str = "memory"
-
-    # Anthropic / Claude
-    anthropic_api_key: str | None = None
-    anthropic_model_id: str = "claude-sonnet-4-6"
-    anthropic_base_url: str = "https://api.anthropic.com"
-
-    # OpenAI / Custom adapter
-    openai_api_key: str | None = None
-    openai_model_id: str = "gpt-4o"
-    openai_base_url: str = "https://api.openai.com/v1"
-
-    # Codex CLI (https://github.com/openai/codex)
-    codex_bin_path: str = "codex"
-
-    # OpenCode CLI
-    opencode_bin_path: str = "opencode"
-
-    # HTTP proxy (optional, passed to SDK clients)
-    proxy: str | None = None
-
-    # Logging
-    log_level: str = "INFO"
-    log_format: str = "text"
+    """全局配置,字段名对齐 .env 的环境变量名(大小写不敏感)。"""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_BACKEND_ROOT / ".env",
         env_file_encoding="utf-8",
+        case_sensitive=False,
         extra="ignore",
+    )
+
+    # ---- 数据库 ----
+    DB_URL: str = Field(description="SQLAlchemy 数据库连接串")
+
+    # ---- 记忆根目录 ----
+    MEMORY_ROOT: Path = Field(
+        default=_BACKEND_ROOT / "runtime" / "memory",
+        description="长期记忆文件根目录",
     )
 
 

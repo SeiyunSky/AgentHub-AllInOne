@@ -1,2 +1,7 @@
-<!-- TODO: 根组件，路由出口 -->
-<template></template>
+<script setup lang="ts">
+import { RouterView } from 'vue-router'
+</script>
+
+<template>
+  <RouterView />
+</template>

@@ -40,7 +40,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | id | VARCHAR(36) PRIMARY KEY | UUID |
-| user_id | VARCHAR(36) NULL | 创建者，NULL=系统内置 |
+| user_id | VARCHAR(36) NOT NULL | 创建者；值为 'GUGA' 表示系统内置 Agent |
 | name | VARCHAR(100) NOT NULL | 联系人列表展示名 |
 | description | VARCHAR(500) NULL | Agent 简介，联系人卡片副标题 |
 | type | ENUM('claude','codex','opencode','custom') | 路由到对应 Adapter |
@@ -73,7 +73,7 @@ INDEX(is_public, is_active)
 | description | VARCHAR(500) | frontmatter description，progressive disclosure 时塞进系统prompt |
 | category | VARCHAR(50) NULL | 分类（代码/安全/领域知识等），市场筛选用 |
 | file_path | VARCHAR(255) NOT NULL | 指向 `skills/{name}.md` |
-| author_id | VARCHAR(36) NULL | 创建者用户ID，NULL=系统内置 |
+| author_id | VARCHAR(36) NOT NULL | 创建者用户 ID；值为 'GUGA' 表示系统内置 |
 | is_public | TINYINT(1) DEFAULT 0 | 公开/私有，公开的所有人可挂载 |
 | is_active | TINYINT(1) DEFAULT 1 | 启用/停用，停用后不再注入 |
 | created_at | TIMESTAMP | |
@@ -146,12 +146,11 @@ PRIMARY KEY (conversation_id, agent_id)
 | id | VARCHAR(36) PRIMARY KEY | messageId |
 | conversation_id | VARCHAR(36) NOT NULL | |
 | thread_id | VARCHAR(36) NULL | 关联 threads 表，反查执行状态 |
-| parent_id | VARCHAR(36) NULL | 树形结构（重新生成/分支），参考LibreChat |
+| parent_id | VARCHAR(36) NULL | 树形结构（重新生成/分支） |
 | user_id | VARCHAR(36) NULL | 用户消息时填 |
 | agent_id | VARCHAR(36) NULL | Agent 消息时填，NULL=用户消息 |
 | role | ENUM('user','assistant') | |
-| content | TEXT | 消息文本 / artifact 的JSON序列化 |
-| content_type | ENUM('text','artifact_html','artifact_code','artifact_diff','approval_request') | 前端按此渲染 |
+| content | JSON NOT NULL | ContentBlock 数组的 JSON 序列化（见 domain/message.py） |
 | status | ENUM('streaming','done','error') | streaming态进Redis，done落MySQL |
 | error_message | VARCHAR(500) NULL | status=error 时的错误信息 |
 | model | VARCHAR(50) NULL | 实际用的模型，hover 气泡显示，审计/调试用 |
@@ -160,9 +159,7 @@ PRIMARY KEY (conversation_id, agent_id)
 | tokens_output | INT NULL | 输出 token 数 |
 | latency_ms | INT NULL | Agent 响应耗时（毫秒），性能监控/调试 |
 | feedback | ENUM('up','down') NULL | 用户对Agent消息的点赞/点踩，NULL=未评价 |
-| approval_status | ENUM('pending','approved','rejected') NULL | content_type=approval_request 时的审批状态 |
 | selected_range | JSON NULL | 用户选中的代码段 `{file,start,end,code}`，对话式局部修改用 |
-| applied_commit_hash | VARCHAR(40) NULL | Diff 应用后的 git commit hash（content_type=artifact_diff 且已应用） |
 | is_deleted | TINYINT(1) DEFAULT 0 | 软删除 |
 | created_at | TIMESTAMP | |
 
@@ -170,8 +167,9 @@ INDEX(conversation_id, created_at)
 INDEX(thread_id)
 
 **判断**：
-- `content_type` 与 SSE 事件 type 对齐
-- 产物消息的 `content` 存 JSON 字符串：DiffCard 存 `{file,patch,additions,deletions}`，PreviewCard 存 `{previewUrl,html}`
+- 内容模型用 ContentBlock 数组（domain/message.py），一条消息可同时含 thinking / tool_use / code / text / approval / deployment / image / artifacts 等多个块
+- 块级别字段（如 ApprovalBlock.status / CodeBlock.applied_commit_hash）由块自身承载，不再有外层 content_type / approval_status / applied_commit_hash 字段
+- 流式增量通过 SSE 块级事件协议（block_start / block_delta / block_stop）推送，最终态落库为完整 blocks 数组
 - MVP 不存 attachments / files
 
 ---
@@ -184,7 +182,7 @@ INDEX(thread_id)
 | conversation_id | VARCHAR(36) NOT NULL | |
 | message_id | VARCHAR(36) NOT NULL | 触发本Thread的用户消息 |
 | agent_id | VARCHAR(36) NOT NULL | |
-| status | ENUM('init','running','suspended','done','error') | |
+| status | ENUM('init','running','suspended','done','error','cancelled') | |
 | checkpoint | JSON NULL | 冷存储（热缓存在Redis） |
 | blocked_by | JSON NULL | 任务依赖图：依赖的 thread_id 数组，全部 done 后该 Thread 才解锁启动 |
 | started_at | TIMESTAMP NULL | 进入 running 的时间，统计耗时 |
@@ -374,16 +372,31 @@ description: 代码审查Skill，适用Python/Go代码
 
 ## 三、SSE 事件协议（前后端契约）
 
+消息内容用块级流式协议：`block_start`（创建块）→ `block_delta`（增量更新）→ `block_stop`（块结束）。
+块类型见 `domain/message.py:ContentBlock`：text / thinking / tool_use / code / approval / deployment / image / artifacts。
+
 ```
-{"type":"agent_start","agentId":"claude","agentName":"Claude","messageId":"msg_1"}
-{"type":"token","agentId":"claude","messageId":"msg_1","content":"你好"}
-{"type":"artifact_html","agentId":"claude","messageId":"msg_1","previewUrl":"/preview/xxx","html":"..."}
-{"type":"artifact_diff","agentId":"codex","messageId":"msg_2","file":"src/api.py","additions":5,"deletions":2,"patch":"..."}
-{"type":"approval_request","agentId":"codex","messageId":"msg_3","action":"run_command","detail":"npm install"}
-{"type":"agent_done","agentId":"claude","messageId":"msg_1"}
-{"type":"agent_error","agentId":"claude","messageId":"msg_1","error":"timeout"}
+// 消息级
+{"type":"agent_start","agent_id":"claude","agent_name":"Claude","thread_id":"t_1","message_id":"msg_1"}
+{"type":"agent_done","agent_id":"claude","thread_id":"t_1","message_id":"msg_1"}
+{"type":"agent_error","agent_id":"claude","thread_id":"t_1","message_id":"msg_1","error":"timeout"}
+
+// 块级（block 字段是 ContentBlock 子类）
+{"type":"block_start","agent_id":"claude","thread_id":"t_1","message_id":"msg_1",
+ "block":{"type":"text","block_id":"b_1","content":""}}
+{"type":"block_delta","agent_id":"claude","thread_id":"t_1","message_id":"msg_1",
+ "block_id":"b_1","delta":{"content":"你好"}}
+{"type":"block_stop","agent_id":"claude","thread_id":"t_1","message_id":"msg_1","block_id":"b_1"}
+
+// 整轮 / 队列信号（独立类型，不属于 AgentEvent）
 {"type":"round_done"}
+{"type":"queue_drained"}
 ```
+
+**约定**：
+- 一条消息可包含多个块，按 block_start 顺序追加；不同块的 delta 可交错
+- block_delta 的 delta 字段语义由具体块类型决定（如 TextBlock 的 content 累加，ToolUseBlock 的 status 覆盖）
+- block_stop 可选携带 final_fields 补全最终字段
 
 ---
 
@@ -431,7 +444,7 @@ description: 代码审查Skill，适用Python/Go代码
 
 1. **Skill 元数据入库 + 内容走文件**：表存权限/列表/反向查能力，文件存正文。Agent ↔ Skill 用 `agent_skills` 关联表，正反向查都快。
 
-2. **messages.content 存什么**：text消息存原文，artifact消息存JSON序列化（如 `{"file":"x.py","patch":"..."}`）。前端按 content_type 解析。
+2. **messages.content 存什么**：JSON 数组，元素是 ContentBlock 子类（domain/message.py 定义）。一条消息可同时含多个块（thinking / tool_use / code / text / approval / deployment / image / artifacts），有序渲染。块级别字段（如 ApprovalBlock.status / CodeBlock.applied_commit_hash）由块自身承载。
 
 3. **threads.checkpoint 冷热双写**：Redis 是热路径，MySQL 是兜底。Redis 挂了能从 MySQL 恢复但慢一点。
 

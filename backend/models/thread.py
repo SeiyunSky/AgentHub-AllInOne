@@ -17,7 +17,7 @@ threads — Thread 执行状态表
 修改日期：2026-05-22
 """
 
-from sqlalchemy import Column, String, Enum, JSON, Integer, TIMESTAMP, Index
+from sqlalchemy import Column, String, Text, Enum, JSON, Integer, TIMESTAMP, Index
 
 from backend.models.base import Base, TimestampMixin
 
@@ -30,7 +30,10 @@ class Thread(Base, TimestampMixin):
     message_id = Column(String(36), nullable=False, comment="触发本 Thread 的用户消息")
     agent_id = Column(String(36), nullable=False)
     status = Column(
-        Enum("init", "running", "suspended", "done", "error", name="thread_status"),
+        Enum(
+            "init", "running", "suspended", "done", "error", "cancelled",
+            name="thread_status",
+        ),
         nullable=False,
         default="init",
         server_default="init",
@@ -40,6 +43,11 @@ class Thread(Base, TimestampMixin):
         JSON,
         nullable=True,
         comment="任务依赖图：依赖的 thread_id 数组，全部 done 后该 Thread 才解锁启动",
+    )
+    dispatch_prompt = Column(
+        Text,
+        nullable=True,
+        comment="主 Agent 派活时给子 Agent 的指令，_run_thread 启动 Adapter 时塞进 StreamInput.prompt",
     )
     started_at = Column(TIMESTAMP, nullable=True, comment="进入 running 时间")
     finished_at = Column(TIMESTAMP, nullable=True, comment="进入 done/error 时间")
