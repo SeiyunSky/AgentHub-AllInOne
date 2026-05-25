@@ -32,14 +32,23 @@ class AgentCapabilities(BaseModel):
     用途:
     - 数据库 agents.capabilities JSON 字段反序列化目标
     - Adapter.get_capabilities() 返回类型
-    - 前端按字段决定是否渲染对应 UI(如 supports_diff=False 时不显示 Diff 卡片应用按钮)
+    - 前端按字段决定是否渲染对应 UI(如 supports_diff=False 时不显示 Diff 卡片应用按钮;
+      supports_image=False 时不展示图片消息块)
     """
 
+    supports_code: bool = Field(
+        default=False,
+        description="是否能产出代码块(CodeBlock,含 / 不含 diff)",
+    )
     supports_diff: bool = Field(
         default=False,
-        description="是否能产出 artifact_diff 卡片",
+        description="是否能产出可应用的 diff(CodeBlock 含 old_code)",
     )
     supports_approval: bool = Field(
         default=False,
-        description="是否会触发 approval_request 审批事件",
+        description="是否会触发 ApprovalBlock 审批",
+    )
+    supports_image: bool = Field(
+        default=False,
+        description="是否能产出图片块(ImageBlock)",
     )

@@ -85,7 +85,9 @@ class AgentAdapter(ABC):
 
         约定:
         1. 第一个事件应为 AgentStartEvent(message_id 来自 inp.message_id)
-        2. 中间可穿插 TokenEvent / ArtifactHtmlEvent / ArtifactDiffEvent / ApprovalRequestEvent
+        2. 中间通过块级流式协议产出内容:
+           BlockStartEvent(创建块) → BlockDeltaEvent(增量更新) → BlockStopEvent(块结束)
+           可穿插多个不同 block_id 的块(thinking / tool_use / code / text / approval / ...)
         3. 正常结束 yield AgentDoneEvent;出错 yield AgentErrorEvent
         4. 所有事件的 agent_id / thread_id / message_id 必须填充自 inp 对应字段
         5. 周期性检查 inp.cancel_event,被 set 时优雅退出(可补一个 AgentErrorEvent

@@ -35,15 +35,17 @@ class ApplyDiffRequest(BaseModel):
     """用户点 Diff 卡片'应用'按钮"""
 
     type: Literal["apply_diff"] = "apply_diff"
-    message_id: str = Field(description="对应 content_type=artifact_diff 的消息 ID")
+    message_id: str = Field(description="包含 CodeBlock(diff 模式)的消息 ID")
+    block_id: str = Field(description="目标 CodeBlock 的 block_id(一条消息可能含多个代码块)")
     timestamp: datetime = Field(default_factory=now_utc)
 
 
 class ApprovalDecisionRequest(BaseModel):
-    """用户对 approval_request 的决策"""
+    """用户对 ApprovalBlock 的决策"""
 
     type: Literal["approval_decision"] = "approval_decision"
-    message_id: str = Field(description="对应 content_type=approval_request 的消息 ID")
+    message_id: str = Field(description="包含 ApprovalBlock 的消息 ID")
+    block_id: str = Field(description="目标 ApprovalBlock 的 block_id")
     decision: Literal["approve", "reject"]
     reason: Optional[str] = Field(
         default=None,
@@ -66,7 +68,8 @@ class DiffAppliedEvent(BaseModel):
     """Diff 应用结果(WebSocket 单独推送,不走 SSE 内容流)"""
 
     type: Literal["diff_applied"] = "diff_applied"
-    message_id: str = Field(description="对应被应用的 artifact_diff 消息 ID")
+    message_id: str = Field(description="对应被应用 CodeBlock 所在的消息 ID")
+    block_id: str = Field(description="对应被应用 CodeBlock 的 block_id")
     status: Literal["success", "conflict", "error"]
     commit_hash: Optional[str] = Field(
         default=None,
@@ -83,7 +86,8 @@ class ApprovalAcknowledgedEvent(BaseModel):
     """审批结果已被后端处理,Thread 据此 resume / cancel"""
 
     type: Literal["approval_acknowledged"] = "approval_acknowledged"
-    message_id: str = Field(description="对应 approval_request 的消息 ID")
+    message_id: str = Field(description="对应 ApprovalBlock 所在的消息 ID")
+    block_id: str = Field(description="对应 ApprovalBlock 的 block_id")
     decision: Literal["approve", "reject"]
     thread_id: str = Field(description="该审批关联的 Thread ID")
     timestamp: datetime = Field(default_factory=now_utc)

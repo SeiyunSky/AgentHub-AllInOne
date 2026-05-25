@@ -40,6 +40,7 @@ class AgentForOrchestrator(BaseModel):
     id: str
     name: str
     description: Optional[str] = None
+    avatar: Optional[str] = None
     type: AgentType
     capabilities: AgentCapabilities
     tags: list[str] = Field(default_factory=list)
@@ -56,6 +57,10 @@ class AgentCreate(BaseModel):
     description: Optional[str] = Field(
         default=None,
         description="Agent 简介,联系人卡片副标题",
+    )
+    avatar: Optional[str] = Field(
+        default=None,
+        description="头像 URL;为空时前端用首字母色块兜底",
     )
     type: AgentType
     system_prompt: Optional[str] = None
@@ -79,6 +84,7 @@ class AgentUpdate(BaseModel):
 
     name: Optional[str] = None
     description: Optional[str] = None
+    avatar: Optional[str] = None
     system_prompt: Optional[str] = None
     capabilities: Optional[AgentCapabilities] = None
     tags: Optional[list[str]] = None
@@ -105,6 +111,7 @@ class AgentResponse(BaseModel):
     )
     name: str
     description: Optional[str] = None
+    avatar: Optional[str] = None
     type: AgentType
     system_prompt: Optional[str] = None
     capabilities: AgentCapabilities
@@ -145,6 +152,7 @@ class AgentBuildDraft(BaseModel):
 
     name: str
     description: Optional[str] = None
+    avatar: Optional[str] = None
     type: AgentType
     system_prompt: str
     capabilities: AgentCapabilities = Field(default_factory=AgentCapabilities)
