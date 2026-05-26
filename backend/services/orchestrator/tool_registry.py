@@ -66,7 +66,7 @@ def register_tool(
         async def dispatch_to_agent(tool_input: dict, *, ctx: ToolContext) -> dict:
             ...
 
-    - name 必须在 19 个工具命名内,重复注册抛 ValueError
+    - name 必须在工具命名内,重复注册抛 ValueError
     - description 是给 LLM 看的工具说明(写清楚什么时候该用)
     - input_model 是 Pydantic BaseModel,内部转 JSON Schema
 

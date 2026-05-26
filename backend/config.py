@@ -34,5 +34,18 @@ class Settings(BaseSettings):
         description="长期记忆文件根目录",
     )
 
+    # ---- 主 Agent (Orchestrator) LLM(Anthropic 兼容协议)----
+    EXTERNAL_API_BASE: str = Field(description="主 Agent LLM 端点(Anthropic 兼容)")
+    EXTERNAL_API_KEY: str = Field(description="主 Agent LLM API key")
+    EXTERNAL_MODEL: str = Field(description="主 Agent 模型 id")
+
+    # ---- HTTP 服务 ----
+    HOST: str = Field(default="0.0.0.0", description="监听地址")
+    PORT: int = Field(default=8000, description="监听端口")
+    CORS_ALLOWED_ORIGINS: str = Field(
+        default="",
+        description="逗号分隔的允许来源",
+    )
+
 
 settings = Settings()
