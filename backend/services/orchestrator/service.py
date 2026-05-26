@@ -159,8 +159,12 @@ class OrchestratorService:
 
         loop_session = SessionLocal()
         loop_error: Optional[Exception] = None
+        # _agent_loop 跑完会返回累计 token,即使中途异常也尽量返回已累计的部分
+        # (异常时返回 (0, 0) 兜底,避免拿到 None)
+        total_tokens_in = 0
+        total_tokens_out = 0
         try:
-            await self._agent_loop(
+            total_tokens_in, total_tokens_out = await self._agent_loop(
                 thread_id=thread_id,
                 conversation_id=conversation_id,
                 user_message_id=user_message_id,
@@ -187,8 +191,16 @@ class OrchestratorService:
             ThreadService.unregister_event_listener(thread_id)
 
             # 写 thread 终态:正常 done / 异常 error
+            # 同时累加 token 到 threads.tokens_total —— 主 Agent 自己的 LLM 调用消耗
+            # (含 chat_completion + context_compactor.global_summarize)。
+            # 子 Agent 的 token 写库不在这里,见 thread_service._run_thread 收 AgentDoneEvent 后单独写。
             try:
                 ts = ThreadService(loop_session)
+                if total_tokens_in or total_tokens_out:
+                    ts.repo.update_tokens(
+                        thread_id,
+                        total_tokens_in + total_tokens_out,
+                    )
                 if loop_error is None:
                     await ts.mark_done(thread_id, "(orchestrator round complete)")
                 else:
@@ -221,9 +233,17 @@ class OrchestratorService:
         user_id: str,
         wake_event: asyncio.Event,
         session: Session,
-    ) -> None:
+    ) -> tuple[int, int]:
         """
         八步循环主体。
+
+        返回 (total_tokens_in, total_tokens_out) —— 本轮主 Agent 自己 LLM 调用的累计 token,
+        包括 chat_completion + context_compactor.global_summarize。
+
+        正常 break 路径返回真实累计值;异常路径(LLM 致命错误 / 其他 bug)直接抛出,
+        start_loop 兜底但拿不到累计值——这部分 token 在数据库里会丢失记账。
+        MVP 接受这个权衡:异常路径下用户看到的是 mark_error 状态,token 审计精度
+        次要;真要精确审计可改成 self._token_buf 挂到实例外让 finally 读。
 
         messages 是主 Agent 的内部 messages_history,只在本函数生命周期内有效。
         MVP 阶段不持久化到 thread.checkpoint(单进程内 conversation 锁保证不会被打断)。
@@ -489,7 +509,8 @@ class OrchestratorService:
 
             # ---- 步 7/8 暂跳过 ----
             # TODO[F-loop-checkpoint]: thread_service.save_checkpoint(thread_id, ...)
-            # TODO[F-loop-token-write]: thread_repo.update_tokens(thread_id, delta)
+            # TODO[F-loop-token-write/inner]: 主 Agent 内部 token 写库已经在 start_loop finally
+            # 块统一处理(用本函数返回值);adapter 层子 Thread token 由 [TODO-18] 无履生 单独做。
 
         # loop 结束
         logger.info(
@@ -499,6 +520,7 @@ class OrchestratorService:
             total_tokens_in,
             total_tokens_out,
         )
+        return total_tokens_in, total_tokens_out
 
     # --------------------------------------------------------
     # 内部辅助
