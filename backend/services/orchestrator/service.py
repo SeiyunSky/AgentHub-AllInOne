@@ -55,6 +55,11 @@ from sqlalchemy.orm import Session
 from backend.hooks.base import HookContext, HookEvent
 from backend.hooks.manager import hook_manager
 from backend.schemas.thread import ThreadStatus
+from backend.services.orchestrator.context_compactor import context_compactor
+from backend.services.orchestrator.error_recovery import (
+    classify_api_error,
+    error_recovery,
+)
 from backend.services.orchestrator.llm_client import LLMToolCall, llm_client
 from backend.services.orchestrator.prompt_builder import (
     DYNAMIC_BOUNDARY,
@@ -231,6 +236,12 @@ class OrchestratorService:
         total_tokens_out = 0
         round_count = 0
 
+        # 三路恢复 attempt 计数器(每路独立维护,某路重试成功后**不**重置:
+        # 同一 loop 内累计触发次数,达到上限 → give up)
+        attempt_max_tokens = 0
+        attempt_prompt_too_long = 0
+        attempt_api_error = 0
+
         # 准备 prompt context(每轮重新 build_dynamic,但 thread_id 等不变,只在这里组装一次基础)
         prompt_ctx = PromptContext(
             user_id=user_id,
@@ -273,17 +284,63 @@ class OrchestratorService:
             else:
                 system_prompt = static_prompt or dynamic_prompt
 
-            # ---- 步 3:调 LLM ----
+            # ---- 步 3:调 LLM(含异常恢复 prompt_too_long / api_error) ----
             try:
                 response = await llm_client.chat_completion(
                     system=system_prompt,
                     messages=messages,
                     tools=tools,
                 )
-            except Exception:
-                # TODO[F-loop-recovery]: 接 error_recovery 三路(max_tokens / prompt_too_long / API)
-                # 现在直接抛,start_loop 的 try/except 兜底 mark_error
-                raise
+            except Exception as exc:
+                category = classify_api_error(exc)
+                if category == "fatal":
+                    # 致命错误(认证 / 422 / 非法请求 / 非 anthropic 异常)→ 直接抛
+                    raise
+                if category == "prompt_too_long":
+                    decision = await error_recovery.on_prompt_too_long(
+                        attempt_prompt_too_long
+                    )
+                    attempt_prompt_too_long += 1
+                else:  # "api_error"
+                    decision = await error_recovery.on_api_error(
+                        exc, attempt_api_error
+                    )
+                    attempt_api_error += 1
+
+                if not decision.should_retry:
+                    logger.warning(
+                        "orchestrator %s give up (%s): %s",
+                        thread_id,
+                        category,
+                        decision.give_up_reason,
+                    )
+                    raise
+
+                if decision.delay_seconds > 0:
+                    await asyncio.sleep(decision.delay_seconds)
+
+                if decision.truncate_history:
+                    # prompt_too_long 路径:让 compactor 摘要历史
+                    messages = await context_compactor.global_summarize(messages)
+                    logger.info(
+                        "orchestrator %s history summarized due to prompt_too_long",
+                        thread_id,
+                    )
+
+                if decision.inject_user_message:
+                    messages.append({
+                        "role": "user",
+                        "content": decision.inject_user_message,
+                    })
+
+                # 回步 1 重试本轮 LLM 调用。
+                # 注意:回步 1 后会重新消费 pending_events——如果在恢复处理期间
+                # (尤其 truncate_history 调 global_summarize 是 async 的)有子 Thread
+                # 完成事件进队列,这次"重试"会消费这些新事件。这是有意为之:
+                # - 重试本来是为了让 LLM 在更干净的 context 下做决策
+                # - 新事件本来就应该在下一轮 LLM 看到,提前消费不会破坏语义
+                # - 不重新 pop 反而要维护"哪些事件已消费"的状态,得不偿失
+                continue
 
             total_tokens_in += response.tokens_input
             total_tokens_out += response.tokens_output
@@ -296,6 +353,41 @@ class OrchestratorService:
                 response.tokens_input,
                 response.tokens_output,
             )
+
+            # ---- 步 3.5:max_tokens 处理(stop_reason 走这条路,不走 except) ----
+            if response.stop_reason == "max_tokens":
+                decision = await error_recovery.on_max_tokens(attempt_max_tokens)
+                attempt_max_tokens += 1
+                if not decision.should_retry:
+                    logger.warning(
+                        "orchestrator %s give up (max_tokens): %s",
+                        thread_id,
+                        decision.give_up_reason,
+                    )
+                    # 把已截断的 assistant 输出也保留(让用户/审计能看到主 Agent 在崩前
+                    # 的最后想法),然后退出 loop
+                    if response.content_text:
+                        messages.append({
+                            "role": "assistant",
+                            "content": response.content_text,
+                        })
+                    raise RuntimeError(
+                        f"orchestrator {thread_id}: {decision.give_up_reason}"
+                    )
+
+                # 把 LLM 已输出的 text 部分拼回 messages,丢弃可能不完整的 tool_use
+                # (截断的 tool_use 不该执行——LLM 都没说完它要干什么)
+                if response.content_text:
+                    messages.append({
+                        "role": "assistant",
+                        "content": response.content_text,
+                    })
+                messages.append({
+                    "role": "user",
+                    "content": decision.inject_user_message,
+                })
+                # continue 后会重新消费 pending_events,见步 3 except 块的注释说明
+                continue
 
             # ---- 步 4:end_turn 收敛判断 ----
             if is_terminal_stop_reason(response):
@@ -387,12 +479,17 @@ class OrchestratorService:
 
                 # 拼 tool_result 进 messages,继续下一轮 LLM
                 messages.append({"role": "user", "content": tool_result_blocks})
+
+                # ---- 步 6:压缩 messages_history(只在 tool_use 分支后做,
+                # end_turn / max_tokens 路径在 break/continue 之前 messages 已确定,
+                # 没必要再压)
+                # context_compactor.maybe_compact 内部判 token 阈值,未超阈值时直接返回原列表
+                messages = await context_compactor.maybe_compact(messages)
                 continue
 
-            # ---- 步 6/7/8 暂跳过 ----
+            # ---- 步 7/8 暂跳过 ----
             # TODO[F-loop-checkpoint]: thread_service.save_checkpoint(thread_id, ...)
             # TODO[F-loop-token-write]: thread_repo.update_tokens(thread_id, delta)
-            # TODO[F-loop-compact]: context_compactor.maybe_compact(messages)
 
         # loop 结束
         logger.info(

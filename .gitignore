@@ -26,6 +26,7 @@ venv/
 # 运行时数据
 backend/runtime/
 logs/
+scripts/
 
 # Node / 前端
 node_modules/

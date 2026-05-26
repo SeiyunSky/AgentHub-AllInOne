@@ -107,6 +107,25 @@ class OrchestratorLLMClient:
 
         return self._parse_response(response)
 
+    async def count_tokens(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        model: Optional[str] = None,
+    ) -> int:
+        """
+        调 anthropic 官方 count_tokens 端点精确估算 messages token 数。
+
+        - 不计入 token 计费(官方文档明示),只占 RPM 配额
+        - 调用方拿到准确 input_tokens 后自己决定阈值动作
+        - 失败时由调用方决定怎么处理
+        """
+        result = await self._client.messages.count_tokens(
+            model=model or self._model,
+            messages=messages,
+        )
+        return result.input_tokens
+
     @staticmethod
     def _parse_response(response: Any) -> LLMResponse:
         """
