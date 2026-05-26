@@ -2,6 +2,10 @@
 
 Populated at FastAPI startup via seed_from_db(); updated by register()/unregister()
 when agents are created or deleted through agent_service.
+
+队伍：咕嘎一辈子队
+修改者：Musuyin
+修改日期：2026-05-22
 """
 from __future__ import annotations
 
@@ -12,7 +16,7 @@ from typing import TYPE_CHECKING
 from backend.adapters.base import AgentAdapter
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -56,19 +60,19 @@ class AdapterRegistry:
     # Lifecycle
     # ------------------------------------------------------------------
 
-    async def seed_from_db(self, db: "AsyncSession") -> None:
+    def seed_from_db(self, db: "Session") -> None:
         """Populate registry from the agents table at startup.
 
-        Called during FastAPI lifespan startup after the DB engine is ready.
+        Called during FastAPI lifespan startup. Accepts a plain sync Session
+        (consistent with the rest of the service layer).
         """
         from sqlalchemy import select
         from backend.models.agent import Agent as AgentModel
 
-        result = await db.execute(
+        rows = db.execute(
             select(AgentModel).where(AgentModel.is_active == 1)
-        )
-        agents = result.scalars().all()
-        for row in agents:
+        ).scalars().all()
+        for row in rows:
             try:
                 adapter = _build_adapter(row)
                 self.register(row.id, adapter)

@@ -1,4 +1,9 @@
-"""Unit tests for AdapterRegistry and _build_adapter factory."""
+"""Unit tests for AdapterRegistry and _build_adapter factory.
+
+队伍：咕嘎一辈子队
+修改者：Musuyin
+修改日期：2026-05-23
+"""
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -77,7 +82,7 @@ async def test_shutdown_tolerates_close_error():
 # seed_from_db
 # ---------------------------------------------------------------------------
 
-async def test_seed_from_db_registers_active_agents():
+def test_seed_from_db_registers_active_agents():
     reg = AdapterRegistry()
 
     def _make_row(agent_id, agent_type):
@@ -97,19 +102,18 @@ async def test_seed_from_db_registers_active_agents():
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [claude_row, codex_row, custom_row]
 
-    mock_db = AsyncMock()
-    mock_db.execute = AsyncMock(return_value=mock_result)
+    mock_db = MagicMock()
+    mock_db.execute.return_value = mock_result
 
-    with patch("backend.adapters.claude.anthropic.AsyncAnthropic"), \
-         patch("backend.adapters.custom.openai.AsyncOpenAI"):
-        await reg.seed_from_db(mock_db)
+    with patch("backend.adapters.custom.openai.AsyncOpenAI"):
+        reg.seed_from_db(mock_db)
 
     assert reg.get("claude-1") is not None
     assert reg.get("codex-1") is not None
     assert reg.get("custom-1") is not None
 
 
-async def test_seed_from_db_skips_failed_rows():
+def test_seed_from_db_skips_failed_rows():
     reg = AdapterRegistry()
 
     bad_row = MagicMock()
@@ -123,12 +127,11 @@ async def test_seed_from_db_skips_failed_rows():
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = [bad_row]
 
-    mock_db = AsyncMock()
-    mock_db.execute = AsyncMock(return_value=mock_result)
+    mock_db = MagicMock()
+    mock_db.execute.return_value = mock_result
 
-    with patch("backend.adapters.claude.anthropic.AsyncAnthropic"), \
-         patch("backend.adapters.custom.openai.AsyncOpenAI"):
-        await reg.seed_from_db(mock_db)
+    with patch("backend.adapters.custom.openai.AsyncOpenAI"):
+        reg.seed_from_db(mock_db)
 
     assert reg.get("bad-1") is None
 
@@ -149,8 +152,7 @@ def _make_row(agent_id: str, agent_type: str):
 
 def test_build_adapter_claude():
     from backend.adapters.claude import ClaudeAdapter
-    with patch("backend.adapters.claude.anthropic.AsyncAnthropic"):
-        adapter = _build_adapter(_make_row("a1", "claude"))
+    adapter = _build_adapter(_make_row("a1", "claude"))
     assert isinstance(adapter, ClaudeAdapter)
 
 
