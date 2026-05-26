@@ -1,23 +1,50 @@
 """
 SystemPromptBuilder —— 主 Agent System Prompt 六层管道
 
-1. 核心指令      (静态)
-2. 工具列表      (静态)
+1. 核心指令      (静态)  —— prompts/orchestrator.md
+2. 工具列表      (静态)  —— anthropic SDK 通过 tools= 参数传,prompt 不重复
 3. Skill 元数据  (静态,progressive disclosure)
 4. CLAUDE.md 链  (静态)
    --- DYNAMIC_BOUNDARY ---
 5. 长期记忆      (动态,按相关性筛选 top-K)
 6. 动态上下文    (动态,会话历史 / 可用 Agent / 任务图)
 
+MVP 阶段只实装第 1 层。
+- 第 2 层不在 prompt 里重复——LLM 看 tools schema 已经能拿到 name/description/input_schema,
+  在 prompt 里再说一遍是浪费 token,且容易和 schema 不一致
+- 第 3-6 层各依赖一个还没接通的 service,留 stub 返回空字符串。每层等对应依赖落地后回来补,
+  本文件接口签名稳定,后续实装不影响调用方
+
 队伍:咕嘎一辈子队
-修改者:Adam Zhang
-修改日期:2026-05-25
+修改者:咕嘎
+修改日期:2026-05-26
 """
 
+from __future__ import annotations
+
+import logging
 from dataclasses import dataclass
+from pathlib import Path
+
+from backend.services.memory_service import list_index
+
+
+logger = logging.getLogger(__name__)
 
 
 DYNAMIC_BOUNDARY = "\n\n----- DYNAMIC -----\n\n"
+
+# 第 1 层 prompt 文件位置 —— backend/prompts/orchestrator.md
+# 路径相对本文件:services/orchestrator/prompt_builder.py → 上三级 → backend/
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
+_ORCHESTRATOR_PROMPT_PATH = _BACKEND_ROOT / "prompts" / "orchestrator.md"
+
+# 第 4 层 AGENTHUB.md 加载链:项目根 + 部署 cwd
+# - 项目根 AGENTHUB.md:跟代码 git 版本化,团队共享
+# - 部署 cwd AGENTHUB.md:运维覆盖用,不入 git
+# 跨平台用 Path 即可,Windows / macOS / Linux 都正确
+_PROJECT_ROOT = _BACKEND_ROOT.parent
+_AGENTHUB_MD_FILENAME = "AGENTHUB.md"
 
 
 @dataclass
@@ -32,21 +59,187 @@ class PromptContext:
 class SystemPromptBuilder:
     """主 Agent System Prompt 六层管道组装器。"""
 
+    def __init__(self, prompt_path: Path | None = None) -> None:
+        # 默认用模块级常量,允许测试 / 多版本 prompt 场景注入自定义路径
+        self._prompt_path = prompt_path or _ORCHESTRATOR_PROMPT_PATH
+        # TODO[F-prompt-cache]: _core_instructions_cache 是实例属性,但 prompt_builder
+        # 是模块级单例(本文件底部),所有请求共享同一份缓存。
+        # MVP 阶段不影响——orchestrator.md 内容不会运行期变;但如果未来:
+        # - 测试注入不同 prompt_path
+        # - 多租户需要不同 prompt
+        # 单例会导致第一次缓存后所有请求都用同一份。届时改成"按 prompt_path 做 key 的字典"
+        # 或干脆每次 build 重读(orchestrator.md 不大,IO 开销可接受)。
+        self._core_instructions_cache: str | None = None
+
     async def build(self, ctx: PromptContext) -> str:
         """
-        组装完整 System Prompt。
-        TODO[F-prompt]: 实装六层组装,目前返回最小可跑核心指令。
+        组装完整 System Prompt(便捷入口)。
+
+        长循环场景(主 Agent loop)推荐分别调 build_static / build_dynamic,
+        把 build_static 的结果缓存到 loop 局部变量,每轮只重新算 build_dynamic。
+        本方法每次都全量构建,适合一次性场景。
         """
-        # TODO[F-prompt-1]: 核心指令(从 prompts/orchestrator.md 加载)
-        # TODO[F-prompt-2]: 工具列表(orchestrator_tools 19 个 + MCP 动态)
-        # TODO[F-prompt-3]: Skill 元数据(主 Agent 自挂 Skill description 列表)
-        # TODO[F-prompt-4]: CLAUDE.md 链(用户全局 + 项目 + 子目录)
-        # TODO[F-prompt-5]: 长期记忆(memory_service.list_index → 按相关性挑 top-K)
-        # TODO[F-prompt-6]: 动态上下文(会话历史 + 可用 Agent 列表 + 任务图状态)
-        raise NotImplementedError(
-            "[TODO/F-prompt] SystemPromptBuilder.build 未实装,"
-            "需要按设计文档第八节实现六层组装"
+        static_part = await self.build_static(ctx)
+        dynamic_part = await self.build_dynamic(ctx)
+
+        if static_part and dynamic_part:
+            return static_part + DYNAMIC_BOUNDARY + dynamic_part
+        return static_part or dynamic_part
+
+    async def build_static(self, ctx: PromptContext) -> str:
+        """
+        构建静态层(1-4)。loop 跑期间不变,调用方应缓存结果。
+
+        注:文件 IO(orchestrator.md / AGENTHUB.md)在这里发生。
+        每次调用都重读;调用方在长循环里需要自己缓存避免重复 IO。
+        """
+        layers = [
+            await self._layer_1_core_instructions(),
+            await self._layer_2_tools_summary(),
+            await self._layer_3_skill_metadata(ctx),
+            await self._layer_4_agenthub_md_chain(ctx),
+        ]
+        return "\n\n".join(s for s in layers if s)
+
+    async def build_dynamic(self, ctx: PromptContext) -> str:
+        """
+        构建动态层(5-6)。loop 每轮重新调用——长期记忆 / 任务图状态可能变。
+        """
+        layers = [
+            await self._layer_5_long_term_memory(ctx),
+            await self._layer_6_dynamic_context(ctx),
+        ]
+        return "\n\n".join(s for s in layers if s)
+
+    # --------------------------------------------------------
+    # 静态层
+    # --------------------------------------------------------
+
+    async def _layer_1_core_instructions(self) -> str:
+        """
+        第 1 层:核心指令——prompts/orchestrator.md 完整内容。
+
+        读一次缓存住——文件只在进程启动时变化,运行期不会改,缓存可以省 IO。
+        """
+        if self._core_instructions_cache is None:
+            try:
+                self._core_instructions_cache = self._prompt_path.read_text(
+                    encoding="utf-8"
+                )
+            except FileNotFoundError:
+                logger.error(
+                    "orchestrator.md 不存在: %s——主 Agent loop 将无核心指令",
+                    self._prompt_path,
+                )
+                self._core_instructions_cache = ""
+        return self._core_instructions_cache
+
+    async def _layer_2_tools_summary(self) -> str:
+        """
+        第 2 层:工具列表。
+
+        **设计决策:本层返回空字符串,工具信息走 anthropic SDK 的 tools= 参数下发**。
+        理由:
+        - LLM 调 tools schema 已经能拿到 name/description/input_schema
+        - 在 prompt 里再列一遍是重复,占 ~3K token
+        - 重复更新易和 schema 不一致(改了 schema 忘了改 prompt)
+        """
+        return ""
+
+    async def _layer_3_skill_metadata(self, ctx: PromptContext) -> str:
+        """
+        第 3 层:Skill 元数据(progressive disclosure)。
+
+        TODO[F-prompt-3]: 扫 backend/skills/orchestrator/*.md → 拼出 description 列表。
+        主 Agent 决定需要某 Skill 时调 load_skill 工具读完整正文。
+        依赖:Skill 加载机制(Step 4 决定走 A 路时实装)。
+        """
+        return ""
+
+    async def _layer_4_agenthub_md_chain(self, ctx: PromptContext) -> str:
+        """
+        第 4 层:AGENTHUB.md 链 —— 部署级全局指令。
+
+        加载顺序(后者覆盖前者优先级,在 prompt 里"后写优先"——LLM 通常更看后段):
+        1. 项目根 {project_root}/AGENTHUB.md       —— git 版本化,团队共享
+        2. 部署 cwd {cwd}/AGENTHUB.md              —— 运维覆盖,不入 git
+
+        多租户 IM 场景下用户个人偏好走第 5 层长期记忆,不在本层。
+        """
+        paths = [
+            _PROJECT_ROOT / _AGENTHUB_MD_FILENAME,    # 项目根
+            Path.cwd() / _AGENTHUB_MD_FILENAME,       # 部署 cwd
+        ]
+        # 用 resolve() 去重——cwd 跟项目根重合时不重复加载
+        # 检查存在 / 读文件也用 resolved,统一处理符号链接(避免读到符号链接前的"假"文件)
+        seen: set[Path] = set()
+        parts: list[str] = []
+        for p in paths:
+            try:
+                resolved = p.resolve()
+            except OSError:
+                continue
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            if not resolved.exists():
+                continue
+            try:
+                parts.append(resolved.read_text(encoding="utf-8"))
+            except OSError as exc:
+                logger.warning("AGENTHUB.md 读取失败 %s: %s", resolved, exc)
+        return "\n\n---\n\n".join(parts) if parts else ""
+
+    # --------------------------------------------------------
+    # 动态层
+    # --------------------------------------------------------
+
+    async def _layer_5_long_term_memory(self, ctx: PromptContext) -> str:
+        """
+        第 5 层:长期记忆索引 —— Progressive disclosure 模式。
+
+        - 只把 MEMORY.md 索引(name + description)塞进 prompt,正文不进
+        - 主 Agent 读完索引后,需要哪条记忆就调 read_file 工具按需加载
+        - 索引为空(目录不存在 / 没记 / 索引文件没内容)→ 返回空字符串,不在 prompt 里
+          出现"## 你的长期记忆索引(空)"这种废话
+
+        作用对象:用户 + 会话双隔离的记忆,跨 Thread 复用。
+
+        TODO[F-prompt-async-io]: list_index 是同步函数(读 MEMORY.md 文件 IO),在 async def
+        里直接调用,高并发场景会阻塞 event loop。MVP 阶段单用户问题不大,后续上量时改成
+        `await asyncio.to_thread(list_index, ...)` 或让 memory_service 提供 async 版本。
+        同样问题在 _layer_1 / _layer_4 也存在(都是同步文件 IO)。
+        """
+        # list_index 内部已经处理了"目录不存在"和"索引文件不存在"两种情况,
+        # 都返回空列表——这里不需要 try/except FileNotFoundError
+        index_lines = list_index(ctx.user_id, ctx.conversation_id)
+        if not index_lines:
+            return ""
+
+        body = "\n".join(
+            f"- [{ln.name}]({ln.name}.md) — {ln.description}"
+            for ln in index_lines
         )
+        return (
+            "## 你的长期记忆索引\n\n"
+            "以下是当前会话累积的长期记忆(项目核心进展 / 用户偏好 / 跨会话事实等)。\n"
+            "如需查看某条记忆的完整内容,调用 read_file 工具,"
+            "path 参数填记忆文件名(如 `feedback_no_emoji.md`)。\n"
+            "**先按需要读,不要每条都读——索引足够你判断哪些相关。**\n\n"
+            f"{body}"
+        )
+
+    async def _layer_6_dynamic_context(self, ctx: PromptContext) -> str:
+        """
+        第 6 层:动态上下文。
+
+        TODO[F-prompt-6]: 三块拼接:
+        - 当前会话最近 N 条消息(read_conversation_history)
+        - 可用 Agent 列表 + 能力(list_available_agents)
+        - 当前任务图状态(read_task_plan)
+        依赖:message_service / agent_service / 已实装的 thread_repo。
+        """
+        return ""
 
 
 prompt_builder = SystemPromptBuilder()

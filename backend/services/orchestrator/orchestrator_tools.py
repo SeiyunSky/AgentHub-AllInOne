@@ -69,8 +69,61 @@ from backend.services.orchestrator.tool_registry import (
     input_model=DispatchToAgentInput,
 )
 async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
-    """[TODO/C-tool-1] thread_service.create_thread + schedule_conversation,返回 thread_id。"""
-    raise NotImplementedError("[TODO/C-tool-1] dispatch_to_agent 未实装")
+    """
+    异步派任务给指定 Agent,立即启动 Thread。
+
+    实现:
+    1. 用 DispatchToAgentInput 校验入参
+    2. thread_service.create_thread:落 Thread 行(status=init, dispatch_prompt 落库)
+    3. session.commit:让 schedule_conversation 触发的后台 Task 能查到这条 Thread
+    4. thread_service.schedule_conversation:触发调度循环,blocked_by 满足的 Thread 立即启动
+       (内部用 asyncio.create_task 异步跑 _run_thread,本调用立即返回)
+    5. 返回 {thread_id, agent_id, blocked_by} 给 LLM,后续 LLM 用 read_thread_status
+       按需查实时状态(返回值不带 status——commit 时是 init,但调度可能已切到 running,
+       不要把可能过期的状态告诉 LLM,让它走 read_thread_status 拿权威值)
+
+    阻塞依赖:
+    - [TODO/D7-blocker]: thread_service._run_thread 在 asyncio.Task 里跑时
+      复用本 handler 传入的 session(self.session 是同一个),本 handler close session 后
+      Task 后续访问会炸。根本修法在 thread_service:_run_thread 内部自起 SessionLocal()
+      与外层解耦。MVP 单线程串行下不触发,上线前必须修。
+      本 handler 不在这里规避——绕过的话会让 D7 永远暴露不出来。
+
+    session 怎么来:
+    通过 SessionLocal 起独立 session(ToolContext 不含 session,避免跟 SQLAlchemy 强耦合)。
+    """
+    # lazy import 防循环依赖:thread_service → orchestrator(注册时)
+    from backend.core.database import SessionLocal
+    from backend.services.thread_service import ThreadService
+
+    parsed = DispatchToAgentInput.model_validate(tool_input)
+
+    session = SessionLocal()
+    try:
+        ts = ThreadService(session)
+        thread = ts.create_thread(
+            conversation_id=ctx.conversation_id,
+            message_id=ctx.user_message_id,
+            agent_id=parsed.agent_id,
+            blocked_by=parsed.blocked_by,
+            dispatch_prompt=parsed.prompt,
+        )
+        session.commit()
+
+        # 触发调度:blocked_by 为空的 Thread 立即进入 running
+        # role_hint 暂不入库(threads 表没有该字段),仅用于 LLM 自身上下文标记,不传递给子 Agent
+        await ts.schedule_conversation(ctx.conversation_id)
+
+        # status 不返回——commit 时是 init,但 schedule_conversation 可能已经把它切到 running
+        # (而那个状态变更在后台 Task 里,本 session 看不到)。
+        # 不返回过期值,让 LLM 用 read_thread_status 拿权威状态。
+        return {
+            "thread_id": thread.id,
+            "agent_id": thread.agent_id,
+            "blocked_by": list(thread.blocked_by or []),
+        }
+    finally:
+        session.close()
 
 
 @register_tool(
@@ -173,8 +226,34 @@ async def remove_task(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[s
     input_model=RespondToUserInput,
 )
 async def respond_to_user(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
-    """[TODO/C-tool-10] message_service.create_assistant_message + stream_service.push_event。"""
-    raise NotImplementedError("[TODO/C-tool-10] respond_to_user 未实装")
+    """
+    主 Agent 直接给用户回话。
+
+    完整实装链路(等依赖齐了再补):
+    1. message_service.create_assistant_message(conv_id, agent_id="orchestrator",
+                                                content_blocks=[TextBlock(message)])
+       → 落 messages 表拿到真实 message_id,刷新前端能看到这条历史
+    2. stream_service.push_event 推一组事件给前端 SSE:
+         AgentStartEvent(agent_name="主 Agent")
+         BlockStartEvent(TextBlock(content=""))
+         BlockDeltaEvent(delta={"content": message})  # 或一次性 BlockStart 时塞完整 content
+         BlockStopEvent
+         AgentDoneEvent
+       前端按 message_id 累积渲染气泡
+    3. 返回 {ok: true, message_id} 给 LLM
+
+    阻塞依赖(都还没实装):
+    - message_service.create_assistant_message  (Step 10 / [TODO/H1])
+      没有它就拿不到稳定 message_id,前端刷新后气泡丢失,这是不能接受的阉割
+    - 主 Agent 在 SSE 里的 agent_id 约定(用 "orchestrator" 还是用某个挂载的虚拟 Agent)
+      也要等 agent_service 决策
+
+    现在直接 raise,不做"临时 UUID 凑数"的版本。等 Step 10 message_service 落地后实装。
+    """
+    raise NotImplementedError(
+        "[TODO/C-tool-10] respond_to_user 未实装,阻塞依赖:"
+        "message_service.create_assistant_message (Step 10)"
+    )
 
 
 @register_tool(
