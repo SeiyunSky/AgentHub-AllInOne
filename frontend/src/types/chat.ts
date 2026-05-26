@@ -2,6 +2,8 @@
 
 import type { SelectedRange } from './api'
 
+// ── API request/response types ──
+
 export interface ChatRequest {
   conversation_id: string
   content: string
@@ -34,3 +36,67 @@ export interface ChatStopResponse {
   cancelled_thread_ids: string[]
   timestamp: string
 }
+
+// ── UI-facing types ──
+
+export interface ChatAgent {
+  id: string
+  name: string
+  role: string
+  status: 'active' | 'processing' | 'idle' | 'error'
+}
+
+export interface ReplyPreview {
+  messageId: string
+  senderName: string
+  content: string
+}
+
+// UI content blocks (camelCase, used by components)
+export interface UITextBlock { type: 'text'; content: string }
+export interface UIThinkingBlock { type: 'thinking'; content: string; duration?: number }
+export interface UIToolUseBlock { type: 'tool_use'; toolName: string; input?: Record<string, unknown>; output?: string; status: 'running' | 'completed' | 'error' }
+export interface UICodeBlock { type: 'code'; code: string; filename?: string; language?: string; oldCode?: string }
+export interface UIDeploymentBlock { type: 'deployment'; title: string; status: 'deploying' | 'completed' | 'error'; url?: string; logs?: string; progress?: number }
+export interface UIImageBlock { type: 'image'; src: string; alt?: string; caption?: string }
+export interface UIArtifactsBlock { type: 'artifacts'; item: { name: string; type: string; preview?: string } }
+
+export type UIBlock =
+  | UITextBlock | UIThinkingBlock | UIToolUseBlock | UICodeBlock
+  | UIDeploymentBlock | UIImageBlock | UIArtifactsBlock
+
+export interface AgentMessage {
+  id: string
+  type: 'agent'
+  agentId: string
+  agentName: string
+  agentRole?: string
+  agentRoleColor?: string
+  content: string
+  timestamp: Date
+  blocks?: UIBlock[]
+  reaction?: 'like' | 'dislike'
+  model?: string
+  sender?: string
+  tokensInput?: number
+  tokensOutput?: number
+  latencyMs?: number
+}
+
+export interface UserMessage {
+  id: string
+  type: 'user'
+  content: string
+  timestamp: Date
+  reaction?: 'like' | 'dislike'
+}
+
+export interface TypingMessage {
+  id: string
+  type: 'typing'
+  agentId: string
+  agentName: string
+  timestamp: Date
+}
+
+export type Message = AgentMessage | UserMessage | TypingMessage

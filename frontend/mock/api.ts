@@ -1,4 +1,13 @@
 import type { MockMethod } from 'vite-plugin-mock'
+import type { IncomingMessage, ServerResponse } from 'http'
+
+function sendSSE(res: ServerResponse, event: string, data: unknown) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+}
+
+async function delay(ms: number) {
+  return new Promise((r) => setTimeout(r, ms))
+}
 
 const conversations = [
   {
@@ -125,7 +134,7 @@ const messages = [
   },
 ]
 
-export default [
+const mockList = [
   // Chat
   {
     url: '/api/v1/chat',
@@ -258,4 +267,135 @@ export default [
       }
     },
   },
-] as MockMethod[]
+]
+
+// SSE stream mock — simulates a full agent response cycle
+const sseMock: MockMethod = {
+  url: '/api/v1/chat/stream/:conversationId',
+  method: 'get',
+  rawResponse: async (req: any, res: any) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    })
+
+    const now = () => new Date().toISOString()
+    const agentId = 'orchestrator'
+    const threadId = 'thread-mock'
+    const messageId = `msg-ssse-${Date.now()}`
+
+    // 1. agent_start
+    sendSSE(res, 'agent_start', {
+      type: 'agent_start',
+      agent_id: agentId,
+      thread_id: threadId,
+      message_id: messageId,
+      agent_name: 'Orchestrator',
+      timestamp: now(),
+    })
+    await delay(300)
+
+    // 2. block_start — thinking
+    sendSSE(res, 'block_start', {
+      type: 'block_start',
+      agent_id: agentId,
+      thread_id: threadId,
+      message_id: messageId,
+      block: { block_id: 'sb-1', type: 'thinking', content: '' },
+      timestamp: now(),
+    })
+    await delay(100)
+
+    // 3. block_delta — thinking content (simulated typing)
+    const thinkingChunks = ['Analyzing the request...\n', 'I should dispatch to the relevant agent.']
+    for (const chunk of thinkingChunks) {
+      sendSSE(res, 'block_delta', {
+        type: 'block_delta',
+        agent_id: agentId,
+        thread_id: threadId,
+        message_id: messageId,
+        block_id: 'sb-1',
+        delta: { content: chunk },
+        timestamp: now(),
+      })
+      await delay(200)
+    }
+
+    // 4. block_stop — thinking done
+    sendSSE(res, 'block_stop', {
+      type: 'block_stop',
+      agent_id: agentId,
+      thread_id: threadId,
+      message_id: messageId,
+      block_id: 'sb-1',
+      final_fields: { duration_ms: 1200 },
+      timestamp: now(),
+    })
+    await delay(300)
+
+    // 5. block_start — text
+    sendSSE(res, 'block_start', {
+      type: 'block_start',
+      agent_id: agentId,
+      thread_id: threadId,
+      message_id: messageId,
+      block: { block_id: 'sb-2', type: 'text', content: '' },
+      timestamp: now(),
+    })
+    await delay(100)
+
+    // 6. block_delta — text content
+    const textChunks = ['Here is the analysis result:\n\n', 'The Q4 revenue grew by 15% compared to Q3.']
+    for (const chunk of textChunks) {
+      sendSSE(res, 'block_delta', {
+        type: 'block_delta',
+        agent_id: agentId,
+        thread_id: threadId,
+        message_id: messageId,
+        block_id: 'sb-2',
+        delta: { content: chunk },
+        timestamp: now(),
+      })
+      await delay(300)
+    }
+
+    // 7. block_stop — text done
+    sendSSE(res, 'block_stop', {
+      type: 'block_stop',
+      agent_id: agentId,
+      thread_id: threadId,
+      message_id: messageId,
+      block_id: 'sb-2',
+      timestamp: now(),
+    })
+    await delay(200)
+
+    // 8. agent_done
+    sendSSE(res, 'agent_done', {
+      type: 'agent_done',
+      agent_id: agentId,
+      thread_id: threadId,
+      message_id: messageId,
+      timestamp: now(),
+    })
+    await delay(100)
+
+    // 9. round_done
+    sendSSE(res, 'round_done', {
+      type: 'round_done',
+      timestamp: now(),
+    })
+    await delay(100)
+
+    // 10. queue_drained
+    sendSSE(res, 'queue_drained', {
+      type: 'queue_drained',
+      timestamp: now(),
+    })
+
+    res.end()
+  },
+}
+
+export default [...mockList, sseMock] as MockMethod[]

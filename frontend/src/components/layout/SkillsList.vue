@@ -11,7 +11,7 @@
       </div>
       <!-- Skills list -->
       <div
-        v-for="skill in mockSkills"
+        v-for="skill in skills"
         :key="skill.id"
         class="group p-3 rounded-xl bg-white border border-outline-variant hover:border-brand hover:bg-brand-light/40 cursor-pointer transition-all duration-200 hover-lift"
       >
@@ -30,11 +30,17 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { MagicStick, Plus } from '@element-plus/icons-vue'
+import { skillsApi } from '@/api/skills'
 
-const mockSkills = [
-  { id: '1', name: 'Code Review', description: 'Automated code analysis' },
-  { id: '2', name: 'Documentation', description: 'Generate docs from code' },
-  { id: '3', name: 'Testing', description: 'Write unit tests' },
-]
+const skills = ref<{ id: string; name: string; description: string }[]>([])
+
+onMounted(async () => {
+  try {
+    skills.value = await skillsApi.list()
+  } catch {
+    // Skills API may not be available yet
+  }
+})
 </script>

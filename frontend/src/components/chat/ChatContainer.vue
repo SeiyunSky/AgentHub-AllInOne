@@ -30,8 +30,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import type { Message, ChatAgent, ReplyPreview } from '@/types/chat'
+import { useChatStore } from '@/stores/chat'
 import ChatHeader from '@/components/layout/ChatHeader.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
@@ -49,16 +50,16 @@ const emit = defineEmits<{
   react: [messageId: string, type: 'like' | 'dislike']
 }>()
 
+const chatStore = useChatStore()
 const inputText = ref('')
 const chatInputRef = ref<{ focus: () => void } | null>(null)
 const replyPreview = ref<ReplyPreview | null>(null)
 
-const agents = ref<ChatAgent[]>([
-  { id: 'orchestrator', name: 'Orchestrator', role: 'Host', status: 'active' },
-  { id: 'data-analyst', name: 'Data Analyst', role: 'Processing', status: 'processing' },
-  { id: 'lead-developer', name: 'Lead Developer', role: 'Developer', status: 'idle' },
-  { id: 'qa-engineer', name: 'QA Engineer', role: 'QA', status: 'idle' },
-])
+const isStreaming = computed(() => chatStore.isStreaming)
+
+const agents = computed<ChatAgent[]>(() =>
+  chatStore.activeAgents.map(a => ({ id: a.id, name: a.name, role: a.role, status: a.status })),
+)
 
 function onSend(content: string, mentions: string[], replyToId?: string) {
   replyPreview.value = null
@@ -97,10 +98,6 @@ function onCopy(_messageId: string) {
 }
 
 function onReact(messageId: string, type: 'like' | 'dislike') {
-  const msg = props.messages.find(m => m.id === messageId)
-  if (msg) {
-    msg.reaction = msg.reaction === type ? undefined : type
-  }
   emit('react', messageId, type)
 }
 
