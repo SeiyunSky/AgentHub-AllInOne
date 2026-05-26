@@ -413,18 +413,39 @@ class ThreadService:
         """
         启动单个 Thread:mark_running → 调 Adapter.stream → 处理事件 → 落终态。
 
-        TODO[D7-blocker / 上线前必须修]:
-        本方法在 asyncio.Task 里跑,跟主流程共享 self.session。SQLAlchemy Session
-        不是协程安全的,并发场景会出现 session 状态错乱。
-        修法:本方法内部用 SessionLocal() 起新 session,与传入 session 解耦。
-        MVP 阶段单线程串行调度暂时不会触发,但上线前必须修。
+        自起独立 SessionLocal，与调用方的 self.session 完全解耦，避免 asyncio.Task
+        并发场景下 Session 状态错乱（D7-blocker 已修）。
         """
+        from backend.core.database import SessionLocal
+        from backend.repositories.agent_repo import AgentRepository
+        from backend.repositories.thread_repo import ThreadRepository
+
+        if adapter_registry is None:
+            raise NotImplementedError(
+                "[TODO/D5] adapters/registry 未实装,无法启动 Thread。"
+            )
+
+        own_session = SessionLocal()
+        own_repo = ThreadRepository(own_session)
+
+        def _mark(status: ThreadStatus, **kw) -> Optional[Thread]:
+            t = own_repo.mark_status(thread.id, status, **kw)
+            own_session.commit()
+            return t
+
         try:
-            await self.mark_running(thread.id)
+            _mark(ThreadStatus.RUNNING)
+
             adapter = adapter_registry.get(thread.agent_id)
             if adapter is None:
-                await self.mark_error(thread.id, f"未注册的 agent_id: {thread.agent_id}")
+                t = _mark(ThreadStatus.ERROR, error_message=f"未注册的 agent_id: {thread.agent_id}")
+                if t:
+                    await self._on_thread_terminal(t, f"Thread {thread.id} 失败: 未注册的 agent_id", success=False)
                 return
+
+            # 从 DB 读取 agent.system_prompt，注入到 StreamInput
+            agent_row = AgentRepository(own_session).get(thread.agent_id)
+            agent_system_prompt: Optional[str] = agent_row.system_prompt if agent_row else None
 
             stream_input = StreamInput(
                 agent_id=thread.agent_id,
@@ -433,6 +454,7 @@ class ThreadService:
                 prompt=thread.dispatch_prompt or "",
                 history=[],  # TODO[D6]: 从 message_repo 加载会话历史
                 skills=[],   # TODO[D6]: 从 skill_service 按 agent_id 加载挂载 Skill
+                system_prompt=agent_system_prompt,
                 cancel_event=stream_service.get_abort_event(thread.conversation_id),
             )
 
@@ -440,25 +462,41 @@ class ThreadService:
             errored = False
 
             async for event in adapter.stream(stream_input):
-                # 推给前端 SSE(广播给该 conversation 所有 tab)
                 await stream_service.push_event(thread.conversation_id, event)
                 summary_parts.extend(self._extract_summary(event))
                 if isinstance(event, AgentErrorEvent):
                     errored = True
-                    await self.mark_error(thread.id, event.error)
+                    t = _mark(ThreadStatus.ERROR, error_message=event.error)
+                    if t:
+                        await self._on_thread_terminal(
+                            t, f"Thread {thread.id} 失败: {event.error}", success=False
+                        )
                     return
                 if isinstance(event, AgentDoneEvent):
                     break
 
             if not errored:
                 summary = " ".join(summary_parts)[:500] or "(无摘要)"
-                await self.mark_done(thread.id, summary)
+                t = _mark(ThreadStatus.DONE)
+                if t:
+                    await self._on_thread_terminal(t, summary, success=True)
+
         except asyncio.CancelledError:
-            await self.mark_cancelled(thread.id)
+            t = _mark(ThreadStatus.CANCELLED)
+            if t:
+                await self._on_thread_terminal(t, f"Thread {thread.id} 已取消", success=False)
             raise
         except Exception as exc:
             logger.exception("Thread %s 运行异常", thread.id)
-            await self.mark_error(thread.id, str(exc))
+            try:
+                own_session.rollback()
+                t = _mark(ThreadStatus.ERROR, error_message=str(exc))
+                if t:
+                    await self._on_thread_terminal(t, f"Thread {thread.id} 失败: {exc}", success=False)
+            except Exception:
+                logger.exception("Thread %s 落错误态失败", thread.id)
+        finally:
+            own_session.close()
 
     @staticmethod
     def _extract_summary(event: AgentEvent) -> list[str]:
