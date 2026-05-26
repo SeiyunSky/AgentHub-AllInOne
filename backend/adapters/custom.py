@@ -1,6 +1,10 @@
 """CustomAdapter — OpenAI-compatible API streaming with MCP tool support.
 
 Works with any OpenAI-compatible endpoint: OpenAI, Ollama, vLLM, Together, etc.
+
+队伍：咕嘎一辈子队
+修改者：Musuyin
+修改日期：2026-05-25
 """
 from __future__ import annotations
 

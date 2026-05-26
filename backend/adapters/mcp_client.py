@@ -3,6 +3,10 @@
 Supports both stdio (subprocess MCP servers, e.g. Codex CLI) and SSE/HTTP transports.
 MCPRegistry is a module-level singleton that manages all active connections and is
 shut down during FastAPI lifespan teardown.
+
+队伍：咕嘎一辈子队
+修改者：Musuyin
+修改日期：2026-05-22
 """
 from __future__ import annotations
 

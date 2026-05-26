@@ -1,4 +1,9 @@
-"""Tests for adapters/events.py — Pydantic models, block-level protocol."""
+"""Tests for adapters/events.py — Pydantic models, block-level protocol.
+
+队伍：咕嘎一辈子队
+修改者：Musuyin
+修改日期：2026-05-23
+"""
 import pytest
 from pydantic import TypeAdapter
 

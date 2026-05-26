@@ -1,4 +1,9 @@
-"""Unit tests for CustomAdapter — OpenAI SDK is fully mocked."""
+"""Unit tests for CustomAdapter — OpenAI SDK is fully mocked.
+
+队伍：咕嘎一辈子队
+修改者：Musuyin
+修改日期：2026-05-25
+"""
 from __future__ import annotations
 
 from types import SimpleNamespace
