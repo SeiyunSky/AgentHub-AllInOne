@@ -442,6 +442,7 @@ class ThreadService:
                 prompt=thread.dispatch_prompt or "",
                 history=[],  # TODO[D6]: 从 message_repo 加载会话历史
                 skills=[],   # TODO[D6]: 从 skill_service 按 agent_id 加载挂载 Skill
+                cancel_event=stream_service.get_abort_event(thread.conversation_id),
             )
 
             summary_parts: list[str] = []
