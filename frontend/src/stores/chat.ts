@@ -1,16 +1,20 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { ContentBlock, MessageResponse } from '@/types/api'
-import type { AgentMessage, Message, UIBlock } from '@/types/chat'
+import type { AgentMessage, Message, UIBlock, UIApprovalBlock } from '@/types/chat'
 
-function apiBlockToUI(block: ContentBlock): UIBlock {
+type StreamingBlock = UIBlock & { block_id?: string }
+
+function apiBlockToUI(block: ContentBlock): StreamingBlock {
+  const id = block.block_id
   switch (block.type) {
     case 'text':
-      return { type: 'text', content: block.content }
+      return { block_id: id, type: 'text', content: block.content }
     case 'thinking':
-      return { type: 'thinking', content: block.content, duration: block.duration_ms }
+      return { block_id: id, type: 'thinking', content: block.content, duration: block.duration_ms }
     case 'tool_use':
       return {
+        block_id: id,
         type: 'tool_use',
         toolName: block.tool_name,
         input: block.input,
@@ -19,6 +23,7 @@ function apiBlockToUI(block: ContentBlock): UIBlock {
       }
     case 'code':
       return {
+        block_id: id,
         type: 'code',
         code: block.code,
         filename: block.filename,
@@ -27,6 +32,7 @@ function apiBlockToUI(block: ContentBlock): UIBlock {
       }
     case 'deployment':
       return {
+        block_id: id,
         type: 'deployment',
         title: block.title,
         status: block.status,
@@ -35,11 +41,19 @@ function apiBlockToUI(block: ContentBlock): UIBlock {
         progress: block.progress,
       }
     case 'image':
-      return { type: 'image', src: block.src, alt: block.alt, caption: block.caption }
+      return { block_id: id, type: 'image', src: block.src, alt: block.alt, caption: block.caption }
     case 'artifacts':
-      return { type: 'artifacts', item: block.items[0] }
+      return { block_id: id, type: 'artifacts', item: block.items[0] }
     case 'approval':
-      return { type: 'text', content: `[Approval: ${block.action}] ${block.detail}` }
+      return {
+        block_id: id,
+        type: 'approval',
+        action: block.action,
+        detail: block.detail,
+        status: block.status,
+        decidedAt: block.decided_at,
+        rejectReason: block.reject_reason,
+      }
   }
 }
 
@@ -75,10 +89,11 @@ function toUIMessage(msg: MessageResponse): Message {
 
 export const useChatStore = defineStore('chat', () => {
   const messageMap = ref<Map<string, Message[]>>(new Map())
-  const streamingMessage = ref<AgentMessage | null>(null)
+  const streamingMessage = ref<(AgentMessage & { blocks?: StreamingBlock[] }) | null>(null)
   const activeAgents = ref<{ id: string; name: string; role: string; status: 'active' | 'processing' | 'idle' | 'error' }[]>([])
   const isStreaming = ref(false)
   const currentConversationId = ref<string | null>(null)
+  const pendingApproval = ref<{ messageId: string; blockId: string; action: string; detail: string } | null>(null)
 
   function getMessages(convId: string): Message[] {
     return messageMap.value.get(convId) ?? []
@@ -129,6 +144,15 @@ export const useChatStore = defineStore('chat', () => {
     if (!streamingMessage.value) return
     const uiBlock = apiBlockToUI(block)
     streamingMessage.value.blocks = [...(streamingMessage.value.blocks ?? []), uiBlock]
+
+    if (block.type === 'approval' && block.status === 'pending') {
+      pendingApproval.value = {
+        messageId: streamingMessage.value.id,
+        blockId: block.block_id,
+        action: block.action,
+        detail: block.detail,
+      }
+    }
   }
 
   function updateBlock(blockId: string, delta: Record<string, unknown>) {
@@ -140,8 +164,8 @@ export const useChatStore = defineStore('chat', () => {
     if (idx === -1) return
     const block = streamingMessage.value.blocks[idx] as Record<string, unknown>
     for (const [key, value] of Object.entries(delta)) {
-      if (key === 'content' && typeof value === 'string' && typeof block.content === 'string') {
-        block.content += value
+      if (typeof value === 'string' && typeof block[key] === 'string') {
+        block[key] = (block[key] as string) + value
       } else {
         block[key] = value
       }
@@ -193,6 +217,40 @@ export const useChatStore = defineStore('chat', () => {
     currentConversationId.value = null
   }
 
+  function resolveApproval(convId: string, messageId: string, blockId: string, decision: 'approved' | 'rejected', reason?: string) {
+    // Update the block in messages
+    const msgs = getMessages(convId)
+    const msg = msgs.find(m => m.id === messageId)
+    if (msg && msg.type === 'agent' && msg.blocks) {
+      const block = msg.blocks.find(b => {
+        const anyB = b as Record<string, unknown>
+        return anyB.block_id === blockId && (anyB as UIApprovalBlock).type === 'approval'
+      }) as UIApprovalBlock | undefined
+      if (block) {
+        block.status = decision
+        block.decidedAt = new Date().toISOString()
+        if (reason) block.rejectReason = reason
+      }
+      setMessages(convId, [...msgs])
+    }
+
+    // Also check streaming message
+    if (streamingMessage.value?.blocks) {
+      const block = streamingMessage.value.blocks.find(b => {
+        const anyB = b as Record<string, unknown>
+        return anyB.block_id === blockId && (anyB as UIApprovalBlock).type === 'approval'
+      }) as UIApprovalBlock | undefined
+      if (block) {
+        block.status = decision
+        block.decidedAt = new Date().toISOString()
+        if (reason) block.rejectReason = reason
+        streamingMessage.value.blocks = [...streamingMessage.value.blocks]
+      }
+    }
+
+    pendingApproval.value = null
+  }
+
   return {
     messageMap,
     streamingMessage,
@@ -212,5 +270,7 @@ export const useChatStore = defineStore('chat', () => {
     finishStreaming,
     setAgentActive,
     clearRound,
+    pendingApproval,
+    resolveApproval,
   }
 })

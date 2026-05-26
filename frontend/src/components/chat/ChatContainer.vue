@@ -17,8 +17,17 @@
       @more="onMore"
     />
 
+    <!-- Approval Overlay (replaces input when pending) -->
+    <ApprovalOverlay
+      v-if="chatStore.pendingApproval"
+      :approval="chatStore.pendingApproval"
+      @approve="handleApprove"
+      @reject="handleReject"
+    />
+
     <!-- Input -->
     <ChatInput
+      v-else
       ref="chatInputRef"
       v-model="inputText"
       :agents="agents"
@@ -33,9 +42,11 @@
 import { ref, computed, nextTick } from 'vue'
 import type { Message, ChatAgent, ReplyPreview } from '@/types/chat'
 import { useChatStore } from '@/stores/chat'
+import { useConversationsStore } from '@/stores/conversations'
 import ChatHeader from '@/components/layout/ChatHeader.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
+import ApprovalOverlay from '@/components/chat/ApprovalOverlay.vue'
 import { ChatLineRound } from '@element-plus/icons-vue'
 
 const props = defineProps<{
@@ -51,6 +62,7 @@ const emit = defineEmits<{
 }>()
 
 const chatStore = useChatStore()
+const conversationsStore = useConversationsStore()
 const inputText = ref('')
 const chatInputRef = ref<{ focus: () => void } | null>(null)
 const replyPreview = ref<ReplyPreview | null>(null)
@@ -103,5 +115,21 @@ function onReact(messageId: string, type: 'like' | 'dislike') {
 
 function onMore(messageId: string) {
   console.log('More actions for message:', messageId)
+}
+
+function handleApprove() {
+  const pa = chatStore.pendingApproval
+  if (!pa) return
+  const convId = conversationsStore.currentId
+  if (!convId) return
+  chatStore.resolveApproval(convId, pa.messageId, pa.blockId, 'approved')
+}
+
+function handleReject(reason?: string) {
+  const pa = chatStore.pendingApproval
+  if (!pa) return
+  const convId = conversationsStore.currentId
+  if (!convId) return
+  chatStore.resolveApproval(convId, pa.messageId, pa.blockId, 'rejected', reason)
 }
 </script>

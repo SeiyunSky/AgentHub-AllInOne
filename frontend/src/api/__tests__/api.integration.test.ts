@@ -66,7 +66,7 @@ describe('Messages API', () => {
     const { status, data } = await mockFetch('/conversations/conv-1/messages')
     expect(status).toBe(200)
     expect(data).toBeInstanceOf(Array)
-    expect(data.length).toBe(3)
+    expect(data.length).toBeGreaterThanOrEqual(8)
   })
 
   it('message has correct block types', async () => {

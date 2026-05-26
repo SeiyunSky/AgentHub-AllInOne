@@ -60,10 +60,11 @@ export interface UICodeBlock { type: 'code'; code: string; filename?: string; la
 export interface UIDeploymentBlock { type: 'deployment'; title: string; status: 'deploying' | 'completed' | 'error'; url?: string; logs?: string; progress?: number }
 export interface UIImageBlock { type: 'image'; src: string; alt?: string; caption?: string }
 export interface UIArtifactsBlock { type: 'artifacts'; item: { name: string; type: string; preview?: string } }
+export interface UIApprovalBlock { type: 'approval'; action: string; detail: string; status: 'pending' | 'approved' | 'rejected'; decidedAt?: string; rejectReason?: string }
 
 export type UIBlock =
   | UITextBlock | UIThinkingBlock | UIToolUseBlock | UICodeBlock
-  | UIDeploymentBlock | UIImageBlock | UIArtifactsBlock
+  | UIDeploymentBlock | UIImageBlock | UIArtifactsBlock | UIApprovalBlock
 
 export interface AgentMessage {
   id: string

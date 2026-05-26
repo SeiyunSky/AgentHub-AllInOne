@@ -33,7 +33,7 @@ import type { Component } from 'vue'
 const props = withDefaults(defineProps<{
   label: string
   icon?: Component
-  variant?: 'default' | 'thinking' | 'tool' | 'code' | 'artifact' | 'success' | 'error' | 'image'
+  variant?: 'default' | 'thinking' | 'tool' | 'code' | 'artifact' | 'success' | 'error' | 'image' | 'approval'
   badge?: string
   meta?: string
   defaultExpanded?: boolean
@@ -57,6 +57,7 @@ const containerClass = computed(() => {
     case 'success': return 'border-emerald-200/60 bg-emerald-50/30'
     case 'error': return 'border-red-200/60 bg-red-50/30'
     case 'image': return 'border-sky-200/60 bg-sky-50/30'
+    case 'approval': return 'border-amber-200/60 bg-amber-50/30'
     default: return 'border-outline-variant bg-white'
   }
 })
@@ -70,6 +71,7 @@ const iconColor = computed(() => {
     case 'success': return 'text-emerald-500'
     case 'error': return 'text-red-500'
     case 'image': return 'text-sky-500'
+    case 'approval': return 'text-amber-500'
     default: return 'text-on-surface-variant'
   }
 })
@@ -81,6 +83,7 @@ const labelColor = computed(() => {
     case 'artifact': return 'text-violet-700'
     case 'success': return 'text-emerald-700'
     case 'error': return 'text-red-700'
+    case 'approval': return 'text-amber-700'
     default: return 'text-on-surface'
   }
 })
@@ -93,6 +96,7 @@ const borderClass = computed(() => {
     case 'artifact': return 'border-violet-100'
     case 'success': return 'border-emerald-100'
     case 'error': return 'border-red-100'
+    case 'approval': return 'border-amber-100'
     default: return 'border-outline-variant'
   }
 })
@@ -104,6 +108,7 @@ const badgeClass = computed(() => {
     case 'artifact': return 'bg-violet-100 text-violet-600'
     case 'success': return 'bg-emerald-100 text-emerald-600'
     case 'error': return 'bg-red-100 text-red-600'
+    case 'approval': return 'bg-amber-100 text-amber-600'
     default: return 'bg-surface-container text-on-surface-variant'
   }
 })

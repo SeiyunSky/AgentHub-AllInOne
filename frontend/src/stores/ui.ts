@@ -8,7 +8,7 @@ export const useUIStore = defineStore('ui', () => {
   const sidebarActiveTab = ref<'chat' | 'agents' | 'skills' | 'projects'>('chat')
 
   // Panel sizes (percentage for splitpanes)
-  const chatPanePercent = ref(35)
+  const chatPanePercent = ref(55)
 
   // Right panel
   const rightPanelActiveTab = ref<'workflow' | 'preview'>('workflow')

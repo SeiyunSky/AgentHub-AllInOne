@@ -71,6 +71,16 @@
             :message-id="message.id"
             :artifact="block.item"
           />
+
+          <!-- Approval block -->
+          <ApprovalBlock
+            v-else-if="block.type === 'approval'"
+            :action="block.action"
+            :detail="block.detail"
+            :status="block.status"
+            :decided-at="block.decidedAt"
+            :reject-reason="block.rejectReason"
+          />
         </div>
       </div>
 
@@ -118,6 +128,7 @@ import CodeBlockWrapper from '../blocks/CodeBlockWrapper.vue'
 import DeploymentBlock from '../blocks/DeploymentBlock.vue'
 import ImageBlock from '../blocks/ImageBlock.vue'
 import ArtifactsBlock from '../blocks/ArtifactsBlock.vue'
+import ApprovalBlock from '../blocks/ApprovalBlock.vue'
 
 const props = defineProps<{
   message: AgentMessage
