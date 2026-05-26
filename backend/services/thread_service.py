@@ -42,11 +42,7 @@ from backend.schemas.thread import (
 from backend.services.stream_service import stream_service
 
 
-# TODO[D5]: 等无履生 adapters/registry.py 实装后,删掉 try 块直接 import registry
-try:
-    from backend.adapters.registry import registry as adapter_registry  # type: ignore
-except ImportError:
-    adapter_registry = None  # 占位:_start_thread 调用时显式报错
+from backend.adapters.registry import registry as adapter_registry
 
 
 logger = logging.getLogger(__name__)
@@ -423,11 +419,6 @@ class ThreadService:
         修法:本方法内部用 SessionLocal() 起新 session,与传入 session 解耦。
         MVP 阶段单线程串行调度暂时不会触发,但上线前必须修。
         """
-        if adapter_registry is None:
-            raise NotImplementedError(
-                "[TODO/D5] adapters/registry 未实装,无法启动 Thread。"
-            )
-
         try:
             await self.mark_running(thread.id)
             adapter = adapter_registry.get(thread.agent_id)
