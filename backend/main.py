@@ -25,7 +25,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.adapters.registry import registry as adapter_registry
 from backend.config import settings
-from backend.core.database import engine
+from backend.core.database import SessionLocal, engine
+from backend.core.logging import configure_logging
+from backend.hooks.approval import ApprovalHook
+from backend.hooks.base import HookEvent
+from backend.hooks.manager import hook_manager
+from backend.hooks.post_execution import PostExecutionHook
+from backend.hooks.pre_execution import PreExecutionHook
 
 
 logger = logging.getLogger(__name__)
@@ -34,18 +40,31 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI 生命周期:启动加载资源,关闭释放资源。"""
-    logging.basicConfig(level=logging.INFO)
+    configure_logging()
     logger.info("AgentHub backend starting up...")
 
     # ---- adapter registry seed ----
-    # 等无履生把 seed_from_db 改成同步,直接调
-    # TODO[main-1]: 无履生改完后切到 adapter_registry.seed_from_db(SessionLocal())
-    logger.info("[TODO/main-1] adapter_registry.seed_from_db 等同步签名落地后接通")
+    db = SessionLocal()
+    try:
+        adapter_registry.seed_from_db(db)
+    finally:
+        db.close()
 
     # ---- hook 注册 ----
-    # TODO[main-2]: 等具体 hook(approval / pre_execution / post_execution)实装后,
-    # 在这里 hook_manager.register(...) 注册到 HookManager
-    logger.info("[TODO/main-2] hook 注册等具体 hook 实装后接通")
+    # PRE_TOOL_USE 链：先 PreExecutionHook（黑名单 + 沙箱路径前置校验），
+    # 再 ApprovalHook（高危工具拦截 / 等待用户决策）。
+    # 顺序很关键：路径非法 / 黑名单工具应该被机器直接 block,不该让用户看到审批框；
+    # 合法的高危调用再交给用户决策。
+    hook_manager.register_sync(HookEvent.PRE_TOOL_USE, PreExecutionHook())
+    hook_manager.register_sync(HookEvent.PRE_TOOL_USE, ApprovalHook())
+
+    # POST_TOOL_USE 异步 hook：审计日志（不阻塞主流程）
+    hook_manager.register_async(HookEvent.POST_TOOL_USE, PostExecutionHook())
+
+    logger.info(
+        "hooks registered: PRE_TOOL_USE=[PreExecutionHook, ApprovalHook], "
+        "POST_TOOL_USE=[PostExecutionHook]"
+    )
 
     yield
 

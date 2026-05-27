@@ -47,5 +47,15 @@ class Settings(BaseSettings):
         description="逗号分隔的允许来源",
     )
 
+    # ---- 日志 ----
+    LOG_LEVEL: str = Field(
+        default="INFO",
+        description="日志等级,DEBUG / INFO / WARNING / ERROR",
+    )
+    LOG_FORMAT: str = Field(
+        default="console",
+        description="日志格式,console=开发彩色对齐 / json=生产单行 JSON",
+    )
+
 
 settings = Settings()

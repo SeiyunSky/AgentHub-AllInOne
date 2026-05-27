@@ -77,7 +77,9 @@ class ClaudeAdapter(AgentAdapter):
         ]
 
         if inp.system_prompt:
-            cmd += ["--append-system-prompt", inp.system_prompt]
+            # 同 _build_prompt 的换行兼容处理:Windows CLI 不接受 `-p` / `--append-system-prompt`
+            # 含真换行,会让 CLI 退化失败
+            cmd += ["--append-system-prompt", _flatten_for_cli(inp.system_prompt)]
 
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -190,9 +192,15 @@ def _blocks_to_text(blocks: list[ContentBlock]) -> str:
 
 
 def _build_prompt(inp: StreamInput) -> str:
-    """Prepend conversation history to the prompt as plain text context."""
+    """Prepend conversation history to the prompt as plain text context.
+
+    Windows 兼容性:`claude` CLI 在 Windows 上不正确处理 `-p` 参数中的真换行符
+    —— 含换行的 prompt 会让 CLI 退化成对话模式直接返回普通文本(不再输出 stream-json
+    事件流),导致 ClaudeAdapter 解析全失败。
+    返回前调 _flatten_for_cli 把换行压成空格,跨平台行为一致。
+    """
     if not inp.history:
-        return inp.prompt
+        return _flatten_for_cli(inp.prompt)
 
     parts: list[str] = []
     for msg in inp.history:
@@ -202,7 +210,23 @@ def _build_prompt(inp: StreamInput) -> str:
             parts.append(f"{role}: {text}")
 
     parts.append(f"User: {inp.prompt}")
-    return "\n\n".join(parts)
+    return _flatten_for_cli("\n\n".join(parts))
+
+
+def _flatten_for_cli(text: str) -> str:
+    """
+    把 prompt 中的换行符压成空格,适配 Windows `claude` CLI 的 `-p` 参数限制。
+
+    处理顺序:
+    1. \\r\\n / \\r → \\n  (统一行终止符)
+    2. \\n → ' '          (换行变空格)
+    3. 多个连续空格 → 单空格(避免 markdown 段落间的双空行变成多空格)
+    """
+    if not text:
+        return text
+    flat = text.replace("\r\n", "\n").replace("\r", "\n").replace("\n", " ")
+    # 折叠连续空格(包括 tab 等空白字符)
+    return " ".join(flat.split())
 
 
 def _build_system_prompt(base: str | None, skills: list) -> str:

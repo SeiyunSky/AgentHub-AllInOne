@@ -25,6 +25,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from backend.core.database import SessionLocal
 from backend.core.utils import gen_uuid
 from backend.domain.message import TextBlock
 from backend.schemas.chat import (
@@ -174,12 +175,22 @@ class ChatService:
         当前轮 round_done 后调:取出排队消息依次处理。
         每条消息走完整 _dispatch 流程,各自占用锁。
         全部处理完推 queue_drained 让前端关 SSE。
+
+        前置条件:调用方必须确保 _locks[conversation_id] 已释放，
+        否则 async with _locks[conversation_id] 会死锁（asyncio.Lock 不可重入）。
+        orchestrator_service 在 start_loop finally 块末尾调 on_round_done，
+        此时 handle_chat 的 async with lock 块已经结束，锁已释放，时序安全。
         """
         while _pending.get(conversation_id):
             item = _pending[conversation_id].pop(0)
-            async with _locks[conversation_id]:
-                await self._dispatch(item.request, item.user_id)
-        await stream_service.push_queue_drained(conversation_id)
+            try:
+                async with _locks[conversation_id]:
+                    await self._dispatch(item.request, item.user_id)
+            except Exception:
+                logger.exception(
+                    "drain _dispatch failed for conversation=%s, skipping item",
+                    conversation_id,
+                )
 
     # --------------------------------------------------------
     # 路由分发(已持锁)
@@ -353,29 +364,21 @@ async def on_round_done(conversation_id: str) -> None:
     1. 推 round_done 给前端 SSE
     2. 取出排队消息依次处理
     3. 全部处理完推 queue_drained
-
-    drain 阶段的 NotImplementedError(TODO[H4])会被捕获记日志,不影响整轮结束推送。
     """
     await stream_service.push_round_done(conversation_id)
-    try:
-        await _drain_pending_messages(conversation_id)
-    except NotImplementedError as exc:
-        logger.error(
-            "_drain_pending_messages 未实装,排队消息暂不处理: %s",
-            exc,
-        )
+    await _drain_pending_messages(conversation_id)
 
 
 async def _drain_pending_messages(conversation_id: str) -> None:
     """取出该 conversation 的排队消息依次走 _dispatch。"""
-    # 只在有排队时才创建 service 实例,避免空跑
     if not _pending.get(conversation_id):
         await stream_service.push_queue_drained(conversation_id)
         return
 
-    # TODO[H4]: drain 时需要 session,现在没有自动注入机制,先抛 NotImplementedError
-    # 等 main.py 启动时注册 SessionLocal 工厂后接通
-    raise NotImplementedError(
-        "[TODO/H4] _drain_pending_messages 需要 session 工厂,"
-        "等 main.py / 依赖注入接通后实装"
-    )
+    session = SessionLocal()
+    try:
+        svc = ChatService(session)
+        await svc._drain_pending(conversation_id)
+    finally:
+        session.close()
+        await stream_service.push_queue_drained(conversation_id)
