@@ -30,15 +30,7 @@
 
       <!-- Fallback: plain code view -->
       <template v-else>
-        <div
-          v-for="(line, i) in codeLines"
-          :key="i"
-          class="flex items-stretch hover:bg-neutral-200/50"
-        >
-          <span class="w-8 text-right px-2 text-neutral-600 select-none shrink-0">{{ i + 1 }}</span>
-          <span class="w-5 text-center text-neutral-300 select-none shrink-0">│</span>
-          <pre class="px-2 flex-1 whitespace-pre text-neutral-700">{{ line }}</pre>
-        </div>
+        <pre class="px-4 py-3 whitespace-pre text-neutral-700">{{ code }}</pre>
       </template>
     </div>
   </div>
@@ -48,6 +40,7 @@
 import { computed, ref, watch } from 'vue'
 import * as Diff from 'diff'
 import { highlightCode, initHighlighter } from '@/utils/markdown'
+import { copyToClipboard } from '@/utils/clipboard'
 
 const props = defineProps<{
   code: string
@@ -56,17 +49,15 @@ const props = defineProps<{
   oldCode?: string
 }>()
 
-const codeLines = computed(() => props.code.split('\n'))
-
 const highlightedHtml = ref('')
 
-let highlighterReady = false
-initHighlighter().then(() => { highlighterReady = true })
+const highlighterReady = ref(false)
+initHighlighter().then(() => { highlighterReady.value = true })
 
 watch(
-  () => props.code,
+  [() => props.code, highlighterReady],
   () => {
-    if (!highlighterReady || props.oldCode || !props.language || !props.code) return
+    if (!highlighterReady.value || props.oldCode || !props.language || !props.code) return
     highlightedHtml.value = highlightCode(props.code, props.language)
   },
   { immediate: true },
@@ -140,18 +131,7 @@ function contentClass(type: string) {
 const copied = ref(false)
 
 async function handleCopy() {
-  try {
-    await navigator.clipboard.writeText(props.code)
-  } catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = props.code
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-  }
+  await copyToClipboard(props.code)
   copied.value = true
   setTimeout(() => { copied.value = false }, 1500)
 }

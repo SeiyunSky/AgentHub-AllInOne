@@ -1,6 +1,7 @@
 import MarkdownIt from 'markdown-it'
 import { createHighlighter, type Highlighter } from 'shiki'
 import DOMPurify from 'dompurify'
+import '@/utils/clipboard'
 
 let highlighterPromise: Promise<Highlighter> | null = null
 let cachedHighlighter: Highlighter | null = null
@@ -40,7 +41,7 @@ md.renderer.rules.fence = (tokens, idx, options, _env, self) => {
   const codeId = `code-${idx}-${Date.now()}`
   const wrapperId = `wrap-${idx}-${Date.now()}`
 
-  const header = `<div class="shiki-header" onclick="document.getElementById('${wrapperId}').classList.toggle('collapsed')"><span class="shiki-toggle">▼</span><span class="shiki-lang">${lang}</span><button class="shiki-copy-btn" onclick="event.stopPropagation();(function(btn){var el=document.getElementById('${codeId}');var text=el.textContent;try{navigator.clipboard.writeText(text)}catch(e){var t=document.createElement('textarea');t.value=text;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t)}btn.textContent='Copied!';setTimeout(function(){btn.textContent='Copy'},1500)})(this)">Copy</button></div>`
+  const header = `<div class="shiki-header" onclick="document.getElementById('${wrapperId}').classList.toggle('collapsed')"><span class="shiki-toggle">▼</span><span class="shiki-lang">${lang}</span><button class="shiki-copy-btn" onclick="event.stopPropagation();window.__copyCode(this,'${codeId}')">Copy</button></div>`
 
   try {
     const hl = cachedHighlighter

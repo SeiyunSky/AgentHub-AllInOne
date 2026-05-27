@@ -303,7 +303,7 @@ html {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: #eaeef2;
+  background: #f4f6f8;
   border-bottom: 1px solid #d0d7de;
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -311,7 +311,7 @@ html {
   user-select: none;
 }
 .markdown-body .shiki-header:hover {
-  background: #dfe4e9;
+  background: #eaeef2;
 }
 .markdown-body .shiki-toggle {
   display: inline-block;
@@ -351,6 +351,9 @@ html {
 .markdown-body .shiki-wrapper.collapsed .shiki-code {
   max-height: 0 !important;
   border-top: none;
+}
+.markdown-body .shiki-wrapper.collapsed .shiki-header {
+  border-bottom: none;
 }
 .markdown-body .shiki-code pre {
   margin: 0;
@@ -468,7 +471,7 @@ html {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: #21262d;
+  background: #262c34;
   border-bottom: 1px solid #30363d;
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -476,7 +479,7 @@ html {
   user-select: none;
 }
 .markdown-body-dark .shiki-header:hover {
-  background: #282e36;
+  background: #2d333b;
 }
 .markdown-body-dark .shiki-toggle {
   display: inline-block;
@@ -516,6 +519,9 @@ html {
 .markdown-body-dark .shiki-wrapper.collapsed .shiki-code {
   max-height: 0 !important;
   border-top: none;
+}
+.markdown-body-dark .shiki-wrapper.collapsed .shiki-header {
+  border-bottom: none;
 }
 .markdown-body-dark .shiki-code pre {
   margin: 0;

@@ -2,7 +2,8 @@
   <div class="rounded-xl border overflow-hidden transition-colors" :class="containerClass">
     <!-- Header -->
     <button
-      class="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-black/[0.02] transition-colors cursor-pointer"
+      class="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors cursor-pointer"
+      :class="[headerClass, headerHoverClass]"
       @click="toggle"
     >
       <el-icon :size="14" class="transition-transform duration-200 shrink-0" :class="{ 'rotate-90': expanded }">
@@ -52,7 +53,7 @@ const containerClass = computed(() => {
   switch (props.variant) {
     case 'thinking': return 'border-purple-200/60 bg-purple-50/30'
     case 'tool': return 'border-blue-200/60 bg-blue-50/30'
-    case 'code': return 'border-neutral-200/60 bg-neutral-50/30'
+    case 'code': return 'border-[#d0d7de] bg-[#f6f8fa]'
     case 'artifact': return 'border-violet-200/60 bg-violet-50/30'
     case 'success': return 'border-emerald-200/60 bg-emerald-50/30'
     case 'error': return 'border-red-200/60 bg-red-50/30'
@@ -92,12 +93,26 @@ const borderClass = computed(() => {
   switch (props.variant) {
     case 'thinking': return 'border-purple-100'
     case 'tool': return 'border-blue-100'
-    case 'code': return 'border-neutral-100'
+    case 'code': return 'border-[#d0d7de]'
     case 'artifact': return 'border-violet-100'
     case 'success': return 'border-emerald-100'
     case 'error': return 'border-red-100'
     case 'approval': return 'border-amber-100'
     default: return 'border-outline-variant'
+  }
+})
+
+const headerClass = computed(() => {
+  switch (props.variant) {
+    case 'code': return 'bg-[#f4f6f8]'
+    default: return ''
+  }
+})
+
+const headerHoverClass = computed(() => {
+  switch (props.variant) {
+    case 'code': return 'hover:bg-[#eaeef2]'
+    default: return 'hover:bg-black/[0.02]'
   }
 })
 
