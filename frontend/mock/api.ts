@@ -25,9 +25,9 @@ const conversations = [
     mode: 'group',
     is_pinned: true,
     is_archived: false,
-    last_message_preview: 'Excellent work! The report is ready.',
-    last_message_at: '2026-05-26T10:00:00Z',
-    message_count: 14,
+    last_message_preview: '以上是完整的 Markdown 渲染效果演示。',
+    last_message_at: '2026-05-26T09:31:00Z',
+    message_count: 16,
     unread_count: 2,
     created_at: '2026-05-26T09:00:00Z',
     updated_at: '2026-05-26T10:00:00Z',
@@ -129,6 +129,31 @@ const messages = [
     selected_range: null,
     is_deleted: false,
     created_at: '2026-05-26T09:10:00Z',
+  },
+  // msg-3b: clean code block (no diff)
+  {
+    id: 'msg-3b',
+    conversation_id: 'conv-1',
+    thread_id: 'thread-2',
+    parent_id: null,
+    user_id: null,
+    agent_id: 'data-analyst',
+    role: 'assistant',
+    blocks: [
+      { block_id: 'b5b', type: 'text', content: 'Here is the data cleaning script I wrote for the pipeline:' },
+      { block_id: 'b5c', type: 'code', language: 'python', code: 'import pandas as pd\nimport numpy as np\nfrom pathlib import Path\n\n\ndef clean_sales_data(df: pd.DataFrame) -> pd.DataFrame:\n    """Remove duplicates, fill nulls, normalize columns."""\n    df = df.drop_duplicates(subset=["order_id"])\n    df["revenue"] = df["revenue"].fillna(0)\n    df["date"] = pd.to_datetime(df["date"], errors="coerce")\n    return df.sort_values("date").reset_index(drop=True)\n\n\ndef main():\n    raw = pd.read_csv("sales_q4.csv")\n    clean = clean_sales_data(raw)\n    clean.to_parquet("sales_q4_clean.parquet", index=False)\n    print(f"Cleaned {len(clean)} rows")\n\n\nif __name__ == "__main__":\n    main()', filename: 'clean_pipeline.py' },
+    ],
+    status: 'done',
+    error_message: null,
+    model: 'codex',
+    sender: 'Data Analyst',
+    tokens_input: 180,
+    tokens_output: 95,
+    latency_ms: 3200,
+    feedback: null,
+    selected_range: null,
+    is_deleted: false,
+    created_at: '2026-05-26T09:12:00Z',
   },
   // msg-4: user asks for visualization
   {
@@ -262,6 +287,178 @@ const messages = [
     is_deleted: false,
     created_at: '2026-05-26T09:27:00Z',
   },
+  // msg-9: user asks for markdown demo
+  {
+    id: 'msg-9',
+    conversation_id: 'conv-1',
+    thread_id: null,
+    parent_id: null,
+    user_id: 'default',
+    agent_id: null,
+    role: 'user',
+    blocks: [{ block_id: 'b18', type: 'text', content: '给我展示一份完整的 Markdown 渲染效果，包括标题、列表、表格、代码块和引用' }],
+    status: 'done',
+    error_message: null,
+    model: null,
+    sender: null,
+    tokens_input: null,
+    tokens_output: null,
+    latency_ms: null,
+    feedback: null,
+    selected_range: null,
+    is_deleted: false,
+    created_at: '2026-05-26T09:30:00Z',
+  },
+  // msg-10: agent responds with rich markdown — heading, lists, table, blockquote, code blocks
+  {
+    id: 'msg-10',
+    conversation_id: 'conv-1',
+    thread_id: 'thread-7',
+    parent_id: null,
+    user_id: null,
+    agent_id: 'orchestrator',
+    role: 'assistant',
+    blocks: [
+      {
+        block_id: 'b19',
+        type: 'text',
+        content: `## Markdown 渲染效果演示
+
+以下是各种 Markdown 元素的渲染效果：
+
+### 文本格式
+
+支持 **粗体**、*斜体*、~~删除线~~ 和 \`行内代码\` 等基本格式。
+
+### 有序列表
+
+1. 第一项：安装依赖
+2. 第二项：配置环境变量
+3. 第三项：启动开发服务器
+
+### 无序列表
+
+- 支持多种编程语言高亮
+  - Python
+  - TypeScript / JavaScript
+  - Go
+  - Rust
+- 自动检测语言并应用对应主题
+- 行号显示 & 一键复制
+
+### 引用
+
+> **提示：** 代码块支持语法高亮，使用的是 \`shiki\` 引擎，基于 VSCode 的 TextMate 语法，支持 100+ 语言。
+
+### 表格
+
+| 语言 | 文件扩展名 | 类型系统 | 运行方式 |
+|------|-----------|---------|---------|
+| Python | \`.py\` | 动态类型 | 解释执行 |
+| TypeScript | \`.ts\` | 静态类型 | 编译为 JS |
+| Go | \`.go\` | 静态类型 | 编译执行 |
+| Rust | \`.rs\` | 静态类型 | 编译执行 |
+
+### Python 代码示例
+
+\`\`\`python
+import pandas as pd
+from typing import Optional
+
+def load_sales_data(path: str, sheet: Optional[str] = None) -> pd.DataFrame:
+    """Load sales data from Excel or CSV file."""
+    if path.endswith('.xlsx'):
+        return pd.read_excel(path, sheet_name=sheet or 0)
+    return pd.read_csv(path)
+
+def summarize(df: pd.DataFrame) -> dict:
+    """Return summary statistics."""
+    return {
+        "total_revenue": df["revenue"].sum(),
+        "avg_order_value": df["revenue"].mean(),
+        "top_product": df.groupby("product")["revenue"].sum().idxmax(),
+    }
+\`\`\`
+
+### TypeScript 代码示例
+
+\`\`\`typescript
+interface ApiResponse<T> {
+  data: T
+  status: number
+  message: string
+}
+
+async function fetchWithRetry<T>(
+  url: string,
+  retries: number = 3
+): Promise<ApiResponse<T>> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(\`HTTP \${res.status}\`)
+      return await res.json()
+    } catch (err) {
+      if (i === retries - 1) throw err
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)))
+    }
+  }
+  throw new Error("Unreachable")
+}
+\`\`\`
+
+### SQL 查询示例
+
+\`\`\`sql
+SELECT
+  p.name AS product_name,
+  SUM(oi.quantity) AS total_sold,
+  SUM(oi.quantity * oi.unit_price) AS revenue
+FROM order_items oi
+JOIN products p ON p.id = oi.product_id
+JOIN orders o ON o.id = oi.order_id
+WHERE o.created_at >= '2026-01-01'
+GROUP BY p.name
+HAVING SUM(oi.quantity * oi.unit_price) > 10000
+ORDER BY revenue DESC
+LIMIT 10;
+\`\`\`
+
+### Shell 命令示例
+
+\`\`\`bash
+#!/bin/bash
+set -euo pipefail
+
+echo "Deploying to production..."
+docker build -t myapp:latest .
+docker push registry.example.com/myapp:latest
+
+kubectl set image deployment/myapp \\
+  myapp=registry.example.com/myapp:latest \\
+  --namespace production
+
+kubectl rollout status deployment/myapp -n production
+echo "Deploy complete!"
+\`\`\`
+
+---
+
+*以上是完整的 Markdown 渲染效果演示。*`,
+      },
+    ],
+    status: 'done',
+    error_message: null,
+    model: 'claude-sonnet-4-6',
+    sender: 'Orchestrator',
+    tokens_input: 450,
+    tokens_output: 680,
+    latency_ms: 4200,
+    feedback: null,
+    selected_range: null,
+    is_deleted: false,
+    created_at: '2026-05-26T09:31:00Z',
+  },
 ]
 
 const mockList = [
@@ -331,6 +528,14 @@ const mockList = [
 
   // Messages
   {
+    url: '/api/v1/messages/:id',
+    method: 'get',
+    response: ({ query }: { query: { id: string } }) => {
+      const msg = messages.find((m) => m.id === query.id)
+      return msg || { statusCode: 404, status: 404, message: 'Message not found' }
+    },
+  },
+  {
     url: '/api/v1/conversations/:id/messages',
     method: 'get',
     response: ({ query }: { query: { id: string } }) => {
@@ -395,6 +600,24 @@ const mockList = [
     ],
   },
   {
+    url: '/api/v1/agents',
+    method: 'post',
+    response: ({ body }: { body: { name: string; description?: string; type: string; capabilities?: Record<string, boolean>; tags?: string[]; skill_ids?: string[] } }) => ({
+      id: `agent-${Date.now()}`,
+      user_id: 'default',
+      name: body.name,
+      description: body.description ?? '',
+      type: body.type,
+      capabilities: body.capabilities ?? { supports_code: true, supports_diff: false, supports_approval: false, supports_image: false },
+      tags: body.tags ?? [],
+      is_public: true,
+      is_active: true,
+      skill_ids: body.skill_ids ?? [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+  },
+  {
     url: '/api/v1/agents/:id',
     method: 'get',
     response: ({ query }: { query: { id: string } }) => {
@@ -412,6 +635,145 @@ const mockList = [
         updated_at: '2026-05-01T00:00:00Z',
       }
     },
+  },
+  {
+    url: '/api/v1/agents/:id',
+    method: 'patch',
+    response: ({ query, body }: { query: { id: string }; body: Record<string, unknown> }) => ({
+      id: query.id,
+      user_id: 'default',
+      name: body.name ?? 'Updated Agent',
+      description: body.description ?? 'Updated description',
+      type: 'claude',
+      capabilities: body.capabilities ?? { supports_code: true, supports_diff: true, supports_approval: false, supports_image: false },
+      tags: body.tags ?? [],
+      is_public: body.is_public ?? true,
+      is_active: body.is_active ?? true,
+      skill_ids: body.skill_ids ?? [],
+      created_at: '2026-05-01T00:00:00Z',
+      updated_at: new Date().toISOString(),
+    }),
+  },
+  {
+    url: '/api/v1/agents/build',
+    method: 'post',
+    response: ({ body }: { body: { description: string } }) => ({
+      session_id: `build-${Date.now()}`,
+      draft: {
+        name: 'Custom Agent',
+        description: body.description,
+        type: 'claude',
+        system_prompt: `You are a helpful assistant specialized in: ${body.description}`,
+        capabilities: { supports_code: true, supports_diff: true, supports_approval: false, supports_image: false },
+        tags: ['custom'],
+        suggested_skill_names: ['web-search', 'code-analysis'],
+      },
+    }),
+  },
+  {
+    url: '/api/v1/agents/build/confirm',
+    method: 'post',
+    response: ({ body }: { body: { session_id: string; edited_draft: Record<string, unknown> } }) => ({
+      id: `agent-${Date.now()}`,
+      user_id: 'default',
+      name: body.edited_draft.name ?? 'New Agent',
+      description: body.edited_draft.description ?? '',
+      type: body.edited_draft.type ?? 'claude',
+      system_prompt: body.edited_draft.system_prompt ?? '',
+      capabilities: body.edited_draft.capabilities ?? { supports_code: true, supports_diff: false, supports_approval: false, supports_image: false },
+      tags: body.edited_draft.tags ?? [],
+      is_public: true,
+      is_active: true,
+      skill_ids: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+  },
+
+  // Skills
+  {
+    url: '/api/v1/skills',
+    method: 'get',
+    response: () => [
+      {
+        id: 'web-search',
+        user_id: 'system',
+        name: 'Web Search',
+        description: 'Search the web for up-to-date information',
+        type: 'builtin',
+        config: { max_results: 5 },
+        is_public: true,
+        created_at: '2026-05-01T00:00:00Z',
+        updated_at: '2026-05-01T00:00:00Z',
+      },
+      {
+        id: 'code-analysis',
+        user_id: 'system',
+        name: 'Code Analysis',
+        description: 'Analyze code quality and suggest improvements',
+        type: 'builtin',
+        config: { languages: ['python', 'typescript', 'go'] },
+        is_public: true,
+        created_at: '2026-05-05T00:00:00Z',
+        updated_at: '2026-05-05T00:00:00Z',
+      },
+      {
+        id: 'deploy',
+        user_id: 'system',
+        name: 'Deploy',
+        description: 'Deploy applications to various environments',
+        type: 'builtin',
+        config: { environments: ['staging', 'production'] },
+        is_public: true,
+        created_at: '2026-05-10T00:00:00Z',
+        updated_at: '2026-05-10T00:00:00Z',
+      },
+    ],
+  },
+  {
+    url: '/api/v1/skills',
+    method: 'post',
+    response: ({ body }: { body: { name: string; description?: string; type?: string; config?: Record<string, unknown> } }) => ({
+      id: `skill-${Date.now()}`,
+      user_id: 'default',
+      name: body.name,
+      description: body.description ?? '',
+      type: body.type ?? 'custom',
+      config: body.config ?? {},
+      is_public: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }),
+  },
+  {
+    url: '/api/v1/skills/:id',
+    method: 'get',
+    response: ({ query }: { query: { id: string } }) => ({
+      id: query.id,
+      user_id: 'system',
+      name: query.id,
+      description: `Skill: ${query.id}`,
+      type: 'builtin',
+      config: {},
+      is_public: true,
+      created_at: '2026-05-01T00:00:00Z',
+      updated_at: '2026-05-01T00:00:00Z',
+    }),
+  },
+  {
+    url: '/api/v1/skills/:id',
+    method: 'patch',
+    response: ({ query, body }: { query: { id: string }; body: Record<string, unknown> }) => ({
+      id: query.id,
+      user_id: 'default',
+      name: body.name ?? 'Updated Skill',
+      description: body.description ?? 'Updated description',
+      type: 'custom',
+      config: body.config ?? {},
+      is_public: body.is_public ?? false,
+      created_at: '2026-05-01T00:00:00Z',
+      updated_at: new Date().toISOString(),
+    }),
   },
 ]
 

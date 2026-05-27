@@ -45,7 +45,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import * as Diff from 'diff'
 import { highlightCode, initHighlighter } from '@/utils/markdown'
 
@@ -60,12 +60,17 @@ const codeLines = computed(() => props.code.split('\n'))
 
 const highlightedHtml = ref('')
 
-onMounted(async () => {
-  await initHighlighter()
-  if (!props.oldCode && props.language) {
+let highlighterReady = false
+initHighlighter().then(() => { highlighterReady = true })
+
+watch(
+  () => props.code,
+  () => {
+    if (!highlighterReady || props.oldCode || !props.language || !props.code) return
     highlightedHtml.value = highlightCode(props.code, props.language)
-  }
-})
+  },
+  { immediate: true },
+)
 
 const diffLines = computed(() => {
   if (!props.oldCode) return []
