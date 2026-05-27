@@ -18,8 +18,8 @@
       <div v-if="message.blocks && message.blocks.length > 0" class="space-y-2">
         <!-- Text block -->
         <div v-for="(block, i) in message.blocks" :key="i">
-          <div v-if="block.type === 'text'" class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft">
-            <div class="text-[13px] leading-relaxed text-on-surface markdown-body" v-html="renderMarkdown(block.content)"></div>
+          <div v-if="block.type === 'text'" class="text-block">
+            <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="block.content" />
           </div>
 
           <!-- Thinking block -->
@@ -86,8 +86,8 @@
 
       <!-- Legacy mode: single content + optional codeBlock -->
       <template v-else>
-        <div class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft">
-          <div class="text-[13px] leading-relaxed text-on-surface markdown-body" v-html="renderMarkdown(message.content)"></div>
+        <div class="text-block">
+          <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="message.content" />
 
           <CodeBlock
             v-if="message.codeBlock"
@@ -118,7 +118,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AgentMessage } from '@/types/chat'
-import { renderMarkdown } from '@/utils/markdown'
+import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import AgentAvatar from './AgentAvatar.vue'
 import CodeBlock from '../CodeBlock.vue'
 import MessageActions from '../MessageActions.vue'

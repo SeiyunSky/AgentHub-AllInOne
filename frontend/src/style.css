@@ -256,17 +256,86 @@ html {
   font-size: 0.9em;
 }
 .markdown-body pre {
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 1em;
+  margin: 0.5em 0;
   border-radius: 8px;
   overflow-x: auto;
-  margin: 0.5em 0;
   max-width: 100%;
 }
 .markdown-body pre code {
   background: transparent;
   padding: 0;
+}
+.markdown-body .shiki-wrapper {
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0.5em 0;
+  background: #f6f8fa;
+  border: 1px solid #d0d7de;
+}
+.markdown-body .shiki-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #eaeef2;
+  border-bottom: 1px solid #d0d7de;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  cursor: pointer;
+  user-select: none;
+}
+.markdown-body .shiki-header:hover {
+  background: #dfe4e9;
+}
+.markdown-body .shiki-toggle {
+  display: inline-block;
+  font-size: 9px;
+  color: #656d76;
+  transition: transform 0.15s;
+}
+.markdown-body .shiki-wrapper.collapsed .shiki-toggle {
+  transform: rotate(-90deg);
+}
+.markdown-body .shiki-lang {
+  color: #656d76;
+  font-weight: 500;
+}
+.markdown-body .shiki-header .shiki-lang {
+  flex: 1;
+}
+.markdown-body .shiki-copy-btn {
+  color: #656d76;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.markdown-body .shiki-copy-btn:hover {
+  color: #24292f;
+  background: #d0d7de;
+}
+.markdown-body .shiki-code {
+  transition: max-height 0.25s ease;
+  overflow: hidden;
+}
+.markdown-body .shiki-wrapper.collapsed .shiki-code {
+  max-height: 0 !important;
+  border-top: none;
+}
+.markdown-body .shiki-code pre {
+  margin: 0;
+  padding: 1em;
+  background: transparent !important;
+}
+.markdown-body .shiki-wrapper pre > code {
+  display: grid;
+}
+.markdown-body .shiki-wrapper .line {
+  min-height: 1lh;
 }
 .markdown-body strong {
   font-weight: 600;
@@ -351,7 +420,6 @@ html {
   font-size: 0.9em;
 }
 .markdown-body-dark pre {
-  background: #2d2d2d;
   padding: 1em;
   border-radius: 8px;
   overflow-x: auto;
@@ -361,6 +429,78 @@ html {
 .markdown-body-dark pre code {
   background: transparent;
   padding: 0;
+}
+.markdown-body-dark .shiki-wrapper {
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0.5em 0;
+  background: #161b22;
+  border: 1px solid #30363d;
+}
+.markdown-body-dark .shiki-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #21262d;
+  border-bottom: 1px solid #30363d;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  cursor: pointer;
+  user-select: none;
+}
+.markdown-body-dark .shiki-header:hover {
+  background: #282e36;
+}
+.markdown-body-dark .shiki-toggle {
+  display: inline-block;
+  font-size: 9px;
+  color: #8b949e;
+  transition: transform 0.15s;
+}
+.markdown-body-dark .shiki-wrapper.collapsed .shiki-toggle {
+  transform: rotate(-90deg);
+}
+.markdown-body-dark .shiki-lang {
+  color: #8b949e;
+  font-weight: 500;
+}
+.markdown-body-dark .shiki-header .shiki-lang {
+  flex: 1;
+}
+.markdown-body-dark .shiki-copy-btn {
+  color: #8b949e;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.markdown-body-dark .shiki-copy-btn:hover {
+  color: #f0f6fc;
+  background: #30363d;
+}
+.markdown-body-dark .shiki-code {
+  transition: max-height 0.25s ease;
+  overflow: hidden;
+}
+.markdown-body-dark .shiki-wrapper.collapsed .shiki-code {
+  max-height: 0 !important;
+  border-top: none;
+}
+.markdown-body-dark .shiki-code pre {
+  margin: 0;
+  padding: 1em;
+  background: transparent !important;
+}
+.markdown-body-dark .shiki-wrapper pre > code {
+  display: grid;
+}
+.markdown-body-dark .shiki-wrapper .line {
+  min-height: 1lh;
 }
 .markdown-body-dark strong {
   font-weight: 600;

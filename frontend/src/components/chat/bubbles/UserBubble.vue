@@ -2,7 +2,7 @@
   <div class="flex gap-3 justify-end message-enter group">
     <div class="max-w-[70%] relative pb-3">
       <div class="p-4 bg-slate-700 text-white rounded-2xl rounded-tr-md shadow-soft">
-        <div class="text-[13px] leading-relaxed markdown-body-dark" v-html="renderMarkdown(message.content)"></div>
+        <MarkdownRenderer class="text-[13px] leading-relaxed" :content="message.content" theme="dark" />
       </div>
       <MessageActions
         :message-id="message.id"
@@ -24,7 +24,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { UserMessage } from '@/types/chat'
-import { renderMarkdown } from '@/utils/markdown'
+import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import MessageActions from '../MessageActions.vue'
 
 const props = defineProps<{

@@ -1,0 +1,13 @@
+- [ ] Chats
+  - [x] message渲染markdown
+  - [ ] 丰富NewChat页面
+  - [ ] 聊天总体宽度不用这么宽，居中限制总宽度
+  - [x] 新消息滚动到最底端
+  - [ ] approval
+    - [ ] mock SSE 中 approval 块始终 pending，但实际上 SSE 会继续发完所有块。真实的审批流程需要 WebSocket 或轮询来接收 block_stop 更新状态。当前 mock 的 approval overlay 可以手动 approve/reject，会更新本地状态但不会中断 SSE。
+  - [ ] message reply
+    - [ ] add api param
+    - [ ] 展示replied message
+- [ ] Agents
+  - [ ] TODO
+- [ ] Skill

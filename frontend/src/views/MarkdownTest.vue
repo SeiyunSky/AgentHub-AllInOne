@@ -15,9 +15,9 @@
 
       <!-- Output -->
       <div>
-        <h2 class="text-lg font-semibold mb-2">Output (Rendered HTML)</h2>
+        <h2 class="text-lg font-semibold mb-2">Output (Rendered)</h2>
         <div class="bg-white border border-gray-300 rounded-lg p-4 min-h-64">
-          <div class="markdown-body" v-html="rendered"></div>
+          <MarkdownRenderer :content="input" />
         </div>
       </div>
     </div>
@@ -44,11 +44,15 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { renderMarkdown } from '@/utils/markdown'
+import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
+import { renderMarkdown, initHighlighter } from '@/utils/markdown'
+
+const ready = ref(false)
+initHighlighter().then(() => { ready.value = true })
 
 const input = ref("List:\n- aaa\n- bbb\n\n**Bold** and *italic*\n`inline code`\n\n[link](https://example.com)\n\n1. First\n2. Second\n\n> blockquote\n\ncode block:\n\n```python\ndef hello():\n    print('Hello')\n```")
 
-const rendered = computed(() => renderMarkdown(input.value))
+const rendered = computed(() => ready.value ? renderMarkdown(input.value) : '')
 
 const presets = [
   {
@@ -57,7 +61,11 @@ const presets = [
   },
   {
     label: 'Full Demo',
-    text: "# Heading\n\n**bold** *italic* `code`\n\n- bullet 1\n- bullet 2\n\n1. number 1\n2. number 2\n\n> quote\n\n```js\nconsole.log('test')\n```",
+    text: "# Heading\n\n**bold** *italic* `code`\n\n- bullet 1\n- bullet 2\n\n1. number 1\n2. number 2\n\n> quote\n\n```js\nconst greeting = 'Hello World'\nconsole.log(greeting)\n```\n\n```typescript\ninterface User {\n  id: number\n  name: string\n  email: string\n}\n\nfunction greet(user: User): string {\n  return `Hello, ${user.name}!`\n}\n```",
+  },
+  {
+    label: 'Code Heavy',
+    text: "```python\nimport pandas as pd\n\ndef load_data(path: str) -> pd.DataFrame:\n    \"\"\"Load CSV data.\"\"\"\n    df = pd.read_csv(path)\n    return df.to_dict('records')\n```\n\n```bash\n$ npm install -D vite\n$ npm run dev\n```\n\n```sql\nSELECT u.name, COUNT(o.id) AS order_count\nFROM users u\nJOIN orders o ON u.id = o.user_id\nGROUP BY u.name\nORDER BY order_count DESC;\n```",
   },
   {
     label: 'Empty',
