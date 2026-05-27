@@ -1,13 +1,26 @@
-- [ ] Chats
-  - [x] message渲染markdown
+- [x] Chats
+  - [x] message渲染markdown（shiki语法高亮 + DOMPurify + 可折叠代码块 + language/copy header）
   - [ ] 丰富NewChat页面
   - [ ] 聊天总体宽度不用这么宽，居中限制总宽度
   - [x] 新消息滚动到最底端
+  - [x] 左侧列表容器宽度 240→280
   - [ ] approval
     - [ ] mock SSE 中 approval 块始终 pending，但实际上 SSE 会继续发完所有块。真实的审批流程需要 WebSocket 或轮询来接收 block_stop 更新状态。当前 mock 的 approval overlay 可以手动 approve/reject，会更新本地状态但不会中断 SSE。
+    - [ ] 创建 approvalsApi，审批按钮接入 HTTP 调用（当前只改本地状态）
   - [ ] message reply
     - [ ] add api param
     - [ ] 展示replied message
+  - [x] 会话操作 UI
+    - [x] 会话重命名按钮 → conversationsApi.update()
+    - [x] 置顶/取消置顶 → conversationsApi.update()
+    - [x] 归档/取消归档 → conversationsApi.update()
 - [ ] Agents
-  - [ ] TODO
-- [ ] Skill
+  - [ ] 编辑模式补充 Save 按钮 → agentsApi.update()
+  - [ ] AgentBuilderDialog 对话式构建流程（build + buildConfirm）
+- [ ] Skills
+  - [ ] "New Skill" 按钮加 @click → 创建表单/弹窗 → skillsApi.create()
+  - [ ] Skill 详情/编辑页面 → skillsApi.get() / skillsApi.update()
+- [ ] Stub 模块（后端接口未定义）
+  - [ ] Auth — 登录接口接入
+  - [ ] Artifacts — one-click diff apply / deploy
+  - [ ] WebSocket — 状态/审批/部署进度

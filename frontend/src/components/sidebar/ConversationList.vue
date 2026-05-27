@@ -23,10 +23,47 @@
             <el-icon class="text-brand" :size="16"><ChatDotRound /></el-icon>
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-[13px] font-semibold text-on-surface truncate">{{ conv.title }}</p>
+            <div class="flex items-center gap-1">
+              <p class="text-[13px] font-semibold text-on-surface truncate">{{ conv.title }}</p>
+              <span v-if="conv.is_pinned" class="text-[10px]">📌</span>
+            </div>
             <p class="text-[11px] text-on-surface-variant truncate">{{ conv.last_message_preview }}</p>
           </div>
-          <span v-if="conv.unread_count" class="bg-brand text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full shadow-soft">{{ conv.unread_count }}</span>
+          <div class="flex items-center gap-1">
+            <span v-if="conv.unread_count" class="bg-brand text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full shadow-soft">{{ conv.unread_count }}</span>
+            <el-popover
+              trigger="click"
+              placement="bottom-end"
+              :width="160"
+              :show-arrow="false"
+              :offset="4"
+              popper-class="conv-action-popover"
+              @click.stop
+            >
+              <template #reference>
+                <button
+                  class="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-neutral-200/60 transition-all cursor-pointer"
+                  @click.stop
+                >
+                  <el-icon :size="14" class="text-on-surface-variant"><MoreFilled /></el-icon>
+                </button>
+              </template>
+              <div class="py-1">
+                <button class="conv-action-item" @click="handleRename(conv)">
+                  <el-icon :size="14"><Edit /></el-icon>
+                  <span>Rename</span>
+                </button>
+                <button class="conv-action-item" @click="handleTogglePin(conv)">
+                  <el-icon :size="14"><component :is="conv.is_pinned ? Aim : Promotion" /></el-icon>
+                  <span>{{ conv.is_pinned ? 'Unpin' : 'Pin' }}</span>
+                </button>
+                <button class="conv-action-item" @click="handleToggleArchive(conv)">
+                  <el-icon :size="14"><component :is="conv.is_archived ? FolderOpened : Folder" /></el-icon>
+                  <span>{{ conv.is_archived ? 'Unarchive' : 'Archive' }}</span>
+                </button>
+              </div>
+            </el-popover>
+          </div>
         </div>
       </div>
     </div>
@@ -36,8 +73,10 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChatDotRound, Plus } from '@element-plus/icons-vue'
+import { ElMessageBox } from 'element-plus'
+import { ChatDotRound, Plus, MoreFilled, Edit, Aim, Promotion, Folder, FolderOpened } from '@element-plus/icons-vue'
 import { useConversationsStore } from '@/stores/conversations'
+import type { ConversationListItem } from '@/types/conversation'
 
 const router = useRouter()
 const conversationsStore = useConversationsStore()
@@ -54,5 +93,27 @@ async function handleNewChat() {
 async function handleSelect(id: string) {
   await conversationsStore.select(id)
   router.push({ name: 'chat-detail', params: { conversationId: id } })
+}
+
+async function handleRename(conv: ConversationListItem) {
+  try {
+    const { value } = await ElMessageBox.prompt(conv.title, 'Rename Conversation', {
+      confirmButtonText: 'Save',
+      cancelButtonText: 'Cancel',
+      inputPlaceholder: 'Enter new name',
+      customStyle: { borderRadius: '16px' },
+    })
+    if (value?.trim()) {
+      await conversationsStore.update(conv.id, { title: value.trim() })
+    }
+  } catch {}
+}
+
+async function handleTogglePin(conv: ConversationListItem) {
+  await conversationsStore.update(conv.id, { is_pinned: !conv.is_pinned })
+}
+
+async function handleToggleArchive(conv: ConversationListItem) {
+  await conversationsStore.update(conv.id, { is_archived: !conv.is_archived })
 }
 </script>

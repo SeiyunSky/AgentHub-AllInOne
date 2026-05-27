@@ -20,7 +20,7 @@ export const useUIStore = defineStore('ui', () => {
   // Legacy - no longer used for resizing, but kept for compatibility
   const isResizing = ref(false)
 
-  const sidebarWidth = computed(() => sidebarCollapsed.value ? 160 : 400)
+  const sidebarWidth = computed(() => sidebarCollapsed.value ? 160 : 440)
 
   function toggleSidebar() {
     sidebarCollapsed.value = !sidebarCollapsed.value
