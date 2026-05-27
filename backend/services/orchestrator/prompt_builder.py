@@ -46,6 +46,13 @@ _ORCHESTRATOR_PROMPT_PATH = _BACKEND_ROOT / "prompts" / "orchestrator.md"
 _PROJECT_ROOT = _BACKEND_ROOT.parent
 _AGENTHUB_MD_FILENAME = "AGENTHUB.md"
 
+# 第 6 层(动态上下文)滑动窗口与摘要参数
+# - 会话历史最近 N 条作为入口,更早的让 LLM 调 read_conversation_history 工具按需拉
+# - N 与工具默认 limit 对齐,LLM 看到的"默认窗口"前后一致
+# - 单条消息按字符截断,只为给 LLM 看出意图;详情让它调工具
+_HISTORY_RECENT_LIMIT = 20
+_HISTORY_TEXT_PER_MSG_CHARS = 300
+
 
 @dataclass
 class PromptContext:
@@ -53,6 +60,7 @@ class PromptContext:
     user_id: str
     conversation_id: str
     thread_id: str
+    user_message_id: str
     available_agent_ids: list[str]
 
 
@@ -150,9 +158,36 @@ class SystemPromptBuilder:
         """
         第 3 层:Skill 元数据(progressive disclosure)。
 
-        TODO[F-prompt-3]: 扫 backend/skills/orchestrator/*.md → 拼出 description 列表。
-        主 Agent 决定需要某 Skill 时调 load_skill 工具读完整正文。
-        依赖:Skill 加载机制(Step 4 决定走 A 路时实装)。
+        现状:返回空字符串,等 skill_service 实装后接通。
+
+        TODO[F-prompt-3]: 实装时返回 markdown 列表:
+            ## 可用 Skill 列表
+            - **{name}**: {description}
+            - ...
+            (主 Agent 看完描述后,需要用某个 Skill 调 read_file/load_skill 拿完整正文)
+
+        待定的设计点(动手前必须先和团队对齐):
+
+        1. **数据源**:DB 为权威 + 本地文件为缓存
+           - 用户创建的 Skill 写入 skills 表(元数据)+ skills/{name}.md(正文)
+           - 用户删本地 .md 文件不丢数据,可从 DB 重新生成本地副本
+           - skill_service 应提供 list_for_orchestrator() 屏蔽来源细节
+
+        2. **主 Agent 挂载机制**:复用 agent_skills 多对多表
+           - 约定主 Agent 用 agent_id='orchestrator' 注册到 agents 表(seed 阶段)
+           - skill_service.list_for_orchestrator() 等价于
+             list_by_agent_id('orchestrator'),按 active+is_public/作者过滤
+           - 不引入"orchestrator 专属目录"的隐式约定,避免文件系统 / DB 双标识不一致
+
+        3. **用户创建路径**:
+           - is_public=1 + author=GUGA 视为系统内置,所有主 Agent 默认可见
+           - is_public=0 仅 author 自己可见;主 Agent 在 ctx.user_id 视角下加载
+           - 实装 list_for_orchestrator(user_id) 时要带 user_id 做可见性过滤
+
+        依赖:
+        - skill_service 实装(services/skill_service.py 当前是 # TODO stub)
+        - skill_repo 实装(repositories/skill_repo.py 当前是 # TODO stub)
+        - agents 表 seed 主 Agent 行(agent_id='orchestrator')
         """
         return ""
 
@@ -231,15 +266,168 @@ class SystemPromptBuilder:
 
     async def _layer_6_dynamic_context(self, ctx: PromptContext) -> str:
         """
-        第 6 层:动态上下文。
+        第 6 层:动态上下文。三块拼接:
+        1. 当前会话最近 N 条消息(滑动窗口入口,详情让 LLM 调 read_conversation_history)
+        2. 当前会话挂载的可用 Agent 列表(精简,详情让 LLM 调 get_agent_capabilities)
+        3. 当前轮次的任务图状态(轻量,本身就是 read_task_plan 的全量返回)
 
-        TODO[F-prompt-6]: 三块拼接:
-        - 当前会话最近 N 条消息(read_conversation_history)
-        - 可用 Agent 列表 + 能力(list_available_agents)
-        - 当前任务图状态(read_task_plan)
-        依赖:message_service / agent_service / 已实装的 thread_repo。
+        每块独立 try/except 兜底:单块查询失败不阻塞整层,失败块输出空字符串。
+        三块全空时整层返回 ""(避免硬塞"## 动态上下文(空)"白占 token)。
         """
-        return ""
+        history = await self._dyn_history_block(ctx)
+        agents = await self._dyn_agents_block(ctx)
+        task_plan = await self._dyn_task_plan_block(ctx)
+
+        parts = [p for p in (history, agents, task_plan) if p]
+        return "\n\n".join(parts)
+
+    async def _dyn_history_block(self, ctx: PromptContext) -> str:
+        """会话最近 N 条消息摘要。"""
+        # lazy import 避免 prompt_builder import 时 message_service 还在初始化链路上
+        from backend.services.message_service import message_service
+
+        try:
+            messages = await message_service.list_recent(
+                ctx.conversation_id,
+                limit=_HISTORY_RECENT_LIMIT,
+            )
+        except Exception:
+            logger.exception("layer_6 list_recent 失败 conversation=%s", ctx.conversation_id)
+            return ""
+        if not messages:
+            return ""
+
+        # repo 返回倒序(最新在前),反转为正序便于阅读时间线
+        messages = list(reversed(messages))
+
+        lines: list[str] = []
+        for m in messages:
+            sender = (m.sender or m.agent_id or m.user_id or "?")[:30]
+            text = self._extract_message_text(m.content)
+            if len(text) > _HISTORY_TEXT_PER_MSG_CHARS:
+                text = text[:_HISTORY_TEXT_PER_MSG_CHARS] + "...(truncated)"
+            lines.append(f"- [{m.role}/{sender}] {text}")
+
+        return (
+            f"## 当前会话最近 {len(messages)} 条历史\n\n"
+            "更早的消息或单条详情请调 `read_conversation_history` 工具拉取。\n\n"
+            + "\n".join(lines)
+        )
+
+    async def _dyn_agents_block(self, ctx: PromptContext) -> str:
+        """会话挂载的可用 Agent 列表(精简)。"""
+        from backend.services.conversation_service import conversation_service
+
+        try:
+            agents = await conversation_service.get_active_agents(ctx.conversation_id)
+        except Exception:
+            logger.exception(
+                "layer_6 get_active_agents 失败 conversation=%s", ctx.conversation_id
+            )
+            return ""
+        if not agents:
+            return ""
+
+        lines = [
+            f"- `{a.id}` **{a.name}** — {a.description or '(无描述)'}"
+            for a in agents
+        ]
+        return (
+            "## 本会话可用 Agent\n\n"
+            "派活前可调 `get_agent_capabilities(agent_id)` 拿到完整能力 / system_prompt。\n\n"
+            + "\n".join(lines)
+        )
+
+    async def _dyn_task_plan_block(self, ctx: PromptContext) -> str:
+        """当前轮次任务图状态(同 user_message_id 的所有 Thread,含主 Agent 自己)。"""
+        from backend.core.database import SessionLocal
+        from backend.repositories.thread_repo import ThreadRepository
+
+        # 在 session 生命周期内把 ORM 对象的字段抽成纯 Python 元组,
+        # 避免 session.close() 后访问 ORM 属性触发 DetachedInstanceError
+        rows: list[tuple[str, str, str, list[str]]] = []
+        session = SessionLocal()
+        try:
+            # 子 Thread 状态在后台 task 用别的 session 写,本 session 必须 expire
+            # 才能拿到最新状态(否则可能命中 identity map 缓存读到陈旧值)
+            session.expire_all()
+            try:
+                threads = ThreadRepository(session).list_by_message(ctx.user_message_id)
+            except Exception:
+                logger.exception(
+                    "layer_6 list_by_message 失败 message=%s", ctx.user_message_id
+                )
+                return ""
+            rows = [
+                (t.id, t.agent_id, t.status, list(t.blocked_by or []))
+                for t in threads
+            ]
+        finally:
+            session.close()
+
+        if not rows:
+            return ""
+
+        lines: list[str] = []
+        for tid, agent_id, status, blockers in rows:
+            blocker_str = f" blocked_by={blockers}" if blockers else ""
+            lines.append(
+                f"- `{tid}` agent=`{agent_id}` status={status}{blocker_str}"
+            )
+
+        return (
+            "## 当前轮次任务图\n\n"
+            "完整产出请调 `read_thread_result(thread_id)` 拉取。\n\n"
+            + "\n".join(lines)
+        )
+
+    @staticmethod
+    def _extract_message_text(content: object) -> str:
+        """
+        从 messages.content (JSON 列存储的 ContentBlock 数组) 提取展示文本。
+
+        ContentBlock 协议见 domain/message.py:
+        - TextBlock     content
+        - ThinkingBlock content
+        - ToolUseBlock  tool_name + input(摘要展示)
+        - CodeBlock     language + code(摘要展示)
+        - ApprovalBlock action + status
+        - 其他          type 占位
+
+        失败兜底返回 repr(content)[:200],不让单条解析错误拖死整层。
+        """
+        if content is None:
+            return ""
+        if isinstance(content, str):
+            return content
+        if not isinstance(content, list):
+            return repr(content)[:200]
+
+        parts: list[str] = []
+        for block in content:
+            if not isinstance(block, dict):
+                parts.append(str(block)[:80])
+                continue
+            btype = block.get("type")
+            if btype == "text":
+                parts.append(block.get("content") or "")
+            elif btype == "thinking":
+                parts.append(f"<thinking> {block.get('content', '')}")
+            elif btype == "tool_use":
+                parts.append(f"<tool_use {block.get('tool_name', '?')}>")
+            elif btype == "code":
+                parts.append(
+                    f"<code {block.get('language', '')}> "
+                    + (block.get("code") or "")[:80]
+                )
+            elif btype == "approval":
+                parts.append(
+                    f"<approval {block.get('action', '?')} status="
+                    f"{block.get('status', '?')}>"
+                )
+            else:
+                parts.append(f"<{btype}>")
+        return " ".join(p for p in parts if p)
 
 
 prompt_builder = SystemPromptBuilder()

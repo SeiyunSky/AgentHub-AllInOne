@@ -70,6 +70,16 @@ class AgentDoneEvent(_BaseAgentEvent):
     """单个 Agent 完成本次输出。整条消息的所有块都已 block_stop。"""
 
     type: Literal["agent_done"] = "agent_done"
+    tokens_input: int = Field(
+        default=0,
+        description="本轮 LLM 调用消耗的输入 token 数。Adapter 从底层 SDK usage 中提取后填充;"
+        "thread_service._run_thread 收到 AgentDoneEvent 时累加到 threads.tokens_total。"
+        "默认 0 表示 Adapter 未上报(兼容尚未实装 usage 提取的 Adapter)。",
+    )
+    tokens_output: int = Field(
+        default=0,
+        description="本轮 LLM 调用消耗的输出 token 数。语义同 tokens_input。",
+    )
 
 
 class AgentErrorEvent(_BaseAgentEvent):

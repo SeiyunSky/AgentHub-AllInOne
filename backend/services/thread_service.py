@@ -459,13 +459,11 @@ class ThreadService:
             )
 
             summary_parts: list[str] = []
-            errored = False
 
             async for event in adapter.stream(stream_input):
                 await stream_service.push_event(thread.conversation_id, event)
                 summary_parts.extend(self._extract_summary(event))
                 if isinstance(event, AgentErrorEvent):
-                    errored = True
                     t = _mark(ThreadStatus.ERROR, error_message=event.error)
                     if t:
                         await self._on_thread_terminal(
@@ -473,13 +471,35 @@ class ThreadService:
                         )
                     return
                 if isinstance(event, AgentDoneEvent):
+                    # 子 Thread 单轮 LLM 完成:把 Adapter 上报的 usage 累加到 threads.tokens_total。
+                    # Adapter 未上报 usage 时(默认 0+0)跳过写库,避免无 delta 的事务。
+                    # update_tokens 是累加语义,主 Agent 也用同一个方法,语义一致。
+                    #
+                    # 失败处理:token 累加是审计 / 计费用,不影响 Thread 主链路。
+                    # 写库异常时只记日志 + rollback,**不**抛出,break 后正常走 mark_done。
+                    # 后续维护时请保留这段 try/except,不要简化掉(否则一次 token 写库失败会
+                    # 把整个 Thread 推到 ERROR 状态,与设计意图不符)。
+                    delta = (event.tokens_input or 0) + (event.tokens_output or 0)
+                    if delta > 0:
+                        try:
+                            own_repo.update_tokens(thread.id, delta)
+                            own_session.commit()
+                        except Exception:
+                            logger.exception(
+                                "Thread %s 累加 token 失败,delta=%d (不影响 Thread 状态)",
+                                thread.id,
+                                delta,
+                            )
+                            own_session.rollback()
+                    # TODO[H1]: message_service 实装后,把 event.tokens_input / tokens_output
+                    # 写到对应 assistant 消息的 messages.tokens_input / tokens_output 字段
+                    # (需要从事件里拿到 message_id,Adapter 已在 AgentDoneEvent.message_id 携带)
                     break
 
-            if not errored:
-                summary = " ".join(summary_parts)[:500] or "(无摘要)"
-                t = _mark(ThreadStatus.DONE)
-                if t:
-                    await self._on_thread_terminal(t, summary, success=True)
+            summary = " ".join(summary_parts)[:500] or "(无摘要)"
+            t = _mark(ThreadStatus.DONE)
+            if t:
+                await self._on_thread_terminal(t, summary, success=True)
 
         except asyncio.CancelledError:
             t = _mark(ThreadStatus.CANCELLED)
