@@ -267,6 +267,7 @@ class OrchestratorService:
             user_id=user_id,
             conversation_id=conversation_id,
             thread_id=thread_id,
+            user_message_id=user_message_id,
             # MVP 阶段先空 —— 主 Agent 通过 list_available_agents 工具按需查
             available_agent_ids=[],
         )

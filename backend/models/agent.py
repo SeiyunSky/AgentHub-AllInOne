@@ -15,6 +15,7 @@ agents — Agent 配置表
 """
 
 from sqlalchemy import Column, String, Text, Enum, JSON, SmallInteger, Index
+from typing import Optional
 
 from backend.models.base import Base, TimestampMixin
 
@@ -40,7 +41,7 @@ class Agent(Base, TimestampMixin):
         nullable=False,
         comment="路由到对应 Adapter",
     )
-    system_prompt = Column(Text, nullable=True, comment="Agent 人格定义")
+    system_prompt: Optional[str] = Column(Text, nullable=True, comment="Agent 人格定义")
     capabilities = Column(
         JSON,
         nullable=True,

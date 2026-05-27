@@ -14,6 +14,8 @@ ToolRegistry —— 主 Agent 工具协议适配层
 
 from __future__ import annotations
 
+import copy
+import json
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -77,11 +79,13 @@ def register_tool(
     def _decorator(handler: ToolHandler) -> ToolHandler:
         if name in TOOL_HANDLERS:
             raise ValueError(f"重复注册工具: {name}")
+        schema = pydantic_to_json_schema(input_model)
+        _validate_tool_schema(name, schema)
         TOOL_HANDLERS[name] = handler
         TOOL_SCHEMAS[name] = {
             "name": name,
             "description": description,
-            "input_schema": pydantic_to_json_schema(input_model),
+            "input_schema": schema,
         }
         return handler
 
@@ -91,6 +95,13 @@ def register_tool(
 # ============================================================
 # Pydantic → JSON Schema
 # ============================================================
+
+# 单次工具执行 output 序列化后的最大字节数。超出截断 + 补 "...truncated"
+# 提示，避免单条 tool_result 撑爆 LLM context（Anthropic tools 单 response
+# 内多条 tool_result 会全部进下轮 prompt）。
+# 4KB 是经验值:典型工具输出几百字节,长 read_file 会超;真要读大文件应分批读。
+_TOOL_RESULT_MAX_BYTES = 4 * 1024
+
 
 def pydantic_to_json_schema(model: type[BaseModel]) -> dict[str, Any]:
     """
@@ -104,19 +115,142 @@ def pydantic_to_json_schema(model: type[BaseModel]) -> dict[str, Any]:
         }
 
     Pydantic v2 model.model_json_schema() 自带这三个键 + $defs 等 OpenAPI 扩展。
-    Anthropic 兼容 JSON Schema draft 2020-12,直接透传基本能用。
+    Anthropic 兼容 JSON Schema draft 2020-12,但**对 $ref + $defs 支持不稳定**:
+    嵌套 BaseModel(如 CreateTaskPlanInput.plan: TaskPlan)会被拆成
+    `{"$ref": "#/$defs/TaskPlan"}`,Anthropic 模型常常解析不出这是什么类型,
+    工具入参直接乱填。所以这里必须把所有 $ref **inline 展开**成完整 schema 再发。
 
-    TODO[F-registry-2]: 处理嵌套 BaseModel ($defs 展开 / $ref 解引用),
-    Anthropic 对 $ref 支持有限,复杂嵌套时要 inline。MVP 阶段先简单透传,
-    工具 input 都尽量扁平化。
+    展开后:
+    1. 所有 $ref 替换为对应 $defs 条目的拷贝(递归展开,深嵌套也能处理)
+    2. 顶层 $defs 键删掉(已被展开,不再需要)
+    3. 各层 title 删掉(Anthropic 不需要,只增加 prompt 体积)
     """
     schema = model.model_json_schema()
-    # 去掉 Pydantic 加的 title 字段(Anthropic 不需要,会增加 prompt 体积)
-    schema.pop("title", None)
-    for prop in schema.get("properties", {}).values():
-        if isinstance(prop, dict):
-            prop.pop("title", None)
+    schema = _inline_refs(schema)
+    schema.pop("$defs", None)
+    _strip_titles(schema)
     return schema
+
+
+def _inline_refs(node: Any, defs: Optional[dict[str, Any]] = None) -> Any:
+    """
+    递归展开 $ref。
+
+    - 顶层调用时 defs=None,从 node["$defs"] 取定义表
+    - 后续递归把 defs 透传
+    - 遇到 {"$ref": "#/$defs/Name"} 节点 → 替换为 deepcopy(defs["Name"]) 后再
+      递归展开(处理嵌套 $ref)
+    - 其他 dict/list 递归
+
+    用 deepcopy 避免同一定义被多处引用时,展开后改一处影响其他处。
+
+    防御:
+    - 不支持的 $ref 路径(非 #/$defs/...) 原样返回,记 warning
+    - 防环:_visiting 集合记录展开中的 def name,自引用时返回原 $ref 不展开
+    """
+    if defs is None and isinstance(node, dict):
+        defs = node.get("$defs", {}) or {}
+
+    return _inline_refs_walk(node, defs or {}, _visiting=set(), _copy=copy.deepcopy)
+
+
+def _inline_refs_walk(
+    node: Any,
+    defs: dict[str, Any],
+    *,
+    _visiting: set[str],
+    _copy: Callable[[Any], Any],
+) -> Any:
+    if isinstance(node, dict):
+        ref = node.get("$ref")
+        if isinstance(ref, str):
+            # 仅支持本文档内的 #/$defs/Name
+            prefix = "#/$defs/"
+            if not ref.startswith(prefix):
+                logger.warning("不支持的 $ref 路径,原样保留: %s", ref)
+                return node
+            name = ref[len(prefix):]
+            if name in _visiting:
+                # 自引用(理论上 Pydantic 不该产生,但防御性保留)
+                logger.warning("$ref 循环展开,保留原引用: %s", ref)
+                return node
+            target = defs.get(name)
+            if target is None:
+                logger.warning("$ref 找不到定义,原样保留: %s", ref)
+                return node
+            _visiting.add(name)
+            try:
+                expanded = _inline_refs_walk(_copy(target), defs, _visiting=_visiting, _copy=_copy)
+            finally:
+                _visiting.discard(name)
+            return expanded
+
+        # 普通 dict:递归各 value;跳过 $defs 键(已经在外层处理)
+        return {
+            k: _inline_refs_walk(v, defs, _visiting=_visiting, _copy=_copy)
+            for k, v in node.items()
+            if k != "$defs"
+        }
+
+    if isinstance(node, list):
+        return [
+            _inline_refs_walk(item, defs, _visiting=_visiting, _copy=_copy)
+            for item in node
+        ]
+
+    return node
+
+
+def _strip_titles(node: Any) -> None:
+    """
+    递归删 schema 各层的 title 字段。Anthropic 不需要 title,只占 token。
+    in-place 修改,无返回值。
+    """
+    if isinstance(node, dict):
+        node.pop("title", None)
+        for v in node.values():
+            _strip_titles(v)
+    elif isinstance(node, list):
+        for item in node:
+            _strip_titles(item)
+
+
+def _validate_tool_schema(name: str, schema: dict[str, Any]) -> None:
+    """
+    校验工具 schema 满足 Anthropic tool_use 协议:
+    - 必须 type='object'
+    - 必须含 properties(允许空 dict,无入参工具用)
+    - 不允许残留 $ref 或 $defs(说明展开有 bug)
+
+    出错时抛 ValueError。注册期失败,启动就炸,不让坏 schema 跑到生产。
+    """
+    if schema.get("type") != "object":
+        raise ValueError(
+            f"工具 {name} 的 input_schema.type 必须是 'object',实际: {schema.get('type')!r}"
+        )
+    if "properties" not in schema:
+        raise ValueError(f"工具 {name} 的 input_schema 缺 properties 字段")
+    leftovers = _find_unresolved_refs(schema)
+    if leftovers:
+        raise ValueError(
+            f"工具 {name} 的 input_schema 含未展开的 $ref / $defs: {leftovers}"
+        )
+
+
+def _find_unresolved_refs(node: Any, _path: str = "") -> list[str]:
+    """递归找 schema 里残留的 $ref / $defs 节点路径(用于错误诊断)。"""
+    found: list[str] = []
+    if isinstance(node, dict):
+        if "$ref" in node:
+            found.append(f"{_path}.$ref={node['$ref']}")
+        if "$defs" in node:
+            found.append(f"{_path}.$defs")
+        for k, v in node.items():
+            found.extend(_find_unresolved_refs(v, f"{_path}.{k}"))
+    elif isinstance(node, list):
+        for i, item in enumerate(node):
+            found.extend(_find_unresolved_refs(item, f"{_path}[{i}]"))
+    return found
 
 
 # ============================================================
@@ -225,14 +359,30 @@ def wrap_tool_result(result: ToolResult) -> dict[str, Any]:
     content 用 json 序列化的字符串(Anthropic 也支持 list[{"type":"text","text":...}],
     MVP 先用最简形态)。
 
-    TODO[F-registry-4]: 长 output (> 4KB) 截断 + 补 "...truncated" 提示,
-    避免单次 tool_result 把 context 撑爆。
+    长度截断:
+    - 拼上 "...truncated" 后总字节不超过 _TOOL_RESULT_MAX_BYTES (硬上限)
+    - 截断按 utf-8 安全切片(避免切坏多字节字符,errors='ignore' 兜底)
+    - 截断时保留原 is_error 标志,不把成功结果偷偷标成 error
     """
-    import json
+    payload = json.dumps(result.output, ensure_ascii=False)
+    encoded = payload.encode("utf-8")
+    if len(encoded) > _TOOL_RESULT_MAX_BYTES:
+        # 给后缀预留空间:截断目标 = 上限 - 后缀字节数,确保总长不超
+        suffix = "...truncated"
+        budget = _TOOL_RESULT_MAX_BYTES - len(suffix.encode("utf-8"))
+        truncated_bytes = encoded[:budget]
+        # utf-8 安全切片:errors='ignore' 丢掉切口处可能残缺的多字节字符
+        payload = truncated_bytes.decode("utf-8", errors="ignore") + suffix
+        logger.warning(
+            "tool_result %s 输出超 %d 字节,已截断 (原长 %d)",
+            result.name,
+            _TOOL_RESULT_MAX_BYTES,
+            len(encoded),
+        )
     return {
         "type": "tool_result",
         "tool_use_id": result.tool_use_id,
-        "content": json.dumps(result.output, ensure_ascii=False),
+        "content": payload,
         "is_error": result.is_error,
     }
 

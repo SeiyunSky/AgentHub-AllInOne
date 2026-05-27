@@ -21,7 +21,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
@@ -30,7 +30,9 @@ from backend.adapters.events import (
     AgentDoneEvent,
     AgentErrorEvent,
     AgentEvent,
+    BlockDeltaEvent,
     BlockStartEvent,
+    BlockStopEvent,
 )
 from backend.models.thread import Thread
 from backend.repositories.thread_repo import ThreadRepository
@@ -413,18 +415,39 @@ class ThreadService:
         """
         启动单个 Thread:mark_running → 调 Adapter.stream → 处理事件 → 落终态。
 
-        TODO[D7-blocker / 上线前必须修]:
-        本方法在 asyncio.Task 里跑,跟主流程共享 self.session。SQLAlchemy Session
-        不是协程安全的,并发场景会出现 session 状态错乱。
-        修法:本方法内部用 SessionLocal() 起新 session,与传入 session 解耦。
-        MVP 阶段单线程串行调度暂时不会触发,但上线前必须修。
+        自起独立 SessionLocal，与调用方的 self.session 完全解耦，避免 asyncio.Task
+        并发场景下 Session 状态错乱（D7-blocker 已修）。
         """
+        from backend.core.database import SessionLocal
+        from backend.repositories.agent_repo import AgentRepository
+        from backend.repositories.thread_repo import ThreadRepository
+
+        if adapter_registry is None:
+            raise NotImplementedError(
+                "[TODO/D5] adapters/registry 未实装,无法启动 Thread。"
+            )
+
+        own_session = SessionLocal()
+        own_repo = ThreadRepository(own_session)
+
+        def _mark(status: ThreadStatus, **kw) -> Optional[Thread]:
+            t = own_repo.mark_status(thread.id, status, **kw)
+            own_session.commit()
+            return t
+
         try:
-            await self.mark_running(thread.id)
+            _mark(ThreadStatus.RUNNING)
+
             adapter = adapter_registry.get(thread.agent_id)
             if adapter is None:
-                await self.mark_error(thread.id, f"未注册的 agent_id: {thread.agent_id}")
+                t = _mark(ThreadStatus.ERROR, error_message=f"未注册的 agent_id: {thread.agent_id}")
+                if t:
+                    await self._on_thread_terminal(t, f"Thread {thread.id} 失败: 未注册的 agent_id", success=False)
                 return
+
+            # 从 DB 读取 agent.system_prompt，注入到 StreamInput
+            agent_row = AgentRepository(own_session).get(thread.agent_id)
+            agent_system_prompt: Optional[str] = agent_row.system_prompt if agent_row else None
 
             stream_input = StreamInput(
                 agent_id=thread.agent_id,
@@ -433,39 +456,234 @@ class ThreadService:
                 prompt=thread.dispatch_prompt or "",
                 history=[],  # TODO[D6]: 从 message_repo 加载会话历史
                 skills=[],   # TODO[D6]: 从 skill_service 按 agent_id 加载挂载 Skill
+                system_prompt=agent_system_prompt,
                 cancel_event=stream_service.get_abort_event(thread.conversation_id),
             )
 
             summary_parts: list[str] = []
-            errored = False
+            # block 累积状态:block_id -> 块字段 dict
+            # BlockStart 时初始化(用 block.model_dump() 拿到完整字段),
+            # BlockDelta 时按字段语义合并(content 累加 / 其他覆盖),
+            # BlockStop 时用 final_fields 覆盖,
+            # AgentDone 时按插入顺序反序列化成 ContentBlock 列表落 messages 表。
+            block_states: dict[str, dict[str, Any]] = {}
+            block_order: list[str] = []
 
             async for event in adapter.stream(stream_input):
-                # 推给前端 SSE(广播给该 conversation 所有 tab)
                 await stream_service.push_event(thread.conversation_id, event)
                 summary_parts.extend(self._extract_summary(event))
+
+                if isinstance(event, BlockStartEvent):
+                    block_id = event.block.block_id
+                    if block_id not in block_states:
+                        block_order.append(block_id)
+                    block_states[block_id] = event.block.model_dump()
+                elif isinstance(event, BlockDeltaEvent):
+                    state = block_states.get(event.block_id)
+                    if state is not None:
+                        self._apply_block_delta(state, event.delta or {})
+                elif isinstance(event, BlockStopEvent):
+                    state = block_states.get(event.block_id)
+                    if state is not None and event.final_fields:
+                        state.update(event.final_fields)
+
                 if isinstance(event, AgentErrorEvent):
-                    errored = True
-                    await self.mark_error(thread.id, event.error)
+                    t = _mark(ThreadStatus.ERROR, error_message=event.error)
+                    if t:
+                        await self._on_thread_terminal(
+                            t, f"Thread {thread.id} 失败: {event.error}", success=False
+                        )
                     return
                 if isinstance(event, AgentDoneEvent):
+                    # 子 Thread 单轮 LLM 完成:把 Adapter 上报的 usage 累加到 threads.tokens_total。
+                    # Adapter 未上报 usage 时(默认 0+0)跳过写库,避免无 delta 的事务。
+                    # update_tokens 是累加语义,主 Agent 也用同一个方法,语义一致。
+                    #
+                    # 失败处理:token 累加是审计 / 计费用,不影响 Thread 主链路。
+                    # 写库异常时只记日志 + rollback,**不**抛出,break 后正常走 mark_done。
+                    # 后续维护时请保留这段 try/except,不要简化掉(否则一次 token 写库失败会
+                    # 把整个 Thread 推到 ERROR 状态,与设计意图不符)。
+                    delta = (event.tokens_input or 0) + (event.tokens_output or 0)
+                    if delta > 0:
+                        try:
+                            own_repo.update_tokens(thread.id, delta)
+                            own_session.commit()
+                        except Exception:
+                            logger.exception(
+                                "Thread %s 累加 token 失败,delta=%d (不影响 Thread 状态)",
+                                thread.id,
+                                delta,
+                            )
+                            own_session.rollback()
+
+                    # 把累积的 block_states 落成一条 assistant 消息(role=assistant,
+                    # thread_id=本 thread,agent_id=本 agent),让主 Agent 通过
+                    # read_thread_result 工具能读到子 Thread 的完整产出。
+                    # 失败兜底:落库失败不阻塞主链路,只丢摘要回注那条路(摘要在
+                    # _on_thread_terminal 里走,不受这里影响)。
+                    logger.info(
+                        "Thread %s AgentDone 收到,准备落 messages: block_count=%d, "
+                        "block_order=%s, tokens=%d/%d",
+                        thread.id, len(block_order), block_order,
+                        event.tokens_input or 0, event.tokens_output or 0,
+                    )
+                    await self._persist_assistant_message(
+                        thread=thread,
+                        agent_row=agent_row,
+                        block_order=block_order,
+                        block_states=block_states,
+                        tokens_input=event.tokens_input or 0,
+                        tokens_output=event.tokens_output or 0,
+                    )
                     break
 
-            if not errored:
-                summary = " ".join(summary_parts)[:500] or "(无摘要)"
-                await self.mark_done(thread.id, summary)
+            summary = " ".join(summary_parts)[:500] or "(无摘要)"
+            t = _mark(ThreadStatus.DONE)
+            if t:
+                await self._on_thread_terminal(t, summary, success=True)
+
         except asyncio.CancelledError:
-            await self.mark_cancelled(thread.id)
+            t = _mark(ThreadStatus.CANCELLED)
+            if t:
+                await self._on_thread_terminal(t, f"Thread {thread.id} 已取消", success=False)
             raise
         except Exception as exc:
             logger.exception("Thread %s 运行异常", thread.id)
-            await self.mark_error(thread.id, str(exc))
+            try:
+                own_session.rollback()
+                t = _mark(ThreadStatus.ERROR, error_message=str(exc))
+                if t:
+                    await self._on_thread_terminal(t, f"Thread {thread.id} 失败: {exc}", success=False)
+            except Exception:
+                logger.exception("Thread %s 落错误态失败", thread.id)
+        finally:
+            own_session.close()
+
+    @staticmethod
+    def _apply_block_delta(state: dict[str, Any], delta: dict[str, Any]) -> None:
+        """
+        对累积的块 state 应用一次 BlockDelta。
+
+        Anthropic / ClaudeAdapter 风格的"流式增量"协议:
+        - content 字段 → 把 delta 里的字符串拼到 state 原字符串后(累加)
+        - 其他字段 → delta 里的值直接覆盖 state(状态切换 / 字段补全)
+        """
+        for key, value in delta.items():
+            if key == "content" and isinstance(value, str) and isinstance(state.get(key), str):
+                state[key] = state[key] + value
+            else:
+                state[key] = value
+
+    async def _persist_assistant_message(
+        self,
+        *,
+        thread: Thread,
+        agent_row: Optional[Any],
+        block_order: list[str],
+        block_states: dict[str, dict[str, Any]],
+        tokens_input: int,
+        tokens_output: int,
+    ) -> None:
+        """
+        把 Adapter 流转累积出的 block_states 落成一条 assistant 消息。
+
+        - role=assistant / thread_id=本 thread / agent_id=本 agent
+        - content 是 ContentBlock 数组,通过 Pydantic discriminated union 反序列化保证字段合法
+        - sender / model 取 agent 表快照,Agent 改名 / 升级模型后历史消息仍展示当时数据
+        - tokens_input / tokens_output 走 message_service.update_message_tokens 写到 messages 表
+          (Task #7 的 TODO[H1] 收尾:子 Thread 的 token 之前只累加到 threads.tokens_total)
+
+        失败处理:落库 / token 写入异常都只记日志,不抛出 —— 不阻塞 Thread 进 done。
+        """
+        from pydantic import TypeAdapter
+
+        from backend.domain.message import ContentBlock as _ContentBlockUnion
+        from backend.services.message_service import message_service
+
+        if not block_order:
+            # 没有任何块产生(比如 Adapter 直接 yield AgentDone),不落空消息
+            return
+
+        # 反序列化:用 ContentBlock discriminated union 的 TypeAdapter 把 dict 转成
+        # 具体子类(TextBlock / ToolUseBlock / ...),保证写库内容合法
+        adapter = TypeAdapter(_ContentBlockUnion)
+        blocks: list[Any] = []
+        for block_id in block_order:
+            state = block_states.get(block_id)
+            if not state:
+                continue
+            try:
+                blocks.append(adapter.validate_python(state))
+            except Exception:
+                logger.exception(
+                    "Thread %s block %s 反序列化失败,跳过该块 state=%r",
+                    thread.id, block_id, state,
+                )
+
+        if not blocks:
+            logger.warning(
+                "Thread %s 所有 block 反序列化都失败,不落消息(原始 block 数=%d)",
+                thread.id, len(block_order),
+            )
+            return
+
+        sender = getattr(agent_row, "name", None) if agent_row else None
+        model = None  # TODO[F-msg-model]: agents 表加 model 字段后,这里取 agent_row.model 快照
+
+        try:
+            msg = await message_service.create_assistant_message(
+                conversation_id=thread.conversation_id,
+                agent_id=thread.agent_id,
+                content_blocks=blocks,
+                thread_id=thread.id,
+                sender=sender,
+                model=model,
+            )
+        except Exception:
+            logger.exception(
+                "Thread %s 落 assistant 消息失败,read_thread_result 将查不到产出",
+                thread.id,
+            )
+            return
+
+        # 子 Thread 的 token 同时写到 messages 表(Task #7 TODO[H1] 收尾)
+        if (tokens_input or tokens_output) and msg is not None:
+            try:
+                await message_service.update_tokens(
+                    msg.id,
+                    tokens_input=tokens_input,
+                    tokens_output=tokens_output,
+                )
+            except Exception:
+                logger.exception(
+                    "Thread %s message %s 写 token 失败 (in=%d out=%d)",
+                    thread.id, msg.id, tokens_input, tokens_output,
+                )
 
     @staticmethod
     def _extract_summary(event: AgentEvent) -> list[str]:
-        """从事件里抽摘要文本(MVP 简化:取 BlockStart 的初始内容)。"""
+        """
+        从事件里抽摘要文本。
+
+        协议:Adapter 走块级流式协议(见 adapters/events.py):
+        - BlockStartEvent  创建块,初始 content 可能为空(Anthropic / ClaudeAdapter 风格)
+                           或一次性给完整文本(简化的 Adapter)
+        - BlockDeltaEvent  对该块 content 字段做增量累加
+        - BlockStopEvent   块结束
+
+        所以摘要要同时收两类事件:
+        - BlockStart 的 content(非空时直接取)
+        - BlockDelta.delta['content'](逐片段累加;_run_thread 把 list 里所有片段
+          ' '.join 后再 [:500] 截断,所以单 delta 取 80 字符已经够)
+        """
         if isinstance(event, BlockStartEvent):
             block = event.block
             content = getattr(block, "content", None)
+            if isinstance(content, str) and content:
+                return [content[:80]]
+        elif isinstance(event, BlockDeltaEvent):
+            delta = event.delta or {}
+            content = delta.get("content")
             if isinstance(content, str) and content:
                 return [content[:80]]
         return []
