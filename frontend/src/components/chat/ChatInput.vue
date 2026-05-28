@@ -48,8 +48,18 @@
             </button>
           </div>
 
-          <!-- Send button -->
+          <!-- Send / Stop button -->
           <button
+            v-if="streaming"
+            class="w-8 h-8 rounded-lg flex items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-all duration-200 cursor-pointer"
+            @click="emit('stop')"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+              <rect x="6" y="6" width="12" height="12" rx="1" />
+            </svg>
+          </button>
+          <button
+            v-else
             class="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
             :class="hasContent ? 'bg-slate-700 text-white hover:bg-slate-600' : 'text-on-surface-variant/40'"
             :disabled="!hasContent"
@@ -85,13 +95,16 @@ const props = withDefaults(defineProps<{
   agents: ChatAgent[]
   replyTo: ReplyPreview | null
   placeholder?: string
+  streaming?: boolean
 }>(), {
   placeholder: 'Ask Nexus anything...',
+  streaming: false,
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
   send: [content: string, mentions: string[], replyToId?: string]
+  stop: []
   'cancel-reply': []
 }>()
 
@@ -112,11 +125,12 @@ const mentionState = ref<{
   position: { top: 0, left: 0 },
 })
 
-const hasContent = computed(() => {
-  if (!editorRef.value) return false
-  const text = editorRef.value.textContent?.trim() ?? ''
-  return text.length > 0
-})
+const hasContent = ref(false)
+
+function syncHasContent() {
+  if (!editorRef.value) { hasContent.value = false; return }
+  hasContent.value = (editorRef.value.textContent?.trim() ?? '').length > 0
+}
 
 function getTextContent(): { text: string; mentions: string[] } {
   if (!editorRef.value) return { text: '', mentions: [] }
@@ -210,6 +224,7 @@ function detectMentionTrigger() {
 
 function onEditorInput() {
   syncContent()
+  syncHasContent()
   autoResize()
   detectMentionTrigger()
 }
@@ -239,7 +254,7 @@ function onEditorKeydown(e: KeyboardEvent) {
   // Enter to send (without Shift)
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
-    handleSend()
+    if (!props.streaming) handleSend()
     return
   }
 
@@ -322,6 +337,7 @@ function onPaste(e: ClipboardEvent) {
 }
 
 function handleSend() {
+  if (props.streaming) return
   const { text, mentions } = getTextContent()
   if (!text) return
 
@@ -332,6 +348,7 @@ function handleSend() {
   // Clear editor
   if (editorRef.value) {
     editorRef.value.innerHTML = ''
+    hasContent.value = false
     autoResize()
   }
 }

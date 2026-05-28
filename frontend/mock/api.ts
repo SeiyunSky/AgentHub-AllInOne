@@ -1,12 +1,55 @@
 import type { MockMethod } from 'vite-plugin-mock'
 import type { IncomingMessage, ServerResponse } from 'http'
 
+// Shared abort state: stop endpoint sets it, SSE handler checks it
+const abortedConversations = new Set<string>()
+
 function sendSSE(res: ServerResponse, event: string, data: unknown) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
 }
 
 async function delay(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+// Delay that checks for abort; returns true if conversation was aborted
+async function delayWithAbortCheck(ms: number, convId: string, res: ServerResponse): Promise<boolean> {
+  const start = Date.now()
+  while (Date.now() - start < ms) {
+    if (abortedConversations.has(convId)) {
+      // Send stop sequence: agent_error → round_done → queue_drained
+      const now = () => new Date().toISOString()
+      const agentId = 'orchestrator'
+      const threadId = 'thread-mock'
+
+      sendSSE(res, 'agent_error', {
+        type: 'agent_error',
+        agent_id: agentId,
+        thread_id: threadId,
+        message_id: `msg-ssse-${Date.now()}`,
+        error: 'cancelled',
+        timestamp: now(),
+      })
+      await delay(50)
+
+      sendSSE(res, 'round_done', {
+        type: 'round_done',
+        timestamp: now(),
+      })
+      await delay(50)
+
+      sendSSE(res, 'queue_drained', {
+        type: 'queue_drained',
+        timestamp: now(),
+      })
+
+      abortedConversations.delete(convId)
+      res.end()
+      return true
+    }
+    await delay(20)
+  }
+  return false
 }
 
 function splitChunks(text: string, size: number): string[] {
@@ -475,12 +518,15 @@ const mockList = [
   {
     url: '/api/v1/chat/stop',
     method: 'post',
-    response: ({ body }: { body: { conversation_id: string } }) => ({
-      conversation_id: body.conversation_id,
-      aborted: true,
-      cancelled_thread_ids: [],
-      timestamp: new Date().toISOString(),
-    }),
+    response: ({ body }: { body: { conversation_id: string } }) => {
+      abortedConversations.add(body.conversation_id)
+      return {
+        conversation_id: body.conversation_id,
+        aborted: true,
+        cancelled_thread_ids: [],
+        timestamp: new Date().toISOString(),
+      }
+    },
   },
 
   // Conversations
@@ -777,7 +823,7 @@ const mockList = [
   },
 ]
 
-// SSE stream mock — simulates a full agent response cycle
+// SSE stream mock — simulates a full agent response cycle (supports abort)
 const sseMock: MockMethod = {
   url: '/api/v1/chat/stream/:conversationId',
   method: 'get',
@@ -788,252 +834,170 @@ const sseMock: MockMethod = {
       Connection: 'keep-alive',
     })
 
+    const convId = req.url?.split('/').pop()?.split('?')[0] ?? ''
     const now = () => new Date().toISOString()
     const agentId = 'orchestrator'
     const threadId = 'thread-mock'
     const messageId = `msg-ssse-${Date.now()}`
 
+    // Helper: abort-aware delay. Returns true if aborted (response already ended).
+    const tick = (ms: number) => delayWithAbortCheck(ms, convId, res)
+
     // 1. agent_start
     sendSSE(res, 'agent_start', {
-      type: 'agent_start',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      agent_name: 'Orchestrator',
-      timestamp: now(),
+      type: 'agent_start', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, agent_name: 'Orchestrator', timestamp: now(),
     })
-    await delay(300)
+    if (await tick(300)) return
 
     // 2. block_start — thinking
     sendSSE(res, 'block_start', {
-      type: 'block_start',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block: { block_id: 'sb-1', type: 'thinking', content: '' },
-      timestamp: now(),
+      type: 'block_start', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block: { block_id: 'sb-1', type: 'thinking', content: '' }, timestamp: now(),
     })
-    await delay(100)
+    if (await tick(100)) return
 
-    // 3. block_delta — thinking content (word-by-word)
+    // 3. block_delta — thinking content
     const thinkingText = 'Analyzing the request...\nI should dispatch to the relevant agent.'
     for (const chunk of splitChunks(thinkingText, 8)) {
       sendSSE(res, 'block_delta', {
-        type: 'block_delta',
-        agent_id: agentId,
-        thread_id: threadId,
-        message_id: messageId,
-        block_id: 'sb-1',
-        delta: { content: chunk },
-        timestamp: now(),
+        type: 'block_delta', agent_id: agentId, thread_id: threadId,
+        message_id: messageId, block_id: 'sb-1', delta: { content: chunk }, timestamp: now(),
       })
-      await delay(40)
+      if (await tick(40)) return
     }
 
     // 4. block_stop — thinking done
     sendSSE(res, 'block_stop', {
-      type: 'block_stop',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block_id: 'sb-1',
-      final_fields: { duration_ms: 1200 },
-      timestamp: now(),
+      type: 'block_stop', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block_id: 'sb-1', final_fields: { duration_ms: 1200 }, timestamp: now(),
     })
-    await delay(300)
+    if (await tick(300)) return
 
     // 5. block_start — text
     sendSSE(res, 'block_start', {
-      type: 'block_start',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block: { block_id: 'sb-2', type: 'text', content: '' },
-      timestamp: now(),
+      type: 'block_start', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block: { block_id: 'sb-2', type: 'text', content: '' }, timestamp: now(),
     })
-    await delay(100)
+    if (await tick(100)) return
 
-    // 6. block_delta — text content (word-by-word)
+    // 6. block_delta — text content
     const textContent = 'Here is the analysis result:\n\nThe Q4 revenue grew by 15% compared to Q3.'
     for (const chunk of splitChunks(textContent, 6)) {
       sendSSE(res, 'block_delta', {
-        type: 'block_delta',
-        agent_id: agentId,
-        thread_id: threadId,
-        message_id: messageId,
-        block_id: 'sb-2',
-        delta: { content: chunk },
-        timestamp: now(),
+        type: 'block_delta', agent_id: agentId, thread_id: threadId,
+        message_id: messageId, block_id: 'sb-2', delta: { content: chunk }, timestamp: now(),
       })
-      await delay(30)
+      if (await tick(30)) return
     }
 
     // 7. block_stop — text done
     sendSSE(res, 'block_stop', {
-      type: 'block_stop',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block_id: 'sb-2',
-      timestamp: now(),
+      type: 'block_stop', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block_id: 'sb-2', timestamp: now(),
     })
-    await delay(200)
+    if (await tick(200)) return
 
     // 8. block_start — approval (pending)
     sendSSE(res, 'block_start', {
-      type: 'block_start',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block: { block_id: 'sb-3', type: 'approval', action: 'run_command', detail: 'npm install axios@1.6.0 --save', status: 'pending' },
-      timestamp: now(),
+      type: 'block_start', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block: { block_id: 'sb-3', type: 'approval', action: 'run_command', detail: 'npm install axios@1.6.0 --save', status: 'pending' }, timestamp: now(),
     })
-    await delay(200)
+    if (await tick(200)) return
 
     // 9. block_start — tool_use (running)
     sendSSE(res, 'block_start', {
-      type: 'block_start',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block: { block_id: 'sb-4', type: 'tool_use', tool_name: 'read_file', input: { path: 'config.json' }, status: 'running' },
-      timestamp: now(),
+      type: 'block_start', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block: { block_id: 'sb-4', type: 'tool_use', tool_name: 'read_file', input: { path: 'config.json' }, status: 'running' }, timestamp: now(),
     })
-    await delay(300)
+    if (await tick(300)) return
 
     // 10. block_stop — tool_use (completed)
     sendSSE(res, 'block_stop', {
-      type: 'block_stop',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block_id: 'sb-4',
-      final_fields: { output: '{"api_key": "xxx", "timeout": 30000}', status: 'completed' },
-      timestamp: now(),
+      type: 'block_stop', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block_id: 'sb-4', final_fields: { output: '{"api_key": "xxx", "timeout": 30000}', status: 'completed' }, timestamp: now(),
     })
-    await delay(200)
+    if (await tick(200)) return
 
     // 11. block_start — code
     sendSSE(res, 'block_start', {
-      type: 'block_start',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block: { block_id: 'sb-5', type: 'code', language: 'typescript', code: '', filename: 'utils.ts' },
-      timestamp: now(),
+      type: 'block_start', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block: { block_id: 'sb-5', type: 'code', language: 'typescript', code: '', filename: 'utils.ts' }, timestamp: now(),
     })
-    await delay(100)
+    if (await tick(100)) return
 
-    // 12. block_delta — code content (streaming)
+    // 12. block_delta — code content
     const codeContent = 'export function formatCurrency(value: number): string {\n  return `$${value.toFixed(2)}`\n}'
     for (const chunk of splitChunks(codeContent, 5)) {
       sendSSE(res, 'block_delta', {
-        type: 'block_delta',
-        agent_id: agentId,
-        thread_id: threadId,
-        message_id: messageId,
-        block_id: 'sb-5',
-        delta: { code: chunk },
-        timestamp: now(),
+        type: 'block_delta', agent_id: agentId, thread_id: threadId,
+        message_id: messageId, block_id: 'sb-5', delta: { code: chunk }, timestamp: now(),
       })
-      await delay(25)
+      if (await tick(25)) return
     }
 
     // 13. block_stop — code done
     sendSSE(res, 'block_stop', {
-      type: 'block_stop',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block_id: 'sb-5',
-      timestamp: now(),
+      type: 'block_stop', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block_id: 'sb-5', timestamp: now(),
     })
-    await delay(200)
+    if (await tick(200)) return
 
     // 14. block_start — image
     sendSSE(res, 'block_start', {
-      type: 'block_start',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block: { block_id: 'sb-6', type: 'image', src: 'https://via.placeholder.com/400x200/3b82f6/ffffff?text=Revenue+Chart', alt: 'Revenue Chart' },
-      timestamp: now(),
+      type: 'block_start', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block: { block_id: 'sb-6', type: 'image', src: 'https://via.placeholder.com/400x200/3b82f6/ffffff?text=Revenue+Chart', alt: 'Revenue Chart' }, timestamp: now(),
     })
-    await delay(100)
+    if (await tick(100)) return
 
     // 15. block_start — deployment (deploying)
     sendSSE(res, 'block_start', {
-      type: 'block_start',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block: { block_id: 'sb-7', type: 'deployment', title: 'Preview Deploy', status: 'deploying', progress: 0 },
-      timestamp: now(),
+      type: 'block_start', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block: { block_id: 'sb-7', type: 'deployment', title: 'Preview Deploy', status: 'deploying', progress: 0 }, timestamp: now(),
     })
-    await delay(100)
+    if (await tick(100)) return
 
     // 16. block_delta — deployment progress
     for (const p of [25, 50, 75, 95]) {
       sendSSE(res, 'block_delta', {
-        type: 'block_delta',
-        agent_id: agentId,
-        thread_id: threadId,
-        message_id: messageId,
-        block_id: 'sb-7',
-        delta: { progress: p },
-        timestamp: now(),
+        type: 'block_delta', agent_id: agentId, thread_id: threadId,
+        message_id: messageId, block_id: 'sb-7', delta: { progress: p }, timestamp: now(),
       })
-      await delay(150)
+      if (await tick(150)) return
     }
 
     // 17. block_stop — deployment completed
     sendSSE(res, 'block_stop', {
-      type: 'block_stop',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block_id: 'sb-7',
-      final_fields: { status: 'completed', url: 'https://preview.example.com/q4-sales', progress: 100 },
-      timestamp: now(),
+      type: 'block_stop', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block_id: 'sb-7', final_fields: { status: 'completed', url: 'https://preview.example.com/q4-sales', progress: 100 }, timestamp: now(),
     })
-    await delay(200)
+    if (await tick(200)) return
 
     // 18. block_start — artifacts
     sendSSE(res, 'block_start', {
-      type: 'block_start',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      block: { block_id: 'sb-8', type: 'artifacts', title: 'Generated Files', items: [
+      type: 'block_start', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, block: { block_id: 'sb-8', type: 'artifacts', title: 'Generated Files', items: [
         { name: 'dashboard.html', type: 'html', preview: '<h1>Q4 Revenue: $520K</h1>' },
         { name: 'report.pdf', type: 'pdf' },
-      ] },
-      timestamp: now(),
+      ] }, timestamp: now(),
     })
-    // Approval stays pending — user must approve/reject via UI
-    // After user action, a separate block_stop will be sent (not simulated here)
 
     // 19. agent_done
     sendSSE(res, 'agent_done', {
-      type: 'agent_done',
-      agent_id: agentId,
-      thread_id: threadId,
-      message_id: messageId,
-      timestamp: now(),
+      type: 'agent_done', agent_id: agentId, thread_id: threadId,
+      message_id: messageId, timestamp: now(),
     })
     await delay(100)
 
     // 20. round_done
     sendSSE(res, 'round_done', {
-      type: 'round_done',
-      timestamp: now(),
+      type: 'round_done', timestamp: now(),
     })
     await delay(100)
 
     // 21. queue_drained
     sendSSE(res, 'queue_drained', {
-      type: 'queue_drained',
-      timestamp: now(),
+      type: 'queue_drained', timestamp: now(),
     })
 
     res.end()

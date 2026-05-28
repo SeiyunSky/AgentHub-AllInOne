@@ -41,9 +41,15 @@ export function useChat() {
     const convId = conversationsStore.currentId
     if (!convId) return
 
-    await chatApi.stop({ conversation_id: convId })
-    sse.disconnect()
-    chatStore.finishStreaming(convId)
+    try {
+      await chatApi.stop({ conversation_id: convId })
+    } catch {
+      // API 调用失败时强制清理作为兜底
+      sse.disconnect()
+      chatStore.finishStreaming(convId)
+    }
+    // 正常流程：后端会依次发送 agent_error → round_done → queue_drained
+    // 由 useSSE 的 handleEvent 自然处理，无需手动 disconnect/finishStreaming
   }
 
   return { sendMessage, stopGeneration, isStreaming, currentConvId }

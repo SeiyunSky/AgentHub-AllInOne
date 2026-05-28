@@ -32,7 +32,9 @@
       v-model="inputText"
       :agents="agents"
       :reply-to="replyPreview"
+      :streaming="isStreaming"
       @send="onSend"
+      @stop="onStop"
       @cancel-reply="onCancelReply"
     />
   </section>
@@ -57,6 +59,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   send: [content: string, mentions: string[], replyToId?: string]
+  stop: []
   reply: [messageId: string]
   react: [messageId: string, type: 'like' | 'dislike']
 }>()
@@ -76,6 +79,10 @@ const agents = computed<ChatAgent[]>(() =>
 function onSend(content: string, mentions: string[], replyToId?: string) {
   replyPreview.value = null
   emit('send', content, mentions, replyToId)
+}
+
+function onStop() {
+  emit('stop')
 }
 
 function onReply(messageId: string) {

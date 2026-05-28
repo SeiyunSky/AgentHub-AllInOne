@@ -4,6 +4,7 @@
     :status="statusText"
     :messages="currentMessages"
     @send="onSend"
+    @stop="onStop"
     @react="onReact"
   >
     <template #headerActions>
@@ -33,7 +34,7 @@ import { MoreFilled, ArrowRight, ArrowLeft } from '@element-plus/icons-vue'
 const uiStore = useUIStore()
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
-const { sendMessage } = useChat()
+const { sendMessage, stopGeneration } = useChat()
 
 const convId = computed(() => conversationsStore.currentId)
 
@@ -51,6 +52,10 @@ const currentMessages = computed(() => {
 
 async function onSend(content: string, mentions: string[], _replyToId?: string) {
   await sendMessage(content, mentions)
+}
+
+function onStop() {
+  stopGeneration()
 }
 
 async function onReact(messageId: string, type: 'like' | 'dislike') {
