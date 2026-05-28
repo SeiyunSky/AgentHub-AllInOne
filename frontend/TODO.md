@@ -1,16 +1,14 @@
 - [ ] Chats
-  - [ ] 丰富NewChat页面
+  - [ ] 丰富聊天展示信息：头像/有哪些agent参与，更像IM
   - [ ] 聊天总体宽度不用这么宽，居中限制总宽度
   - [ ] conversation 排序
   - [ ] approval
     - [ ] mock SSE 中 approval 块始终 pending，但实际上 SSE 会继续发完所有块。真实的审批流程需要 WebSocket 或轮询来接收 block_stop 更新状态。当前 mock 的 approval overlay 可以手动 approve/reject，会更新本地状态但不会中断 SSE。
     - [ ] 创建 approvalsApi，审批按钮接入 HTTP 调用（当前只改本地状态）
-  - [ ] message reply
-    - [ ] add api param
-    - [ ] 展示replied message
-  - [ ] 会话创建 dialog：支持自定义 title、选择 mode（single/group）、选择 agent_ids（当前全部硬编码）
+  - [x] 会话创建 dialog：支持自定义 title、选择 mode（single/group）、选择 agent_ids（当前全部硬编码）
   - [ ] 消息分页：useInfiniteScroll + conversations/:id/messages 的 limit/before 参数
-  - [ ] 停止生成按钮：chatApi.stop() composable 已有，UI 缺按钮
+  - [x] 停止生成按钮：chatApi.stop() composable 已有，UI 缺按钮
+    - [ ] 参考后端停止逻辑
   - [ ] 会话列表：include_archived 参数支持查看已归档会话
   - [ ] CodeRangeSelector：selected_range 参数的 UI 组件（当前为空 stub）
 - [ ] Agents
@@ -32,3 +30,6 @@
   - [ ] 可以搜agent，message，title
 - [ ] agent详情页显示相关对话
 - [ ] conversation list增加时间戳显示
+- [ ] message reply
+  - [ ] add api param
+  - [ ] 展示replied message

@@ -10,6 +10,8 @@
         <el-icon :size="16"><Plus /></el-icon>
         <span class="text-[13px] font-medium">New Chat</span>
       </div>
+      <!-- New Chat Dialog -->
+      <NewChatDialog v-model="showNewChatDialog" @created="handleChatCreated" />
       <!-- Conversation list -->
       <div
         v-for="conv in conversationsStore.conversations"
@@ -71,22 +73,27 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { ChatDotRound, Plus, MoreFilled, Edit, Aim, Promotion, Folder, FolderOpened } from '@element-plus/icons-vue'
 import { useConversationsStore } from '@/stores/conversations'
-import type { ConversationListItem } from '@/types/conversation'
+import type { ConversationListItem, ConversationResponse } from '@/types/conversation'
+import NewChatDialog from '@/components/chat/NewChatDialog.vue'
 
 const router = useRouter()
 const conversationsStore = useConversationsStore()
+const showNewChatDialog = ref(false)
 
 onMounted(() => {
   conversationsStore.loadList()
 })
 
-async function handleNewChat() {
-  const conv = await conversationsStore.create('New Chat', 'single', ['orchestrator'])
+function handleNewChat() {
+  showNewChatDialog.value = true
+}
+
+function handleChatCreated(conv: ConversationResponse) {
   router.push({ name: 'chat-detail', params: { conversationId: conv.id } })
 }
 
