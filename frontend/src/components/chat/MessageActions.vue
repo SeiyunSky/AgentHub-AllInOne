@@ -52,7 +52,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ChatRound, DocumentCopy, Select, MoreFilled } from '@element-plus/icons-vue'
-import { messagesApi } from '@/api/messages'
 
 const props = defineProps<{
   messageId: string
@@ -78,10 +77,6 @@ function handleCopy() {
 }
 
 function handleReact(type: 'like' | 'dislike') {
-  const newReaction = props.reaction === type ? undefined : type
-  const feedback = newReaction === 'like' ? 'up' as const : newReaction === 'dislike' ? 'down' as const : null
-
-  messagesApi.updateFeedback(props.messageId, feedback).catch(() => {})
-  emit('react', props.messageId, newReaction ?? ('none' as any))
+  emit('react', props.messageId, type)
 }
 </script>

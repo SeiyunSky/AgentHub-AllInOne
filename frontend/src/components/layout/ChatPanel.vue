@@ -54,11 +54,16 @@ async function onSend(content: string, mentions: string[], _replyToId?: string) 
 }
 
 async function onReact(messageId: string, type: 'like' | 'dislike') {
-  const feedback = type === 'like' ? 'up' as const : 'down' as const
+  if (!convId.value) return
+  const msgs = chatStore.getMessages(convId.value)
+  const current = msgs.find(m => m.id === messageId)?.reaction
+  const newReaction = current === type ? undefined : type
+  const feedback = newReaction === 'like' ? 'up' as const : newReaction === 'dislike' ? 'down' as const : null
+  chatStore.updateReaction(convId.value, messageId, newReaction)
   try {
     await messagesApi.updateFeedback(messageId, feedback)
   } catch {
-    // Silently fail — optimistic UI already applied
+    chatStore.updateReaction(convId.value, messageId, current)
   }
 }
 </script>

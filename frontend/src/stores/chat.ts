@@ -251,6 +251,15 @@ export const useChatStore = defineStore('chat', () => {
     pendingApproval.value = null
   }
 
+  function updateReaction(convId: string, messageId: string, reaction: 'like' | 'dislike' | undefined) {
+    const msgs = getMessages(convId)
+    const msg = msgs.find(m => m.id === messageId)
+    if (msg) {
+      msg.reaction = reaction
+      setMessages(convId, [...msgs])
+    }
+  }
+
   return {
     messageMap,
     streamingMessage,
@@ -272,5 +281,6 @@ export const useChatStore = defineStore('chat', () => {
     clearRound,
     pendingApproval,
     resolveApproval,
+    updateReaction,
   }
 })
