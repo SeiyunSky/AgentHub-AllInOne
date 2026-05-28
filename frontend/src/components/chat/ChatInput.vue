@@ -92,6 +92,7 @@ import type { ChatAgent, ReplyPreview } from '@/types/chat'
 
 const props = withDefaults(defineProps<{
   modelValue: string
+  htmlDraft: string
   agents: ChatAgent[]
   replyTo: ReplyPreview | null
   placeholder?: string
@@ -99,10 +100,11 @@ const props = withDefaults(defineProps<{
 }>(), {
   placeholder: 'Ask Nexus anything...',
   streaming: false,
+  htmlDraft: '',
 })
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
+  'update:modelValue': [value: string, html?: string]
   send: [content: string, mentions: string[], replyToId?: string]
   stop: []
   'cancel-reply': []
@@ -157,7 +159,8 @@ function getTextContent(): { text: string; mentions: string[] } {
 
 function syncContent() {
   const { text } = getTextContent()
-  emit('update:modelValue', text)
+  const html = editorRef.value?.innerHTML ?? ''
+  emit('update:modelValue', text, html)
 }
 
 function autoResize() {
@@ -353,16 +356,24 @@ function handleSend() {
   }
 }
 
+// HTML draft restored by parent; modelValue is text-only for v-model compat
+const htmlDraft = ref('')
+
 function focus() {
   editorRef.value?.focus()
 }
 
-// Sync modelValue changes from outside
-watch(() => props.modelValue, (newVal) => {
+// Restore editor content from htmlDraft when switching conversations
+watch(() => props.htmlDraft, (newHtml) => {
   if (!editorRef.value) return
-  const { text } = getTextContent()
-  if (newVal !== text) {
-    editorRef.value.innerHTML = newVal
+  const currentHtml = editorRef.value.innerHTML
+  if (newHtml && newHtml !== currentHtml) {
+    editorRef.value.innerHTML = newHtml
+    syncHasContent()
+    autoResize()
+  } else if (!newHtml && currentHtml) {
+    editorRef.value.innerHTML = ''
+    hasContent.value = false
     autoResize()
   }
 })
@@ -376,10 +387,14 @@ function onDocClick(e: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('mousedown', onDocClick)
-  // Initialize content from modelValue
-  if (editorRef.value && props.modelValue) {
-    editorRef.value.innerHTML = props.modelValue
-    autoResize()
+  // Initialize content from htmlDraft (preserves mention chips)
+  if (editorRef.value) {
+    const html = props.htmlDraft || (props.modelValue || '')
+    if (html) {
+      editorRef.value.innerHTML = html
+      syncHasContent()
+      autoResize()
+    }
   }
 })
 

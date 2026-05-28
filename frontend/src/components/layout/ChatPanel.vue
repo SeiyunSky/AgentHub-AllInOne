@@ -11,7 +11,7 @@
       <el-button circle text size="small" class="!text-on-surface-variant hover:!bg-surface-container">
         <el-icon :size="16"><MoreFilled /></el-icon>
       </el-button>
-      <el-button circle text size="small" class="!text-on-surface-variant hover:!bg-surface-container" @click="uiStore.rightPanelVisible = !uiStore.rightPanelVisible">
+      <el-button circle text size="small" class="!text-on-surface-variant hover:!bg-surface-container" @click="uiStore.toggleRightPanel()">
         <el-icon :size="16">
           <ArrowRight v-if="uiStore.rightPanelVisible" />
           <ArrowLeft v-else />
@@ -40,8 +40,9 @@ const convId = computed(() => conversationsStore.currentId)
 
 const title = computed(() => conversationsStore.currentConversation?.title ?? 'Chat')
 const statusText = computed(() => {
-  if (chatStore.isStreaming) return 'Streaming...'
-  const count = chatStore.activeAgents.length
+  if (convId.value && chatStore.isStreamingFor(convId.value)) return 'Streaming...'
+  const agents = conversationsStore.currentConversation?.agents
+  const count = agents?.length ?? 0
   return count > 0 ? `${count} agent(s) active` : 'Ready'
 })
 

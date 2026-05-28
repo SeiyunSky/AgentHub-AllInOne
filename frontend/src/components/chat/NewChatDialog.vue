@@ -138,7 +138,6 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { Close, Plus, ChatDotRound, EditPen, Loading } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
 import { useConversationsStore } from '@/stores/conversations'
-import { agentsApi } from '@/api/agents'
 import type { Agent } from '@/types/agent'
 import type { ConversationResponse } from '@/types/conversation'
 
@@ -248,27 +247,7 @@ async function createChat() {
 }
 
 async function loadAgents() {
-  if (agentsStore.agents.length > 0) return
-  const data = await agentsApi.list()
-  agentsStore.agents = data.map((a) => ({
-    id: a.id,
-    name: a.name,
-    description: a.description,
-    type: a.type as Agent['type'],
-    avatar: a.avatar,
-    systemPrompt: a.system_prompt,
-    capabilities: {
-      supportsCode: a.capabilities.supports_code,
-      supportsDiff: a.capabilities.supports_diff,
-      supportsApproval: a.capabilities.supports_approval,
-      supportsImage: a.capabilities.supports_image,
-    },
-    tags: a.tags,
-    isPublic: a.is_public,
-    isActive: a.is_active,
-    createdAt: new Date(a.created_at),
-    updatedAt: new Date(a.updated_at),
-  }))
+  await agentsStore.loadAgents()
 }
 
 watch(visible, async (open) => {

@@ -55,6 +55,14 @@ export const useUIStore = defineStore('ui', () => {
     }
   }
 
+  function toggleRightPanel() {
+    rightPanelVisible.value = !rightPanelVisible.value
+  }
+
+  function setChatPanePercent(size: number) {
+    chatPanePercent.value = size
+  }
+
   // Legacy functions - kept for compatibility
   function startResizing() {
     isResizing.value = true
@@ -82,6 +90,8 @@ export const useUIStore = defineStore('ui', () => {
     openArtifact,
     closeArtifact,
     setPreviewMode,
+    toggleRightPanel,
+    setChatPanePercent,
     startResizing,
     stopResizing,
     updatePanelWidths,

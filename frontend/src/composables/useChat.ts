@@ -10,47 +10,42 @@ export function useChat() {
   const conversationsStore = useConversationsStore()
   const sse = useSSE()
 
-  const isStreaming = computed(() => chatStore.isStreaming)
-  const currentConvId = computed(() => conversationsStore.currentId)
+  const convId = computed(() => conversationsStore.currentId)
+  const isStreaming = computed(() => !!convId.value && chatStore.isStreamingFor(convId.value))
 
   async function sendMessage(
     content: string,
     mentions: string[] = [],
     selectedRange?: SelectedRange,
   ) {
-    const convId = conversationsStore.currentId
-    if (!convId) return
+    const id = conversationsStore.currentId
+    if (!id) return
 
-    chatStore.addUserMessage(convId, content)
+    chatStore.addUserMessage(id, content)
 
     const response = await chatApi.send({
-      conversation_id: convId,
+      conversation_id: id,
       content,
       mention_ids: mentions.length ? mentions : undefined,
       selected_range: selectedRange,
     })
 
-    if (!chatStore.isStreaming) {
-      sse.connect(convId)
-    }
+    sse.connect(id)
 
     return response
   }
 
   async function stopGeneration() {
-    const convId = conversationsStore.currentId
-    if (!convId) return
+    const id = conversationsStore.currentId
+    if (!id) return
 
     try {
-      await chatApi.stop({ conversation_id: convId })
+      await chatApi.stop({ conversation_id: id })
     } catch {
-      // API 调用失败时强制清理作为兜底
-      sse.disconnect()
-      chatStore.finishStreaming(convId)
+      sse.disconnect(id)
+      chatStore.finishStreaming(id)
     }
-    // 正常流程：后端会依次发送 agent_error → round_done → queue_drained
-    // 由 useSSE 的 handleEvent 自然处理，无需手动 disconnect/finishStreaming
   }
 
-  return { sendMessage, stopGeneration, isStreaming, currentConvId }
+  return { sendMessage, stopGeneration, isStreaming, convId }
 }

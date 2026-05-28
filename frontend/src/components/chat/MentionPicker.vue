@@ -11,6 +11,7 @@
       :key="agent.id"
       class="flex items-center gap-2.5 px-3 py-2 mx-1 rounded-lg cursor-pointer text-[13px] transition-colors"
       :class="i === activeIndex ? 'bg-brand-light/50 text-brand' : 'hover:bg-surface-container text-on-surface'"
+      @mousedown.prevent
       @click="onSelect(agent)"
       @mouseenter="activeIndex = i"
     >

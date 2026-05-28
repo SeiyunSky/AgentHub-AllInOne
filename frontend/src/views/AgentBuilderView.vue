@@ -17,7 +17,7 @@
               :icon="Setting"
               variant="brand"
             >
-              <AgentForm v-model="agentsStore.currentDraft" />
+              <AgentForm :draft="agentsStore.currentDraft" />
               <template #toolbar>
                 <div class="flex items-center gap-2">
                   <button

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { ContentBlock, MessageResponse } from '@/types/api'
-import type { AgentMessage, Message, UIBlock, UIApprovalBlock } from '@/types/chat'
+import type { AgentMessage, Message, UIBlock, UIApprovalBlock, ReplyPreview } from '@/types/chat'
 
 type StreamingBlock = UIBlock & { block_id?: string }
 
@@ -88,12 +88,22 @@ function toUIMessage(msg: MessageResponse): Message {
 }
 
 export const useChatStore = defineStore('chat', () => {
+  // Per-conversation message storage
   const messageMap = ref<Map<string, Message[]>>(new Map())
-  const streamingMessage = ref<(AgentMessage & { blocks?: StreamingBlock[] }) | null>(null)
-  const activeAgents = ref<{ id: string; name: string; role: string; status: 'active' | 'processing' | 'idle' | 'error' }[]>([])
-  const isStreaming = ref(false)
-  const currentConversationId = ref<string | null>(null)
-  const pendingApproval = ref<{ messageId: string; blockId: string; action: string; detail: string } | null>(null)
+
+  // Per-conversation streaming state
+  const streamingMap = ref<Map<string, (AgentMessage & { blocks?: StreamingBlock[] })>>(new Map())
+  const streamingConvIds = ref<Set<string>>(new Set())
+
+  // Per-conversation pending approvals
+  const pendingApprovals = ref<Map<string, { messageId: string; blockId: string; action: string; detail: string }>>(new Map())
+
+  // Per-conversation input state
+  const inputDrafts = ref<Map<string, string>>(new Map())
+  const inputHtmlDrafts = ref<Map<string, string>>(new Map())
+  const replyPreviews = ref<Map<string, ReplyPreview>>(new Map())
+
+  // ── Getters ──
 
   function getMessages(convId: string): Message[] {
     return messageMap.value.get(convId) ?? []
@@ -103,13 +113,61 @@ export const useChatStore = defineStore('chat', () => {
     messageMap.value.set(convId, msgs)
   }
 
+  function isStreamingFor(convId: string): boolean {
+    return streamingConvIds.value.has(convId)
+  }
+
+  function getStreamingMessage(convId: string): (AgentMessage & { blocks?: StreamingBlock[] }) | null {
+    return streamingMap.value.get(convId) ?? null
+  }
+
+  function getPendingApproval(convId: string): { messageId: string; blockId: string; action: string; detail: string } | null {
+    return pendingApprovals.value.get(convId) ?? null
+  }
+
+  function getInputDraft(convId: string): string {
+    return inputDrafts.value.get(convId) ?? ''
+  }
+
+  function setInputDraft(convId: string, text: string, html?: string) {
+    if (text) {
+      inputDrafts.value.set(convId, text)
+      if (html) inputHtmlDrafts.value.set(convId, html)
+    } else {
+      inputDrafts.value.delete(convId)
+      inputHtmlDrafts.value.delete(convId)
+    }
+  }
+
+  function getInputHtmlDraft(convId: string): string {
+    return inputHtmlDrafts.value.get(convId) ?? ''
+  }
+
+  function getReplyPreview(convId: string): ReplyPreview | null {
+    return replyPreviews.value.get(convId) ?? null
+  }
+
+  function setReplyPreview(convId: string, preview: ReplyPreview | null) {
+    if (preview) {
+      replyPreviews.value.set(convId, preview)
+    } else {
+      replyPreviews.value.delete(convId)
+    }
+  }
+
   function currentMessages(convId: string): Message[] {
     const base = getMessages(convId)
-    if (streamingMessage.value && currentConversationId.value === convId) {
-      return [...base, streamingMessage.value]
+    const streaming = getStreamingMessage(convId)
+    if (streaming && isStreamingFor(convId)) {
+      return [...base, streaming]
     }
     return base
   }
+
+  // Global streaming state for UI checks (any conversation streaming)
+  const isAnyStreaming = computed(() => streamingConvIds.value.size > 0)
+
+  // ── Actions ──
 
   function loadFromAPI(convId: string, apiMessages: MessageResponse[]) {
     setMessages(convId, apiMessages.map(toUIMessage))
@@ -127,9 +185,8 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function startStreaming(convId: string, agentId: string, agentName: string, messageId: string) {
-    isStreaming.value = true
-    currentConversationId.value = convId
-    streamingMessage.value = {
+    streamingConvIds.value.add(convId)
+    streamingMap.value.set(convId, {
       id: messageId,
       type: 'agent',
       agentId,
@@ -137,32 +194,34 @@ export const useChatStore = defineStore('chat', () => {
       content: '',
       timestamp: new Date(),
       blocks: [],
-    }
+    })
   }
 
-  function appendBlock(block: ContentBlock) {
-    if (!streamingMessage.value) return
+  function appendBlock(convId: string, block: ContentBlock) {
+    const streaming = streamingMap.value.get(convId)
+    if (!streaming) return
     const uiBlock = apiBlockToUI(block)
-    streamingMessage.value.blocks = [...(streamingMessage.value.blocks ?? []), uiBlock]
+    streaming.blocks = [...(streaming.blocks ?? []), uiBlock]
 
     if (block.type === 'approval' && block.status === 'pending') {
-      pendingApproval.value = {
-        messageId: streamingMessage.value.id,
+      pendingApprovals.value.set(convId, {
+        messageId: streaming.id,
         blockId: block.block_id,
         action: block.action,
         detail: block.detail,
-      }
+      })
     }
   }
 
-  function updateBlock(blockId: string, delta: Record<string, unknown>) {
-    if (!streamingMessage.value?.blocks) return
-    const idx = streamingMessage.value.blocks.findIndex(b => {
+  function updateBlock(convId: string, blockId: string, delta: Record<string, unknown>) {
+    const streaming = streamingMap.value.get(convId)
+    if (!streaming?.blocks) return
+    const idx = streaming.blocks.findIndex(b => {
       const anyB = b as Record<string, unknown>
       return anyB.block_id === blockId
     })
     if (idx === -1) return
-    const block = streamingMessage.value.blocks[idx] as Record<string, unknown>
+    const block = streaming.blocks[idx] as Record<string, unknown>
     for (const [key, value] of Object.entries(delta)) {
       if (typeof value === 'string' && typeof block[key] === 'string') {
         block[key] = (block[key] as string) + value
@@ -170,12 +229,13 @@ export const useChatStore = defineStore('chat', () => {
         block[key] = value
       }
     }
-    streamingMessage.value.blocks = [...streamingMessage.value.blocks]
+    streaming.blocks = [...streaming.blocks]
   }
 
-  function finishBlock(blockId: string, finalFields?: Record<string, unknown>) {
-    if (!streamingMessage.value?.blocks || !finalFields) return
-    const block = streamingMessage.value.blocks.find(b => {
+  function finishBlock(convId: string, blockId: string, finalFields?: Record<string, unknown>) {
+    const streaming = streamingMap.value.get(convId)
+    if (!streaming?.blocks || !finalFields) return
+    const block = streaming.blocks.find(b => {
       const anyB = b as Record<string, unknown>
       return anyB.block_id === blockId
     })
@@ -184,37 +244,28 @@ export const useChatStore = defineStore('chat', () => {
     for (const [key, value] of Object.entries(finalFields)) {
       anyBlock[key] = value
     }
-    streamingMessage.value.blocks = [...streamingMessage.value.blocks]
+    streaming.blocks = [...streaming.blocks]
   }
 
   function commitStreamingMessage(convId: string) {
-    if (!streamingMessage.value) return
+    const streaming = streamingMap.value.get(convId)
+    if (!streaming) return
     const msgs = [...getMessages(convId)]
-    msgs.push(streamingMessage.value)
+    msgs.push(streaming)
     setMessages(convId, msgs)
-    streamingMessage.value = null
+    streamingMap.value.delete(convId)
   }
 
   function finishStreaming(convId: string) {
     commitStreamingMessage(convId)
-    isStreaming.value = false
-    activeAgents.value = []
-  }
-
-  function setAgentActive(agentId: string, name: string) {
-    const existing = activeAgents.value.find(a => a.id === agentId)
-    if (existing) {
-      existing.status = 'processing'
-    } else {
-      activeAgents.value.push({ id: agentId, name, role: 'Agent', status: 'processing' })
-    }
+    streamingConvIds.value.delete(convId)
+    pendingApprovals.value.delete(convId)
   }
 
   function clearRound(convId: string) {
     commitStreamingMessage(convId)
-    isStreaming.value = false
-    activeAgents.value = []
-    currentConversationId.value = null
+    streamingConvIds.value.delete(convId)
+    pendingApprovals.value.delete(convId)
   }
 
   function resolveApproval(convId: string, messageId: string, blockId: string, decision: 'approved' | 'rejected', reason?: string) {
@@ -235,8 +286,9 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     // Also check streaming message
-    if (streamingMessage.value?.blocks) {
-      const block = streamingMessage.value.blocks.find(b => {
+    const streaming = streamingMap.value.get(convId)
+    if (streaming?.blocks) {
+      const block = streaming.blocks.find(b => {
         const anyB = b as Record<string, unknown>
         return anyB.block_id === blockId && (anyB as UIApprovalBlock).type === 'approval'
       }) as UIApprovalBlock | undefined
@@ -244,11 +296,11 @@ export const useChatStore = defineStore('chat', () => {
         block.status = decision
         block.decidedAt = new Date().toISOString()
         if (reason) block.rejectReason = reason
-        streamingMessage.value.blocks = [...streamingMessage.value.blocks]
+        streaming.blocks = [...streaming.blocks]
       }
     }
 
-    pendingApproval.value = null
+    pendingApprovals.value.delete(convId)
   }
 
   function updateReaction(convId: string, messageId: string, reaction: 'like' | 'dislike' | undefined) {
@@ -261,14 +313,27 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   return {
+    // State
     messageMap,
-    streamingMessage,
-    activeAgents,
-    isStreaming,
-    currentConversationId,
+    streamingMap,
+    streamingConvIds,
+    pendingApprovals,
+
+    // Getters
     getMessages,
     setMessages,
+    isStreamingFor,
+    getStreamingMessage,
+    getPendingApproval,
+    getInputDraft,
+    setInputDraft,
+    getInputHtmlDraft,
+    getReplyPreview,
+    setReplyPreview,
     currentMessages,
+    isAnyStreaming,
+
+    // Actions
     loadFromAPI,
     addUserMessage,
     startStreaming,
@@ -277,9 +342,7 @@ export const useChatStore = defineStore('chat', () => {
     finishBlock,
     commitStreamingMessage,
     finishStreaming,
-    setAgentActive,
     clearRound,
-    pendingApproval,
     resolveApproval,
     updateReaction,
   }

@@ -171,21 +171,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { AgentDraft, AgentCapabilities } from '@/types/agent'
+import type { Ref, Component } from 'vue'
 import { User, Plus, Close, Document, SetUp, Picture, Cpu, Select } from '@element-plus/icons-vue'
-import type { Component } from 'vue'
 
 const props = defineProps<{
-  modelValue: AgentDraft
+  draft: Ref<AgentDraft>
 }>()
 
-const emit = defineEmits<{
-  'update:modelValue': [value: AgentDraft]
-}>()
-
-const draft = computed({
-  get: () => props.modelValue,
-  set: (val) => emit('update:modelValue', val),
-})
+const draft = computed(() => props.draft.value)
 
 const tagInput = ref('')
 
@@ -207,20 +200,20 @@ const activeSkills = computed(() =>
 )
 
 function toggleSkill(key: keyof AgentCapabilities) {
-  draft.value.capabilities[key] = !draft.value.capabilities[key]
+  props.draft.value.capabilities[key] = !props.draft.value.capabilities[key]
 }
 
 function addTag() {
   const tag = tagInput.value.trim()
   if (tag && !draft.value.tags.includes(tag)) {
-    draft.value.tags.push(tag)
+    props.draft.value.tags.push(tag)
     tagInput.value = ''
   }
 }
 
 function removeTag(tag: string) {
   const index = draft.value.tags.indexOf(tag)
-  if (index > -1) draft.value.tags.splice(index, 1)
+  if (index > -1) props.draft.value.tags.splice(index, 1)
 }
 </script>
 

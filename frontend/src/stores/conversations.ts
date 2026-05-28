@@ -10,13 +10,20 @@ export const useConversationsStore = defineStore('conversations', () => {
   const currentConversation = ref<ConversationResponse | null>(null)
   const isLoading = ref(false)
 
+  let loadPromise: Promise<void> | null = null
+
   async function loadList() {
-    isLoading.value = true
-    try {
-      conversations.value = await conversationsApi.list()
-    } finally {
-      isLoading.value = false
-    }
+    if (loadPromise) return loadPromise
+    loadPromise = (async () => {
+      isLoading.value = true
+      try {
+        conversations.value = await conversationsApi.list()
+      } finally {
+        isLoading.value = false
+        loadPromise = null
+      }
+    })()
+    return loadPromise
   }
 
   async function create(title: string, mode: 'single' | 'group', agentIds: string[]) {
@@ -26,12 +33,18 @@ export const useConversationsStore = defineStore('conversations', () => {
   }
 
   async function select(id: string) {
-    currentId.value = id
-    currentConversation.value = await conversationsApi.get(id)
-
-    const chatStore = useChatStore()
-    const messages = await conversationsApi.messages(id)
-    chatStore.loadFromAPI(id, messages)
+    const prevId = currentId.value
+    try {
+      const conversation = await conversationsApi.get(id)
+      const messages = await conversationsApi.messages(id)
+      currentId.value = id
+      currentConversation.value = conversation
+      const chatStore = useChatStore()
+      chatStore.loadFromAPI(id, messages)
+    } catch (e) {
+      currentId.value = prevId
+      throw e
+    }
   }
 
   async function update(id: string, data: { title?: string; is_pinned?: boolean; is_archived?: boolean }) {

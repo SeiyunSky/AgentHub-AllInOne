@@ -40,33 +40,11 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { User, Plus } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
-import { agentsApi } from '@/api/agents'
 
 const router = useRouter()
 const agentsStore = useAgentsStore()
 
-onMounted(async () => {
-  if (agentsStore.agents.length === 0) {
-    const data = await agentsApi.list()
-    agentsStore.agents = data.map(a => ({
-      id: a.id,
-      name: a.name,
-      description: a.description,
-      type: a.type as any,
-      avatar: a.avatar,
-      systemPrompt: a.system_prompt,
-      capabilities: {
-        supportsCode: a.capabilities.supports_code,
-        supportsDiff: a.capabilities.supports_diff,
-        supportsApproval: a.capabilities.supports_approval,
-        supportsImage: a.capabilities.supports_image,
-      },
-      tags: a.tags,
-      isPublic: a.is_public,
-      isActive: a.is_active,
-      createdAt: new Date(a.created_at),
-      updatedAt: new Date(a.updated_at),
-    }))
-  }
+onMounted(() => {
+  agentsStore.loadAgents()
 })
 </script>

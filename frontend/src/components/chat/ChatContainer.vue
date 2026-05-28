@@ -19,8 +19,8 @@
 
     <!-- Approval Overlay (replaces input when pending) -->
     <ApprovalOverlay
-      v-if="chatStore.pendingApproval"
-      :approval="chatStore.pendingApproval"
+      v-if="currentApproval"
+      :approval="currentApproval"
       @approve="handleApprove"
       @reject="handleReject"
     />
@@ -29,10 +29,12 @@
     <ChatInput
       v-else
       ref="chatInputRef"
-      v-model="inputText"
+      :model-value="inputText"
+      :html-draft="inputHtml"
       :agents="agents"
       :reply-to="replyPreview"
       :streaming="isStreaming"
+      @update:model-value="onInputUpdate"
       @send="onSend"
       @stop="onStop"
       @cancel-reply="onCancelReply"
@@ -42,7 +44,8 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import type { Message, ChatAgent, ReplyPreview } from '@/types/chat'
+import type { Message, ChatAgent } from '@/types/chat'
+import type { AgentMember } from '@/types/conversation'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
 import ChatHeader from '@/components/layout/ChatHeader.vue'
@@ -66,18 +69,32 @@ const emit = defineEmits<{
 
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
-const inputText = ref('')
 const chatInputRef = ref<{ focus: () => void } | null>(null)
-const replyPreview = ref<ReplyPreview | null>(null)
 
-const isStreaming = computed(() => chatStore.isStreaming)
+const convId = computed(() => conversationsStore.currentId)
+const isStreaming = computed(() => !!convId.value && chatStore.isStreamingFor(convId.value))
+const currentApproval = computed(() => convId.value ? chatStore.getPendingApproval(convId.value) : null)
+
+const inputText = computed(() => convId.value ? chatStore.getInputDraft(convId.value) : '')
+const inputHtml = computed(() => convId.value ? chatStore.getInputHtmlDraft(convId.value) : '')
+const replyPreview = computed(() => convId.value ? chatStore.getReplyPreview(convId.value) : null)
+
+function onInputUpdate(text: string, html?: string) {
+  if (!convId.value) return
+  chatStore.setInputDraft(convId.value, text, html)
+}
 
 const agents = computed<ChatAgent[]>(() =>
-  chatStore.activeAgents.map(a => ({ id: a.id, name: a.name, role: a.role, status: a.status })),
+  (conversationsStore.currentConversation?.agents ?? []).map(a => ({
+    id: a.id,
+    name: a.name,
+    role: a.type,
+    status: 'active' as const,
+  })),
 )
 
 function onSend(content: string, mentions: string[], replyToId?: string) {
-  replyPreview.value = null
+  if (convId.value) chatStore.setReplyPreview(convId.value, null)
   emit('send', content, mentions, replyToId)
 }
 
@@ -98,18 +115,19 @@ function onReply(messageId: string) {
     previewText = msg.content
   }
 
-  replyPreview.value = {
+  if (!convId.value) return
+  chatStore.setReplyPreview(convId.value, {
     messageId,
     senderName,
     content: previewText.slice(0, 80) + (previewText.length > 80 ? '...' : ''),
-  }
+  })
   emit('reply', messageId)
 
   nextTick(() => chatInputRef.value?.focus())
 }
 
 function onCancelReply() {
-  replyPreview.value = null
+  if (convId.value) chatStore.setReplyPreview(convId.value, null)
 }
 
 function onCopy(_messageId: string) {
@@ -125,18 +143,12 @@ function onMore(messageId: string) {
 }
 
 function handleApprove() {
-  const pa = chatStore.pendingApproval
-  if (!pa) return
-  const convId = conversationsStore.currentId
-  if (!convId) return
-  chatStore.resolveApproval(convId, pa.messageId, pa.blockId, 'approved')
+  if (!currentApproval.value || !convId.value) return
+  chatStore.resolveApproval(convId.value, currentApproval.value.messageId, currentApproval.value.blockId, 'approved')
 }
 
 function handleReject(reason?: string) {
-  const pa = chatStore.pendingApproval
-  if (!pa) return
-  const convId = conversationsStore.currentId
-  if (!convId) return
-  chatStore.resolveApproval(convId, pa.messageId, pa.blockId, 'rejected', reason)
+  if (!currentApproval.value || !convId.value) return
+  chatStore.resolveApproval(convId.value, currentApproval.value.messageId, currentApproval.value.blockId, 'rejected', reason)
 }
 </script>

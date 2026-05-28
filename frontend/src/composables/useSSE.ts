@@ -3,69 +3,76 @@ import { chatApi } from '@/api/chat'
 import { useChatStore } from '@/stores/chat'
 import type { SSEEvent } from '@/types/api'
 
-export function useSSE() {
+const controllers = ref<Map<string, AbortController>>(new Map())
+
+function handleEvent(convId: string, event: SSEEvent) {
   const chatStore = useChatStore()
-  const abortController = ref<AbortController | null>(null)
+  switch (event.type) {
+    case 'agent_start':
+      chatStore.startStreaming(convId, event.agent_id, event.agent_name, event.message_id)
+      break
 
-  function connect(conversationId: string) {
-    disconnect()
-    chatStore.currentConversationId = conversationId
+    case 'block_start':
+      chatStore.appendBlock(convId, event.block)
+      break
 
-    abortController.value = chatApi.stream(conversationId, {
-      onEvent: (event: SSEEvent) => handleEvent(conversationId, event),
-      onError: (error) => {
-        console.error('SSE error:', error)
-        chatStore.finishStreaming(conversationId)
-      },
-      onClose: () => {
-        chatStore.finishStreaming(conversationId)
-      },
-    })
+    case 'block_delta':
+      chatStore.updateBlock(convId, event.block_id, event.delta)
+      break
+
+    case 'block_stop':
+      chatStore.finishBlock(convId, event.block_id, event.final_fields)
+      break
+
+    case 'agent_done':
+      chatStore.commitStreamingMessage(convId)
+      break
+
+    case 'agent_error':
+      chatStore.finishStreaming(convId)
+      break
+
+    case 'round_done':
+      chatStore.clearRound(convId)
+      break
+
+    case 'queue_drained':
+      disconnect(convId)
+      break
   }
+}
 
-  function handleEvent(convId: string, event: SSEEvent) {
-    switch (event.type) {
-      case 'agent_start':
-        chatStore.startStreaming(convId, event.agent_id, event.agent_name, event.message_id)
-        chatStore.setAgentActive(event.agent_id, event.agent_name)
-        break
+function connect(conversationId: string) {
+  if (controllers.value.has(conversationId)) return
 
-      case 'block_start':
-        chatStore.appendBlock(event.block)
-        break
+  controllers.value.set(conversationId, chatApi.stream(conversationId, {
+    onEvent: (event: SSEEvent) => handleEvent(conversationId, event),
+    onError: (error) => {
+      console.error(`SSE error (${conversationId}):`, error)
+      const chatStore = useChatStore()
+      chatStore.finishStreaming(conversationId)
+      controllers.value.delete(conversationId)
+    },
+    onClose: () => {
+      const chatStore = useChatStore()
+      chatStore.finishStreaming(conversationId)
+      controllers.value.delete(conversationId)
+    },
+  }))
+}
 
-      case 'block_delta':
-        chatStore.updateBlock(event.block_id, event.delta)
-        break
-
-      case 'block_stop':
-        chatStore.finishBlock(event.block_id, event.final_fields)
-        break
-
-      case 'agent_done':
-        chatStore.commitStreamingMessage(convId)
-        break
-
-      case 'agent_error':
-        chatStore.finishStreaming(convId)
-        break
-
-      case 'round_done':
-        chatStore.clearRound(convId)
-        break
-
-      case 'queue_drained':
-        disconnect()
-        break
+function disconnect(convId?: string) {
+  if (convId) {
+    controllers.value.get(convId)?.abort()
+    controllers.value.delete(convId)
+  } else {
+    for (const ctrl of controllers.value.values()) {
+      ctrl.abort()
     }
+    controllers.value.clear()
   }
+}
 
-  function disconnect() {
-    if (abortController.value) {
-      abortController.value.abort()
-      abortController.value = null
-    }
-  }
-
-  return { connect, disconnect, abortController }
+export function useSSE() {
+  return { connect, disconnect, controllers }
 }
