@@ -136,16 +136,7 @@ async def get_conversation(
     conversation_id: Annotated[str, Path(description="会话 ID")],
     user_id: Annotated[str, Depends(get_current_user)],
 ) -> ConversationResponse:
-    """
-    [TODO/perm]: MVP 跳过 conversation 归属校验,后续 conversation_service.assert_owned_by
-    实装后接通,防止跨用户访问。
-    """
-    conv = await conversation_service.get(conversation_id)
-    if conv is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"会话 {conversation_id} 不存在",
-        )
+    conv = await conversation_service.assert_owned_by(conversation_id, user_id)
     return await _to_conversation_response(conv)
 
 
@@ -163,16 +154,8 @@ async def update_conversation(
     update: ConversationUpdate,
     user_id: Annotated[str, Depends(get_current_user)],
 ) -> ConversationResponse:
-    """
-    每次只更新传入的非 None 字段。三个动作走对应的 service 方法。
-    [TODO/perm]: 同 get,缺归属校验。
-    """
-    conv = await conversation_service.get(conversation_id)
-    if conv is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"会话 {conversation_id} 不存在",
-        )
+    """每次只更新传入的非 None 字段。三个动作走对应的 service 方法。"""
+    await conversation_service.assert_owned_by(conversation_id, user_id)
 
     if update.title is not None:
         await conversation_service.rename(conversation_id, update.title)
@@ -212,16 +195,7 @@ async def list_conversation_messages(
         Query(description="游标:消息 id,只返回 created_at 早于该消息的记录"),
     ] = None,
 ) -> list[MessageResponse]:
-    """
-    [TODO/perm]: 同上,缺归属校验。
-    """
-    # 先确认会话存在(404 比空数组更明确)
-    conv = await conversation_service.get(conversation_id)
-    if conv is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"会话 {conversation_id} 不存在",
-        )
+    await conversation_service.assert_owned_by(conversation_id, user_id)
 
     messages = await message_service.list_recent(
         conversation_id,

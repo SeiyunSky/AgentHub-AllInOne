@@ -420,6 +420,7 @@ class ThreadService:
         """
         from backend.core.database import SessionLocal
         from backend.repositories.agent_repo import AgentRepository
+        from backend.repositories.message_repo import MessageRepository
         from backend.repositories.thread_repo import ThreadRepository
 
         if adapter_registry is None:
@@ -449,12 +450,16 @@ class ThreadService:
             agent_row = AgentRepository(own_session).get(thread.agent_id)
             agent_system_prompt: Optional[str] = agent_row.system_prompt if agent_row else None
 
+            msg_repo = MessageRepository(own_session)
+            raw_history = msg_repo.list_recent(thread.conversation_id, limit=20)
+            history = list(reversed(raw_history))
+
             stream_input = StreamInput(
                 agent_id=thread.agent_id,
                 thread_id=thread.id,
                 message_id=thread.message_id,
                 prompt=thread.dispatch_prompt or "",
-                history=[],  # TODO[D6]: 从 message_repo 加载会话历史
+                history=history,
                 skills=[],   # TODO[D6]: 从 skill_service 按 agent_id 加载挂载 Skill
                 system_prompt=agent_system_prompt,
                 cancel_event=stream_service.get_abort_event(thread.conversation_id),

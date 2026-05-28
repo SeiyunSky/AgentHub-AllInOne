@@ -103,19 +103,27 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
+    # ---- 全局异常处理 ----
+    from backend.api.middleware.error_handler import register_exception_handlers
+    register_exception_handlers(app)
+
     # ---- 路由挂载 ----
     # 已实装路由按 /api/v1 前缀挂载;未实装的 stub 路由(单 # TODO 占位)不挂
     # 路由模块按需 import,避免还没实装的 stub 模块在 import 阶段就炸
     from backend.api.v1 import chat as chat_router
     from backend.api.v1 import conversations as conversations_router
+    from backend.api.v1 import messages as messages_router
+    from backend.api.v1 import ws as ws_router
 
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
     app.include_router(
         conversations_router.router, prefix="/api/v1", tags=["conversations"]
     )
+    app.include_router(messages_router.router, prefix="/api/v1", tags=["messages"])
+    app.include_router(ws_router.router, prefix="/api/v1", tags=["ws"])
 
     # TODO[main-3]: 各业务路由由其他人陆续挂载:
-    #   agents / messages / skills / artifacts / auth / ws
+    #   agents / skills / artifacts / auth
 
     return app
 
