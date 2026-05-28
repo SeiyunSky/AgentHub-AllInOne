@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import pytest
 
+from backend.services.orchestrator import context_compactor as _cc_module
 from backend.services.orchestrator.context_compactor import (
     ContextCompactor,
     RECENT_MESSAGES_KEEP_AFTER_SUMMARY,
@@ -20,6 +21,14 @@ from backend.services.orchestrator.context_compactor import (
     context_compactor,
 )
 from backend.services.orchestrator.llm_client import LLMResponse
+
+
+@pytest.fixture(autouse=True)
+def _reset_count_tokens_disabled():
+    """每个测试重置 count_tokens 降级标志,避免上一个测试触发降级污染下一个。"""
+    _cc_module._count_tokens_disabled = False
+    yield
+    _cc_module._count_tokens_disabled = False
 
 
 # ============================================================
