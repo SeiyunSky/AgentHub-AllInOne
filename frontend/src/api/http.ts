@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { AxiosResponse } from 'axios'
+import type { ApiResponse } from '@/types/api'
 
 const http = axios.create({
   baseURL: '/api/v1',
@@ -14,11 +15,18 @@ http.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor: unwrap data, normalize errors
+// Response interceptor: unwrap { code, message, data } envelope
 http.interceptors.response.use(
-  (res: AxiosResponse) => res.data,
+  (res: AxiosResponse<ApiResponse<unknown>>) => {
+    const envelope = res.data
+    if (envelope && envelope.code !== undefined && envelope.code !== 200) {
+      return Promise.reject(new Error(envelope.message || `Error ${envelope.code}`))
+    }
+    return envelope?.data ?? envelope
+  },
   (error) => {
-    const message = error.response?.data?.detail ?? error.message ?? 'Unknown error'
+    const data = error.response?.data
+    const message = data?.message ?? data?.detail ?? error.message ?? 'Unknown error'
     return Promise.reject(new Error(message))
   },
 )

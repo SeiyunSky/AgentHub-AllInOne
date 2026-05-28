@@ -1,3 +1,10 @@
+// Unified API response envelope — aligned with backend schemas/response.py
+export interface ApiResponse<T = unknown> {
+  code: number
+  message: string
+  data: T | null
+}
+
 // Content block types — aligned with backend domain/message.py
 
 export interface TextBlock {
@@ -172,6 +179,8 @@ export interface AgentDoneEvent {
   agent_id: string
   thread_id: string
   message_id: string
+  tokens_input?: number
+  tokens_output?: number
   timestamp: string
 }
 
