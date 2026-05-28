@@ -20,7 +20,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 # ============================================================
@@ -63,9 +63,20 @@ class ConversationCreate(BaseModel):
     )
     mode: ConversationMode = Field(description="single 或 group")
     agent_ids: list[str] = Field(
-        default_factory=list,
-        description="初始挂载的 Agent ID 列表;single 模式下应只填一个",
+        description="初始挂载的 Agent ID 列表",
     )
+
+    @model_validator(mode="after")
+    def _check_agent_ids(self) -> "ConversationCreate":
+        # single 必须 1 个 / group 至少 1 个;空 Agent 创建出来后 chat_service
+        # 派活会抛 ValueError,前端体验糟糕,这里直接 422 拦下
+        if self.mode == ConversationMode.SINGLE and len(self.agent_ids) != 1:
+            raise ValueError(
+                f"single 模式必须挂载恰好 1 个 Agent,实际 {len(self.agent_ids)}"
+            )
+        if self.mode == ConversationMode.GROUP and len(self.agent_ids) < 1:
+            raise ValueError("group 模式至少挂载 1 个 Agent")
+        return self
 
 
 class ConversationUpdate(BaseModel):
