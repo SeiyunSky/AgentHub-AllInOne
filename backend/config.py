@@ -57,5 +57,13 @@ class Settings(BaseSettings):
         description="日志格式,console=开发彩色对齐 / json=生产单行 JSON",
     )
 
+    # ---- 上下文压缩 ----
+    ENABLE_COUNT_TOKENS_API: bool = Field(
+        default=True,
+        description="是否调 anthropic count_tokens API 精确估 token。"
+        "Kimi /anthropic 端点不支持,可设 false 强制走字符数 / 4 兜底,"
+        "避免每轮 404 噪音。设 true 时仍会自动降级(首次失败后本进程不再重试)。",
+    )
+
 
 settings = Settings()

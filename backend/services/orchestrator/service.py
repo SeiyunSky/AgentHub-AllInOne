@@ -164,6 +164,9 @@ class OrchestratorService:
         total_tokens_in = 0
         total_tokens_out = 0
         try:
+            # 主 Agent thread 从 init 推进到 running,写 started_at(便于监控 loop 起跑时间)
+            await ThreadService(loop_session).mark_running(thread_id)
+            loop_session.commit()
             total_tokens_in, total_tokens_out = await self._agent_loop(
                 thread_id=thread_id,
                 conversation_id=conversation_id,

@@ -24,6 +24,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.adapters.registry import registry as adapter_registry
+from backend.api.exception_handlers import register_exception_handlers
+from backend.api.middleware.logging import TraceIdMiddleware
+from backend.api.middleware.response_envelope import ResponseEnvelopeMiddleware
 from backend.config import settings
 from backend.core.database import SessionLocal, engine
 from backend.core.logging import configure_logging
@@ -103,8 +106,15 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
-    # ---- 全局异常处理 ----
-    from backend.api.middleware.error_handler import register_exception_handlers
+    # ---- 响应包装 middleware ----
+    app.add_middleware(ResponseEnvelopeMiddleware)
+
+    # ---- TraceId middleware ----
+    # 最后 add → 最外层最先执行,trace_id 绑到 contextvars 后下游 CORS / 响应包装 /
+    # 路由 / 业务日志都能自动带上。
+    app.add_middleware(TraceIdMiddleware)
+
+    # ---- 全局异常处理器 ----
     register_exception_handlers(app)
 
     # ---- 路由挂载 ----
