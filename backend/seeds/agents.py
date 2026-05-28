@@ -111,4 +111,8 @@ def seed_agents(db: Session) -> int:
             logger.info("Seeded agent (prompt restored): %s", fields["name"])
             affected += 1
 
+    if affected:
+        db.commit()
+        logger.info("Seed committed (%d agent(s) affected)", affected)
+
     return affected

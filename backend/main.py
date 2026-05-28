@@ -35,6 +35,7 @@ from backend.hooks.base import HookEvent
 from backend.hooks.manager import hook_manager
 from backend.hooks.post_execution import PostExecutionHook
 from backend.hooks.pre_execution import PreExecutionHook
+from backend.seeds.agents import seed_agents
 
 
 logger = logging.getLogger(__name__)
@@ -46,9 +47,10 @@ async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("AgentHub backend starting up...")
 
-    # ---- adapter registry seed ----
+    # ---- seed preset agents ----
     db = SessionLocal()
     try:
+        seed_agents(db)
         adapter_registry.seed_from_db(db)
     finally:
         db.close()
