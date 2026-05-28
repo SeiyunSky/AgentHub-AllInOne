@@ -50,6 +50,22 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
 
+    # ---- Agent seed + Skill scan ----
+    db = SessionLocal()
+    try:
+        from backend.seeds.agents import seed_agents
+        from backend.services.skill_service import SkillService
+
+        n_agents = seed_agents(db)
+        logger.info("seed_agents: %d rows affected", n_agents)
+
+        n_skills = SkillService(db).scan_builtin()
+        logger.info("skill_service.scan_builtin: %d rows affected", n_skills)
+    except Exception:
+        logger.exception("seed / skill scan failed (non-fatal)")
+    finally:
+        db.close()
+
     # ---- hook 注册 ----
     # PRE_TOOL_USE 链：先 PreExecutionHook（黑名单 + 沙箱路径前置校验），
     # 再 ApprovalHook（高危工具拦截 / 等待用户决策）。
@@ -80,12 +96,12 @@ async def lifespan(app: FastAPI):
     logger.info("Backend shutdown complete")
 
 
-def create_app() -> FastAPI:
+def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app = FastAPI(
         title="AgentHub Backend",
         version="0.1.0",
         description="多 Agent 协作 IM 平台",
-        lifespan=lifespan,
+        lifespan=lifespan if include_lifespan else None,
     )
 
     # ---- CORS ----
@@ -108,14 +124,18 @@ def create_app() -> FastAPI:
     # 路由模块按需 import,避免还没实装的 stub 模块在 import 阶段就炸
     from backend.api.v1 import chat as chat_router
     from backend.api.v1 import conversations as conversations_router
+    from backend.api.v1 import agents as agents_router
+    from backend.api.v1 import skills as skills_router
 
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
     app.include_router(
         conversations_router.router, prefix="/api/v1", tags=["conversations"]
     )
+    app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
+    app.include_router(skills_router.router, prefix="/api/v1", tags=["skills"])
 
     # TODO[main-3]: 各业务路由由其他人陆续挂载:
-    #   agents / messages / skills / artifacts / auth / ws
+    #   messages / artifacts / auth / ws
 
     return app
 
