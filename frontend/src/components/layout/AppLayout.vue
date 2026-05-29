@@ -43,7 +43,7 @@ const rightPaneMinSize = 25 // ~360px
 
 function onPaneResized(event: ({ min: number; max: number; size: number })[]) {
   if (event.length > 0) {
-    uiStore.chatPanePercent = event[0].size
+    uiStore.setChatPanePercent(event[0].size)
   }
 }
 </script>

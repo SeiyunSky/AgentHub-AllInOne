@@ -32,10 +32,16 @@ import json
 import logging
 from typing import Any
 
+from backend.config import settings
 from backend.services.orchestrator.llm_client import llm_client
 
 
 logger = logging.getLogger(__name__)
+
+
+# 模块级降级标志:首次 count_tokens 失败后置 True,本进程后续直接走 fallback
+# 不再发请求,避免每轮 404 / 5xx 噪音 + 浪费 RPM 配额
+_count_tokens_disabled: bool = not settings.ENABLE_COUNT_TOKENS_API
 
 
 # ============================================================
@@ -87,18 +93,24 @@ class ContextCompactor:
         messages: list[dict[str, Any]],
     ) -> int:
         """
-        用 anthropic 官方 count_tokens API 精确估算 messages token 数。
+        估算 messages token 数。
 
-        - 走 messages.count_tokens 端点,不计入 token 计费(官方文档明示)
-        - 每次估算一次 HTTP round-trip,占用 RPM 配额 + 增加 loop 延迟
-        - 但准确度比"字符数 / 4"高一个数量级,值得这点开销
-        - 调用失败时退回字符数 / 4 兜底,避免 estimate 出错把整个 loop 拖死
+        优先调 anthropic count_tokens API(精确,误差小);失败或被 settings 关闭时
+        退回字符数 / 4 兜底。首次失败后置模块级降级标志,本进程不再重试,
+        避免每轮 LLM 调用都触发 404 / 5xx 噪音(如 Kimi /anthropic 端点不支持本接口)。
         """
+        global _count_tokens_disabled
+        if _count_tokens_disabled:
+            return self._estimate_tokens_fallback(messages)
+
         try:
             return await llm_client.count_tokens(messages=messages)
-        except Exception:
-            # 兜底:接口异常时用字符数 / 4 粗估,不让 estimate 失败把 loop 拖死
-            logger.exception("count_tokens API 调用失败,退回字符数 / 4 兜底")
+        except Exception as exc:
+            _count_tokens_disabled = True
+            logger.warning(
+                "count_tokens API 不可用,本进程切换到字符数 / 4 兜底: %s: %s",
+                type(exc).__name__, exc,
+            )
             return self._estimate_tokens_fallback(messages)
 
     @staticmethod

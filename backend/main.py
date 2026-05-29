@@ -12,7 +12,7 @@ FastAPI 应用入口
 
 队伍:咕嘎一辈子队
 修改者:Adam Zhang
-修改日期:2026-05-26
+修改日期:2026-05-29
 """
 
 from __future__ import annotations
@@ -24,6 +24,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.adapters.registry import registry as adapter_registry
+from backend.api.exception_handlers import register_exception_handlers
+from backend.api.middleware.logging import TraceIdMiddleware
+from backend.api.middleware.response_envelope import ResponseEnvelopeMiddleware
 from backend.config import settings
 from backend.core.database import SessionLocal, engine
 from backend.core.logging import configure_logging
@@ -32,6 +35,7 @@ from backend.hooks.base import HookEvent
 from backend.hooks.manager import hook_manager
 from backend.hooks.post_execution import PostExecutionHook
 from backend.hooks.pre_execution import PreExecutionHook
+from backend.seeds.agents import seed_agents
 
 
 logger = logging.getLogger(__name__)
@@ -43,10 +47,20 @@ async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("AgentHub backend starting up...")
 
-    # ---- adapter registry seed ----
+    # ---- Agent seed + Skill scan + Adapter registry ----
     db = SessionLocal()
     try:
+        from backend.services.skill_service import SkillService
+
+        n_agents = seed_agents(db)
+        logger.info("seed_agents: %d rows affected", n_agents)
+
+        n_skills = SkillService(db).scan_builtin()
+        logger.info("skill_service.scan_builtin: %d rows affected", n_skills)
+
         adapter_registry.seed_from_db(db)
+    except Exception:
+        logger.exception("seed / skill scan / adapter seed failed (non-fatal)")
     finally:
         db.close()
 
@@ -80,12 +94,12 @@ async def lifespan(app: FastAPI):
     logger.info("Backend shutdown complete")
 
 
-def create_app() -> FastAPI:
+def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app = FastAPI(
         title="AgentHub Backend",
         version="0.1.0",
         description="多 Agent 协作 IM 平台",
-        lifespan=lifespan,
+        lifespan=lifespan if include_lifespan else None,
     )
 
     # ---- CORS ----
@@ -103,19 +117,35 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
+    # ---- 响应包装 middleware ----
+    app.add_middleware(ResponseEnvelopeMiddleware)
+
+    # ---- TraceId middleware ----
+    # 最后 add → 最外层最先执行,trace_id 绑到 contextvars 后下游 CORS / 响应包装 /
+    # 路由 / 业务日志都能自动带上。
+    app.add_middleware(TraceIdMiddleware)
+
+    # ---- 全局异常处理器 ----
+    register_exception_handlers(app)
+
     # ---- 路由挂载 ----
     # 已实装路由按 /api/v1 前缀挂载;未实装的 stub 路由(单 # TODO 占位)不挂
     # 路由模块按需 import,避免还没实装的 stub 模块在 import 阶段就炸
     from backend.api.v1 import chat as chat_router
     from backend.api.v1 import conversations as conversations_router
+    from backend.api.v1 import messages as messages_router
+    from backend.api.v1 import ws as ws_router
+    from backend.api.v1 import agents as agents_router
+    from backend.api.v1 import skills as skills_router
 
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
     app.include_router(
         conversations_router.router, prefix="/api/v1", tags=["conversations"]
     )
-
-    # TODO[main-3]: 各业务路由由其他人陆续挂载:
-    #   agents / messages / skills / artifacts / auth / ws
+    app.include_router(messages_router.router, prefix="/api/v1", tags=["messages"])
+    app.include_router(ws_router.router, prefix="/api/v1", tags=["ws"])
+    app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
+    app.include_router(skills_router.router, prefix="/api/v1", tags=["skills"])
 
     return app
 

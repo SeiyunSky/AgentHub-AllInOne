@@ -14,7 +14,7 @@ ThreadService —— Thread 生命周期 + 任务图调度 + 子 Thread 事件�
 
 队伍:咕嘎一辈子队
 修改者:Adam Zhang
-修改日期:2026-05-25
+修改日期:2026-05-29
 """
 
 import asyncio
@@ -161,11 +161,16 @@ class ThreadService:
         conversation_id: str,
         agent_id: str,
         message_id: str,
+        dispatch_prompt: Optional[str] = None,
         reuse_terminal: bool = False,
     ) -> Thread:
         """
         @个体特化:有可复用的 Thread 则返回,否则新建。
         组合 repo.find_latest_by_agent + create_thread,upsert 决策在 service 层。
+
+        复用既有 Thread 时,如果传入 dispatch_prompt 则覆盖原值
+        (单聊 / @个体特化每轮用户输入都要变成新的 dispatch_prompt,
+        否则子 Adapter 永远拿到第一次创建时的 prompt)。
         """
         latest = self.repo.find_latest_by_agent(conversation_id, agent_id)
         if latest is not None:
@@ -175,11 +180,15 @@ class ThreadService:
                 ThreadStatus.CANCELLED.value,
             }
             if reuse_terminal or latest.status not in terminal:
+                if dispatch_prompt is not None:
+                    latest.dispatch_prompt = dispatch_prompt
+                    self.session.flush()
                 return latest
         return self.create_thread(
             conversation_id=conversation_id,
             message_id=message_id,
             agent_id=agent_id,
+            dispatch_prompt=dispatch_prompt,
         )
 
     # --------------------------------------------------------
@@ -365,6 +374,8 @@ class ThreadService:
         1. 把摘要写入父 Agent 的 pending_events 队列
         2. 调注册的 listener 唤醒父 Agent loop
         3. 触发该会话的调度(下游可能解锁)
+        4. 没有父 orchestrator + 会话再无活跃 Thread → 推 round_done(单聊 / @个体特化路径
+           本身就没有主 Agent 兜底,SSE 永远等不到关闭信号,必须由最后一个完成的 Thread 触发)
         """
         parent_thread_id = self._find_parent_orchestrator(thread)
 
@@ -387,6 +398,31 @@ class ThreadService:
             await self.schedule_conversation(thread.conversation_id)
 
         _running_tasks.pop(thread.id, None)
+
+        # ---- 单聊 / @个体特化路径的 round_done 兜底 ----
+        # 本 thread 不归 orchestrator 唤醒(parent_thread_id is None)+ 自己也不是 orchestrator,
+        # 说明走的是 chat_service._single_chat_flow / _individual_mention_flow 直派路径。
+        # 此时若会话里再无活跃 Thread,必须主动推 round_done,否则前端 SSE 永远等不到关闭信号。
+        # 群聊主 Agent 路径不走这里,start_loop finally 自己调 chat_service.on_round_done。
+        if parent_thread_id is None and thread.agent_id != "orchestrator":
+            if not self._has_active_threads(thread.conversation_id):
+                # lazy import 防循环依赖
+                from backend.services.chat_service import on_round_done
+                await on_round_done(thread.conversation_id)
+
+    def _has_active_threads(self, conversation_id: str) -> bool:
+        """会话里是否还有 init/running/suspended 的 Thread。"""
+        # 用本 service 的 self.session;调用方是 _run_thread,该 session 是后台 Task 自起的
+        self.session.expire_all()
+        active = self.repo.list_active_in_conversation(conversation_id)
+        return any(
+            t.status in {
+                ThreadStatus.INIT.value,
+                ThreadStatus.RUNNING.value,
+                ThreadStatus.SUSPENDED.value,
+            }
+            for t in active
+        )
 
     def _find_parent_orchestrator(self, thread: Thread) -> Optional[str]:
         """
@@ -420,6 +456,7 @@ class ThreadService:
         """
         from backend.core.database import SessionLocal
         from backend.repositories.agent_repo import AgentRepository
+        from backend.repositories.message_repo import MessageRepository
         from backend.repositories.thread_repo import ThreadRepository
 
         if adapter_registry is None:
@@ -448,14 +485,23 @@ class ThreadService:
             # 从 DB 读取 agent.system_prompt，注入到 StreamInput
             agent_row = AgentRepository(own_session).get(thread.agent_id)
             agent_system_prompt: Optional[str] = agent_row.system_prompt if agent_row else None
+            msg_repo = MessageRepository(own_session)
+            raw_history = msg_repo.list_recent(thread.conversation_id, limit=20)
+            history = list(reversed(raw_history))
+
+            try:
+                from backend.services.skill_service import SkillService
+                agent_skills = SkillService(own_session).list_with_content_for_agent(thread.agent_id)
+            except Exception:
+                agent_skills = []
 
             stream_input = StreamInput(
                 agent_id=thread.agent_id,
                 thread_id=thread.id,
                 message_id=thread.message_id,
                 prompt=thread.dispatch_prompt or "",
-                history=[],  # TODO[D6]: 从 message_repo 加载会话历史
-                skills=[],   # TODO[D6]: 从 skill_service 按 agent_id 加载挂载 Skill
+                history=history,
+                skills=agent_skills,
                 system_prompt=agent_system_prompt,
                 cancel_event=stream_service.get_abort_event(thread.conversation_id),
             )

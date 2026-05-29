@@ -48,13 +48,34 @@ def _load_prompt(key: str) -> str | None:
 
 PRESET_AGENTS: list[dict] = [
     {
+        # 主 Agent（orchestrator）—— 不通过 Adapter 运行，type 用 claude 占位。
+        # system_prompt 从 prompts/orchestrator.md 加载。
+        "id": "orchestrator",
+        "user_id": "GUGA",
+        "name": "主 Agent",
+        "description": "多 Agent 协作调度中心，理解用户意图、拆解任务、派发给合适的子 Agent",
+        "type": "claude",
+        "prompt_key": None,  # orchestrator prompt 不走 agents 目录，由 prompt_builder 加载
+        "capabilities": {"supports_diff": False, "supports_approval": False},
+        "is_active": 1,
+        "is_public": 0,
+    },
+    {
         "id": "agent-research-builtin",
         "user_id": "GUGA",
         "name": "调研 Agent",
         "description": "专业信息收集与结构化报告输出，适合市场调研、技术选型、资料汇总等任务",
         "type": "claude",
         "prompt_key": "research",
-        "capabilities": {},
+        # supports_web_search / supports_web_fetch：声明性标注，表示本 Agent 需要挂载对应 MCP server。
+        # ClaudeAdapter 通过 claude CLI settings.json 挂载 MCP，AgentHub 侧只做声明。
+        # 推荐在 ~/.claude/settings.json 配置：
+        #   - @modelcontextprotocol/server-brave-search（BRAVE_API_KEY 必填）
+        #   - @modelcontextprotocol/server-fetch
+        "capabilities": {
+            "supports_web_search": True,
+            "supports_web_fetch": True,
+        },
         "is_active": 1,
         "is_public": 1,
     },
@@ -110,5 +131,9 @@ def seed_agents(db: Session) -> int:
             existing.system_prompt = _load_prompt(prompt_key) if prompt_key else None
             logger.info("Seeded agent (prompt restored): %s", fields["name"])
             affected += 1
+
+    if affected:
+        db.commit()
+        logger.info("Seed committed (%d agent(s) affected)", affected)
 
     return affected

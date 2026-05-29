@@ -126,3 +126,20 @@ cp .env.example .env.development
 ```
 
 生产部署时由 Nginx 或反向代理接管，前端只需正确设置环境变量。
+
+## Mock 数据
+
+前端开发阶段使用 `vite-plugin-mock` 提供模拟数据，无需启动后端即可调试 UI。Mock 定义在 `mock/api.ts`。
+
+### 关闭 Mock（对接真实后端）
+
+编辑 `vite.config.ts`，将 `enable` 改为 `false`：
+
+```ts
+viteMockServe({
+  mockPath: 'mock',
+  enable: false,  // 关闭 mock，请求将代理到后端
+}),
+```
+
+关闭后，所有 `/api` 请求会通过 Vite proxy 转发到 `http://localhost:8000`。请确保后端已启动。

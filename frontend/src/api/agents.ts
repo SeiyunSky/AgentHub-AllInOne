@@ -1,82 +1,90 @@
-import type { Agent, AgentDraft } from '@/types/agent'
+import { http } from './http'
 
-const mockAgents: Agent[] = [
-  {
-    id: '1',
-    name: 'Orchestrator',
-    description: 'Primary orchestration agent that coordinates tasks across all agents.',
-    type: 'claude',
-    systemPrompt: 'You are the primary orchestrator...',
-    capabilities: { supportsCode: true, supportsDiff: true, supportsApproval: true, supportsImage: false },
-    tags: ['core', 'orchestration'],
-    isPublic: true,
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '2',
-    name: 'Data Analyst',
-    description: 'Analyzes data and generates insights and visualizations.',
-    type: 'codex',
-    systemPrompt: 'You are a data analysis expert...',
-    capabilities: { supportsCode: true, supportsDiff: false, supportsApproval: false, supportsImage: true },
-    tags: ['data', 'analysis'],
-    isPublic: true,
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '3',
-    name: 'Lead Developer',
-    description: 'Handles code review, architecture decisions, and technical guidance.',
-    type: 'claude',
-    systemPrompt: 'You are a senior developer...',
-    capabilities: { supportsCode: true, supportsDiff: true, supportsApproval: true, supportsImage: false },
-    tags: ['development', 'code-review'],
-    isPublic: false,
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: '4',
-    name: 'QA Engineer',
-    description: 'Writes and runs tests, identifies bugs and quality issues.',
-    type: 'opencode',
-    systemPrompt: 'You are a QA engineer...',
-    capabilities: { supportsCode: true, supportsDiff: false, supportsApproval: false, supportsImage: false },
-    tags: ['testing', 'quality'],
-    isPublic: true,
-    isActive: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]
+export interface AgentCapabilities {
+  supports_code: boolean
+  supports_diff: boolean
+  supports_approval: boolean
+  supports_image: boolean
+}
+
+export interface AgentResponse {
+  id: string
+  user_id: string
+  name: string
+  description?: string
+  avatar?: string
+  type: string
+  system_prompt?: string
+  capabilities: AgentCapabilities
+  tags: string[]
+  is_public: boolean
+  is_active: boolean
+  skill_ids: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface AgentCreate {
+  name: string
+  description?: string
+  avatar?: string
+  type: string
+  system_prompt?: string
+  capabilities?: AgentCapabilities
+  tags?: string[]
+  is_public?: boolean
+  skill_ids?: string[]
+}
+
+export interface AgentUpdate {
+  name?: string
+  description?: string
+  avatar?: string
+  system_prompt?: string
+  capabilities?: AgentCapabilities
+  tags?: string[]
+  is_public?: boolean
+  is_active?: boolean
+  skill_ids?: string[]
+}
+
+export interface AgentBuildDraft {
+  name: string
+  description?: string
+  avatar?: string
+  type: string
+  system_prompt: string
+  capabilities?: AgentCapabilities
+  tags?: string[]
+  suggested_skill_names?: string[]
+}
 
 export const agentsApi = {
-  async list(): Promise<Agent[]> {
-    return mockAgents
+  list(): Promise<AgentResponse[]> {
+    return http.get('/agents')
   },
 
-  async get(id: string): Promise<Agent | undefined> {
-    return mockAgents.find(a => a.id === id)
+  get(id: string): Promise<AgentResponse> {
+    return http.get(`/agents/${id}`)
   },
 
-  async create(_data: AgentDraft): Promise<Agent> {
-    return {
-      id: String(Date.now()),
-      ..._data,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
+  create(data: AgentCreate): Promise<AgentResponse> {
+    return http.post('/agents', data)
   },
 
-  async update(id: string, data: Partial<Agent>): Promise<Agent> {
-    const agent = mockAgents.find(a => a.id === id)
-    if (!agent) throw new Error('Agent not found')
-    return { ...agent, ...data, updatedAt: new Date() }
+  update(id: string, data: AgentUpdate): Promise<AgentResponse> {
+    return http.patch(`/agents/${id}`, data)
+  },
+
+  deactivate(id: string): Promise<AgentResponse> {
+    return http.post(`/agents/${id}/deactivate`, {})
+  },
+
+  build(description: string): Promise<{ session_id: string; draft: AgentBuildDraft }> {
+    return http.post('/agents/build', { description })
+  },
+
+  buildConfirm(sessionId: string, editedDraft: AgentBuildDraft): Promise<AgentResponse> {
+    return http.post('/agents/build/confirm', { session_id: sessionId, edited_draft: editedDraft })
   },
 }

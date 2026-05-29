@@ -2,7 +2,7 @@
   <div class="flex gap-3 message-enter group">
     <AgentAvatar :name="message.agentName" :color="avatarColor" />
 
-    <div class="flex-1 min-w-0">
+    <div class="flex-1 min-w-0 relative pb-3">
       <!-- Header -->
       <div class="flex items-center gap-2 mb-1.5">
         <span class="text-[12px] font-semibold text-on-surface">{{ message.agentName }}</span>
@@ -18,8 +18,8 @@
       <div v-if="message.blocks && message.blocks.length > 0" class="space-y-2">
         <!-- Text block -->
         <div v-for="(block, i) in message.blocks" :key="i">
-          <div v-if="block.type === 'text'" class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft">
-            <p class="text-[13px] leading-relaxed text-on-surface whitespace-pre-wrap">{{ block.content }}</p>
+          <div v-if="block.type === 'text'" class="text-block">
+            <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="block.content" />
           </div>
 
           <!-- Thinking block -->
@@ -68,16 +68,26 @@
           <!-- Artifacts block -->
           <ArtifactsBlock
             v-else-if="block.type === 'artifacts'"
-            :title="block.title"
-            :items="block.items"
+            :message-id="message.id"
+            :artifact="block.item"
+          />
+
+          <!-- Approval block -->
+          <ApprovalBlock
+            v-else-if="block.type === 'approval'"
+            :action="block.action"
+            :detail="block.detail"
+            :status="block.status"
+            :decided-at="block.decidedAt"
+            :reject-reason="block.rejectReason"
           />
         </div>
       </div>
 
       <!-- Legacy mode: single content + optional codeBlock -->
       <template v-else>
-        <div class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft">
-          <p class="text-[13px] leading-relaxed text-on-surface whitespace-pre-wrap">{{ message.content }}</p>
+        <div class="text-block">
+          <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="message.content" />
 
           <CodeBlock
             v-if="message.codeBlock"
@@ -108,6 +118,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AgentMessage } from '@/types/chat'
+import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import AgentAvatar from './AgentAvatar.vue'
 import CodeBlock from '../CodeBlock.vue'
 import MessageActions from '../MessageActions.vue'
@@ -117,6 +128,7 @@ import CodeBlockWrapper from '../blocks/CodeBlockWrapper.vue'
 import DeploymentBlock from '../blocks/DeploymentBlock.vue'
 import ImageBlock from '../blocks/ImageBlock.vue'
 import ArtifactsBlock from '../blocks/ArtifactsBlock.vue'
+import ApprovalBlock from '../blocks/ApprovalBlock.vue'
 
 const props = defineProps<{
   message: AgentMessage

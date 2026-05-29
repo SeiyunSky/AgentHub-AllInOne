@@ -1,5 +1,5 @@
 <template>
-  <div class="px-5 py-6 space-y-5">
+  <div ref="listRef" class="px-5 py-6 space-y-5" @scroll="onScroll">
     <template v-for="msg in messages" :key="msg.id">
       <AgentBubble
         v-if="msg.type === 'agent'"
@@ -37,12 +37,13 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import type { Message } from '@/types/chat'
 import AgentBubble from './bubbles/AgentBubble.vue'
 import UserBubble from './bubbles/UserBubble.vue'
 import AgentAvatar from './bubbles/AgentAvatar.vue'
 
-defineProps<{
+const props = defineProps<{
   messages: Message[]
 }>()
 
@@ -52,4 +53,37 @@ defineEmits<{
   react: [messageId: string, type: 'like' | 'dislike']
   more: [messageId: string]
 }>()
+
+const listRef = ref<HTMLElement>()
+const isNearBottom = ref(false)
+let initialized = false
+
+function onScroll() {
+  const el = listRef.value
+  if (!el) return
+  isNearBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 30
+}
+
+function scrollToBottom() {
+  const el = listRef.value
+  if (!el) return
+  el.scrollTop = el.scrollHeight
+}
+
+watch(
+  () => props.messages,
+  () => {
+    if (!initialized) {
+      if (props.messages.length > 0) {
+        initialized = true
+        onScroll()
+      }
+      return
+    }
+    if (isNearBottom.value) {
+      scrollToBottom()
+    }
+  },
+  { deep: true, flush: 'post' },
+)
 </script>
