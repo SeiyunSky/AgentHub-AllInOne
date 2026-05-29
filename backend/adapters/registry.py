@@ -114,8 +114,8 @@ def _build_adapter(row: "AgentModel") -> AgentAdapter:  # type: ignore[name-defi
         )
 
     if agent_type == "opencode":
-        from backend.adapters.codex import CodexAdapter
-        return CodexAdapter(bin_path=os.environ.get("OPENCODE_BIN_PATH", "opencode"))
+        from backend.adapters.opencode import OpencodeAdapter
+        return OpencodeAdapter(bin_path=os.environ.get("OPENCODE_BIN_PATH", "opencode"))
 
     raise ValueError(f"Unknown agent type: {agent_type!r}")
 

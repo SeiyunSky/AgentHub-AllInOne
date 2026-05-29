@@ -169,10 +169,10 @@ def test_build_adapter_custom():
     assert isinstance(adapter, CustomAdapter)
 
 
-def test_build_adapter_opencode_uses_codex_adapter():
-    from backend.adapters.codex import CodexAdapter
+def test_build_adapter_opencode():
+    from backend.adapters.opencode import OpencodeAdapter
     adapter = _build_adapter(_make_row("a1", "opencode"))
-    assert isinstance(adapter, CodexAdapter)
+    assert isinstance(adapter, OpencodeAdapter)
 
 
 def test_build_adapter_unknown_type_raises():
