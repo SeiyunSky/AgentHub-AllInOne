@@ -23,14 +23,14 @@ export function useChat() {
 
     chatStore.addUserMessage(id, content)
 
+    sse.connect(id)
+
     const response = await chatApi.send({
       conversation_id: id,
       content,
       mention_ids: mentions.length ? mentions : undefined,
       selected_range: selectedRange,
     })
-
-    sse.connect(id)
 
     return response
   }

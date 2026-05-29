@@ -54,6 +54,8 @@ function connect(conversationId: string) {
       controllers.value.delete(conversationId)
     },
     onClose: () => {
+      // Skip if we already disconnected intentionally (queue_drained → disconnect removed the controller)
+      if (!controllers.value.has(conversationId)) return
       const chatStore = useChatStore()
       chatStore.finishStreaming(conversationId)
       controllers.value.delete(conversationId)
