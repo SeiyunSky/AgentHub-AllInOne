@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("AgentHub backend starting up...")
 
-    # ---- seed preset agents + scan skills ----
+    # ---- Agent seed + Skill scan + Adapter registry ----
     db = SessionLocal()
     try:
         from backend.services.skill_service import SkillService
@@ -55,12 +55,12 @@ async def lifespan(app: FastAPI):
         n_agents = seed_agents(db)
         logger.info("seed_agents: %d rows affected", n_agents)
 
-        adapter_registry.seed_from_db(db)
-
         n_skills = SkillService(db).scan_builtin()
         logger.info("skill_service.scan_builtin: %d rows affected", n_skills)
+
+        adapter_registry.seed_from_db(db)
     except Exception:
-        logger.exception("seed / skill scan failed (non-fatal)")
+        logger.exception("seed / skill scan / adapter seed failed (non-fatal)")
     finally:
         db.close()
 

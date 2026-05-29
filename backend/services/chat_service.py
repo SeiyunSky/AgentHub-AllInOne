@@ -240,7 +240,12 @@ class ChatService:
             conversation_id=request.conversation_id,
             message_id=self._msg_id(user_msg),
             agent_id=agent_id,
+            # 单聊绕过主 Agent,用户原话直接当子 Agent 输入
+            dispatch_prompt=request.content,
         )
+        # 必须 commit,否则 _launch_thread_task 起的后台 SessionLocal 看不到这条 thread
+        # → mark_status 返回 None → Adapter 永远不启动
+        self.session.commit()
         await self.thread_service.schedule_conversation(request.conversation_id)
 
     async def _individual_mention_flow(
@@ -255,7 +260,12 @@ class ChatService:
             conversation_id=request.conversation_id,
             agent_id=agent_id,
             message_id=self._msg_id(user_msg),
+            # @个体特化也是用户与子 Agent 直接对话,本次消息作为 dispatch_prompt;
+            # 复用既有 Thread 时也要刷新,否则子 Adapter 永远拿到第一次的 prompt
+            dispatch_prompt=request.content,
         )
+        # 同 _single_chat_flow:commit 让后台 Task 能看到
+        self.session.commit()
         await self.thread_service.schedule_conversation(request.conversation_id)
 
     async def _group_orchestrate_flow(
@@ -277,6 +287,9 @@ class ChatService:
             message_id=self._msg_id(user_msg),
             agent_id=ORCHESTRATOR_AGENT_ID,
         )
+        # 必须 commit,否则 start_loop 起的独立 session 查不到这条 thread,
+        # mark_running / mark_done 全部 no-op,thread 永远停在 init 状态
+        self.session.commit()
         # 启动主 Agent loop(orchestrator_service 内部跑 agent_loop +
         # 通过 dispatch_to_agent 工具创建子 Thread)
         await orchestrator_service.start_loop(  # type: ignore[union-attr]

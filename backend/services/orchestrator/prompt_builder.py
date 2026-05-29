@@ -155,41 +155,27 @@ class SystemPromptBuilder:
         return ""
 
     async def _layer_3_skill_metadata(self, ctx: PromptContext) -> str:
-        """
-        第 3 层:Skill 元数据(progressive disclosure)。
+        """第 3 层：Skill 元数据（progressive disclosure）。"""
+        try:
+            from backend.core.database import SessionLocal
+            from backend.services.skill_service import SkillService
 
-        现状:返回空字符串,等 skill_service 实装后接通。
+            db = SessionLocal()
+            try:
+                skills = SkillService(db).list_for_orchestrator(ctx.user_id)
+            finally:
+                db.close()
 
-        TODO[F-prompt-3]: 实装时返回 markdown 列表:
-            ## 可用 Skill 列表
-            - **{name}**: {description}
-            - ...
-            (主 Agent 看完描述后,需要用某个 Skill 调 read_file/load_skill 拿完整正文)
+            if not skills:
+                return ""
 
-        待定的设计点(动手前必须先和团队对齐):
-
-        1. **数据源**:DB 为权威 + 本地文件为缓存
-           - 用户创建的 Skill 写入 skills 表(元数据)+ skills/{name}.md(正文)
-           - 用户删本地 .md 文件不丢数据,可从 DB 重新生成本地副本
-           - skill_service 应提供 list_for_orchestrator() 屏蔽来源细节
-
-        2. **主 Agent 挂载机制**:复用 agent_skills 多对多表
-           - 约定主 Agent 用 agent_id='orchestrator' 注册到 agents 表(seed 阶段)
-           - skill_service.list_for_orchestrator() 等价于
-             list_by_agent_id('orchestrator'),按 active+is_public/作者过滤
-           - 不引入"orchestrator 专属目录"的隐式约定,避免文件系统 / DB 双标识不一致
-
-        3. **用户创建路径**:
-           - is_public=1 + author=GUGA 视为系统内置,所有主 Agent 默认可见
-           - is_public=0 仅 author 自己可见;主 Agent 在 ctx.user_id 视角下加载
-           - 实装 list_for_orchestrator(user_id) 时要带 user_id 做可见性过滤
-
-        依赖:
-        - skill_service 实装(services/skill_service.py 当前是 # TODO stub)
-        - skill_repo 实装(repositories/skill_repo.py 当前是 # TODO stub)
-        - agents 表 seed 主 Agent 行(agent_id='orchestrator')
-        """
-        return ""
+            lines = ["可用 Skill 列表（需要时用 load_skill 工具加载完整内容）："]
+            for s in skills:
+                desc = f"：{s.description}" if s.description else ""
+                lines.append(f"- {s.name}{desc}")
+            return "\n".join(lines)
+        except Exception:
+            return ""
 
     async def _layer_4_agenthub_md_chain(self, ctx: PromptContext) -> str:
         """
