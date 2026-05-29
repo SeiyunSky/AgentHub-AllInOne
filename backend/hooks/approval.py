@@ -51,7 +51,7 @@ _APPROVAL_TIMEOUT_SECONDS = 600
 # 防止前端收不到 ApprovalBlock（message_service / stream_service.push_approval_block 未实装）
 # 时主 Agent loop 静默卡住 10 分钟超时。
 # message_service + stream 推送链路接通后改为 True（或删守卫）。
-_APPROVAL_CHANNEL_READY = False
+_APPROVAL_CHANNEL_READY = True
 
 ApprovalDecision = Literal["approve", "reject"]
 
@@ -199,16 +199,42 @@ class ApprovalHook(SyncHook):
     ) -> None:
         """
         创建 ApprovalBlock 落库 + 推送 SSE。
-
-        TODO[H1]: message_service 实装后接通,创建一条 assistant 消息含 ApprovalBlock。
-        TODO[stream]: stream_service 当前无 push_approval_block 专用方法,
-            可走 push_event 通用路径（依赖 ApprovalBlock 被 StreamEvent 类型接受）。
         """
-        # 暂时只记日志,等 message_service / stream_service.push_approval_block 实装后填上
-        logger.info(
-            "TODO publish ApprovalBlock block_id=%s tool=%s conversation=%s thread=%s",
-            block_id, tool_name, ctx.conversation_id, ctx.thread_id,
+        from backend.adapters.events import BlockStartEvent
+        from backend.domain.message import ApprovalBlock
+        from backend.services.message_service import message_service
+        from backend.services.stream_service import stream_service
+
+        approval_block = ApprovalBlock(
+            block_id=block_id,
+            action=tool_name,
+            detail=str(ctx.tool_input or {}),
         )
+
+        try:
+            await message_service.create_assistant_message(
+                conversation_id=ctx.conversation_id or "",
+                agent_id=ctx.agent_id or "",
+                content_blocks=[approval_block],
+                thread_id=ctx.thread_id,
+            )
+        except Exception:
+            logger.exception(
+                "ApprovalBlock 落库失败 block_id=%s tool=%s", block_id, tool_name
+            )
+
+        try:
+            event = BlockStartEvent(
+                agent_id=ctx.agent_id or "",
+                thread_id=ctx.thread_id or "",
+                message_id="",
+                block=approval_block,
+            )
+            await stream_service.push_event(ctx.conversation_id or "", event)
+        except Exception:
+            logger.exception(
+                "ApprovalBlock SSE 推送失败 block_id=%s tool=%s", block_id, tool_name
+            )
 
     @staticmethod
     def _fire_decided(

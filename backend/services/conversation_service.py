@@ -17,6 +17,8 @@ from __future__ import annotations
 import logging
 from typing import Literal, Optional
 
+from fastapi import HTTPException, status
+
 from backend.core.database import SessionLocal
 from backend.models.agent import Agent
 from backend.models.conversation import Conversation
@@ -189,6 +191,32 @@ class ConversationService:
             raise
         finally:
             session.close()
+
+    # --------------------------------------------------------
+    # 权限校验
+    # --------------------------------------------------------
+
+    async def assert_owned_by(
+        self,
+        conversation_id: str,
+        user_id: str,
+    ) -> Conversation:
+        """
+        校验 conversation 归属：不存在抛 404，归属不匹配抛 403。
+        返回会话对象供调用方直接使用，避免二次查库。
+        """
+        conv = await self.get(conversation_id)
+        if conv is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"会话 {conversation_id} 不存在",
+            )
+        if conv.user_id != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="无权访问该会话",
+            )
+        return conv
 
     # --------------------------------------------------------
     # 成员管理

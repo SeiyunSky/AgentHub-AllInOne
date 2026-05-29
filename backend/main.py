@@ -12,7 +12,7 @@ FastAPI 应用入口
 
 队伍:咕嘎一辈子队
 修改者:Adam Zhang
-修改日期:2026-05-26
+修改日期:2026-05-29
 """
 
 from __future__ import annotations
@@ -140,6 +140,8 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     # 路由模块按需 import,避免还没实装的 stub 模块在 import 阶段就炸
     from backend.api.v1 import chat as chat_router
     from backend.api.v1 import conversations as conversations_router
+    from backend.api.v1 import messages as messages_router
+    from backend.api.v1 import ws as ws_router
     from backend.api.v1 import agents as agents_router
     from backend.api.v1 import skills as skills_router
 
@@ -147,11 +149,10 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app.include_router(
         conversations_router.router, prefix="/api/v1", tags=["conversations"]
     )
+    app.include_router(messages_router.router, prefix="/api/v1", tags=["messages"])
+    app.include_router(ws_router.router, prefix="/api/v1", tags=["ws"])
     app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
     app.include_router(skills_router.router, prefix="/api/v1", tags=["skills"])
-
-    # TODO[main-3]: 各业务路由由其他人陆续挂载:
-    #   messages / artifacts / auth / ws
 
     return app
 
