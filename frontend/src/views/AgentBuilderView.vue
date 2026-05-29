@@ -17,19 +17,28 @@
               :icon="Setting"
               variant="brand"
             >
-              <AgentForm v-model="agentsStore.currentDraft" />
-              <template v-if="!isEditMode" #toolbar>
-                <button
-                  class="h-8 px-4 rounded-lg flex items-center gap-2 bg-brand text-white text-[13px] font-medium shadow-sm hover:bg-brand-dark transition-colors"
-                  @click="saveAgent"
-                >
-                  <el-icon :size="14"><Select /></el-icon>
-                  Create
-                </button>
+              <AgentForm :draft="agentsStore.currentDraft" />
+              <template #toolbar>
+                <div class="flex items-center gap-2">
+                  <button
+                    v-if="!isEditMode"
+                    class="h-8 px-4 rounded-lg flex items-center gap-2 bg-brand text-white text-[13px] font-medium shadow-sm hover:bg-brand-dark transition-colors cursor-pointer"
+                    @click="saveAgent"
+                  >
+                    <el-icon :size="14"><Select /></el-icon>
+                    Create
+                  </button>
+                  <button
+                    class="h-8 px-3 rounded-lg flex items-center gap-1 text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
+                    @click="showChat = !showChat"
+                  >
+                    <el-icon :size="14"><Fold /></el-icon>
+                  </button>
+                </div>
               </template>
             </PanelContainer>
           </Pane>
-          <Pane :size="30" :min-size="20">
+          <Pane v-if="showChat" :size="30" :min-size="20">
             <ChatContainer
               title="Builder Assistant"
               status="Online"
@@ -56,7 +65,7 @@ import ChatContainer from '@/components/chat/ChatContainer.vue'
 import AgentForm from '@/components/agents/AgentForm.vue'
 import LeftPanel from '@/components/layout/LeftPanel.vue'
 import type { Message } from '@/types/chat'
-import { Setting, Select } from '@element-plus/icons-vue'
+import { Setting, Select, Fold } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -79,6 +88,8 @@ const assistantMessages = ref<Message[]>([
   },
 ])
 
+const showChat = ref(true)
+
 onMounted(async () => {
   if (isEditMode.value && agentId.value) {
     const agent = await agentsApi.get(agentId.value)
@@ -95,7 +106,7 @@ async function saveAgent() {
   router.push({ name: 'agents' })
 }
 
-function onAssistantSend(content: string) {
+function onAssistantSend(content: string, _mentions: string[], _replyToId?: string) {
   assistantMessages.value.push({
     id: String(Date.now()),
     type: 'user',

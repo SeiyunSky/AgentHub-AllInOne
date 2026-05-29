@@ -12,7 +12,7 @@ FastAPI 应用入口
 
 队伍:咕嘎一辈子队
 修改者:Adam Zhang
-修改日期:2026-05-26
+修改日期:2026-05-29
 """
 
 from __future__ import annotations
@@ -35,6 +35,7 @@ from backend.hooks.base import HookEvent
 from backend.hooks.manager import hook_manager
 from backend.hooks.post_execution import PostExecutionHook
 from backend.hooks.pre_execution import PreExecutionHook
+from backend.seeds.agents import seed_agents
 
 
 logger = logging.getLogger(__name__)
@@ -46,10 +47,27 @@ async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("AgentHub backend starting up...")
 
-    # ---- adapter registry seed ----
+    # ---- seed preset agents ----
     db = SessionLocal()
     try:
+        seed_agents(db)
         adapter_registry.seed_from_db(db)
+    finally:
+        db.close()
+
+    # ---- Agent seed + Skill scan ----
+    db = SessionLocal()
+    try:
+        from backend.seeds.agents import seed_agents
+        from backend.services.skill_service import SkillService
+
+        n_agents = seed_agents(db)
+        logger.info("seed_agents: %d rows affected", n_agents)
+
+        n_skills = SkillService(db).scan_builtin()
+        logger.info("skill_service.scan_builtin: %d rows affected", n_skills)
+    except Exception:
+        logger.exception("seed / skill scan failed (non-fatal)")
     finally:
         db.close()
 
@@ -83,12 +101,12 @@ async def lifespan(app: FastAPI):
     logger.info("Backend shutdown complete")
 
 
-def create_app() -> FastAPI:
+def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app = FastAPI(
         title="AgentHub Backend",
         version="0.1.0",
         description="多 Agent 协作 IM 平台",
-        lifespan=lifespan,
+        lifespan=lifespan if include_lifespan else None,
     )
 
     # ---- CORS ----
@@ -124,6 +142,8 @@ def create_app() -> FastAPI:
     from backend.api.v1 import conversations as conversations_router
     from backend.api.v1 import messages as messages_router
     from backend.api.v1 import ws as ws_router
+    from backend.api.v1 import agents as agents_router
+    from backend.api.v1 import skills as skills_router
 
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
     app.include_router(
@@ -131,9 +151,8 @@ def create_app() -> FastAPI:
     )
     app.include_router(messages_router.router, prefix="/api/v1", tags=["messages"])
     app.include_router(ws_router.router, prefix="/api/v1", tags=["ws"])
-
-    # TODO[main-3]: 各业务路由由其他人陆续挂载:
-    #   agents / skills / artifacts / auth
+    app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
+    app.include_router(skills_router.router, prefix="/api/v1", tags=["skills"])
 
     return app
 

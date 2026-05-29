@@ -43,6 +43,11 @@ const router = createRouter({
       component: () => import('@/views/AgentsView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/md-test',
+      name: 'md-test',
+      component: () => import('@/views/MarkdownTest.vue'),
+    },
   ],
 })
 

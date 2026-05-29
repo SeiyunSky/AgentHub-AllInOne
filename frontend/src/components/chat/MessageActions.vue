@@ -1,9 +1,9 @@
 <template>
-  <div class="flex items-center gap-0.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200" :class="variant === 'user' ? 'justify-end' : ''">
+  <div class="absolute -bottom-3 flex items-center gap-0.5 px-1 py-0.5 rounded-lg bg-white/90 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto" :class="variant === 'user' ? 'right-0' : 'left-0'">
     <!-- Like -->
     <button
       class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-      :class="reaction === 'like' ? 'text-brand bg-brand-light/50' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
+      :class="reaction === 'like' ? 'text-brand bg-brand/20' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
       title="Like"
       @click="handleReact('like')"
     >
@@ -13,7 +13,7 @@
     <!-- Dislike -->
     <button
       class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-      :class="reaction === 'dislike' ? 'text-red-500 bg-red-50' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
+      :class="reaction === 'dislike' ? 'text-red-500 bg-red-200' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
       title="Dislike"
       @click="handleReact('dislike')"
     >
@@ -77,6 +77,6 @@ function handleCopy() {
 }
 
 function handleReact(type: 'like' | 'dislike') {
-  emit('react', props.messageId, props.reaction === type ? ('none' as any) : type)
+  emit('react', props.messageId, type)
 }
 </script>

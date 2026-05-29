@@ -14,7 +14,7 @@ ThreadService —— Thread 生命周期 + 任务图调度 + 子 Thread 事件�
 
 队伍:咕嘎一辈子队
 修改者:Adam Zhang
-修改日期:2026-05-25
+修改日期:2026-05-29
 """
 
 import asyncio
@@ -449,10 +449,15 @@ class ThreadService:
             # 从 DB 读取 agent.system_prompt，注入到 StreamInput
             agent_row = AgentRepository(own_session).get(thread.agent_id)
             agent_system_prompt: Optional[str] = agent_row.system_prompt if agent_row else None
-
             msg_repo = MessageRepository(own_session)
             raw_history = msg_repo.list_recent(thread.conversation_id, limit=20)
             history = list(reversed(raw_history))
+
+            try:
+                from backend.services.skill_service import SkillService
+                agent_skills = SkillService(own_session).list_with_content_for_agent(thread.agent_id)
+            except Exception:
+                agent_skills = []
 
             stream_input = StreamInput(
                 agent_id=thread.agent_id,
@@ -460,7 +465,7 @@ class ThreadService:
                 message_id=thread.message_id,
                 prompt=thread.dispatch_prompt or "",
                 history=history,
-                skills=[],   # TODO[D6]: 从 skill_service 按 agent_id 加载挂载 Skill
+                skills=agent_skills,
                 system_prompt=agent_system_prompt,
                 cancel_event=stream_service.get_abort_event(thread.conversation_id),
             )

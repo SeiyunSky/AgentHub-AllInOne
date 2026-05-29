@@ -25,6 +25,8 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from backend.repositories.conversation_repo import ConversationRepository
+
 from backend.core.database import SessionLocal
 from backend.core.utils import gen_uuid
 from backend.domain.message import TextBlock
@@ -335,9 +337,11 @@ class ChatService:
     def _conversation_mode(conversation) -> str:
         return getattr(conversation, "mode", None) or conversation["mode"]
 
-    @staticmethod
-    def _sole_agent_id(conversation) -> str:
-        agent_ids = getattr(conversation, "agent_ids", None) or conversation.get("agent_ids", [])
+    def _sole_agent_id(self, conversation) -> str:
+        conv_repo = ConversationRepository(self.session)
+        agent_ids = conv_repo.list_active_agent_ids(
+            getattr(conversation, "id", None) or conversation["id"]
+        )
         if not agent_ids:
             raise ValueError("单聊 conversation 缺少挂载的 Agent")
         if len(agent_ids) > 1:
