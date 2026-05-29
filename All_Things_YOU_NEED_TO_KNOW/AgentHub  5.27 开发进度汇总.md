@@ -1,11 +1,11 @@
 # AgentHub 剩余工作全貌
 
-> 更新：2026-05-27（Adam Zhang）
+> 更新：2026-05-28（Adam Zhang）
 > 优先级：P0=上线必需 / P1=核心功能 / P2=增强 / P3=横向能力
 
 ---
 
-## 已完成（5/27 完成的任务，留作上下文）
+## 已完成（5/27 完成）
 
 - [x] `main.py` 接通 `seed_from_db`
 - [x] `_drain_pending_messages` 接 SessionLocal
@@ -27,27 +27,40 @@
 
 ---
 
-## 模块零：测试基础设施 [P0]
-> 没这个 #15 集成测试做不动，模块二/三/四的 API 测试也没法写
+## 已完成（5/28 完成）
 
-- [ ] `tests/conftest.py` 扩展：测试 DB fixture（推荐 in-memory SQLite + `metadata.create_all`）
-- [ ] `tests/conftest.py` `mock_anthropic_response` fixture（按 stop_reason / content / tool_calls / usage 构造）
-- [ ] `tests/conftest.py` `mock_adapter` fixture（注册到 `adapter_registry`，事先编排事件流）
-- [ ] `tests/conftest.py` `clean_hook_manager` fixture（每个测试自动 `hook_manager.clear()`，防模块级单例污染）
-- [ ] `tests/conftest.py` `clean_stream_service` fixture（清 `_sessions` / `_abort_events` / `_pending` / `_locks` / `_listeners`）
+- [x] **orchestrator loop 集成测试**（`tests/integration/test_orchestrator_loop.py` 10 用例 + `test_context_compactor.py` 17 用例 + `scripts/preview_compactor.py` 真 LLM 摘要质量预览脚本）
+- [x] **trace_id middleware**（`api/middleware/logging.py` TraceIdMiddleware：header 优先 + UUID 兜底，contextvars 自动绑定，stdlib + structlog 共享 trace_id；5 用例集成测试）
+- [x] **ConversationCreate agent_ids 校验**（single 必须 1 个 / group 至少 1 个，空传直接 422）
+- [x] **统一响应格式 {code, message, data}**（`schemas/response.py` ApiResponse + `middleware/response_envelope.py` 自动包装 + `api/exception_handlers.py` 异常统一包装；SSE / StreamingResponse 不包装；9 用例集成测试）
+- [x] **`threads.started_at` 漏写修复**（`start_loop` 进 _agent_loop 前调 mark_running）
+- [x] **count_tokens API 404 噪音降级**（模块级降级标志 + `settings.ENABLE_COUNT_TOKENS_API` 强制开关）
+- [x] **时区 UTC vs CST 错位修复**（engine connect_args 设 `init_command="SET time_zone='+00:00'"`，MySQL CURRENT_TIMESTAMP 与 Python UTC 对齐）
+
+**5/28 测试统计**：50 passed / 3 skipped（真 LLM 测试需环境变量）
+
+---
+
+## 模块零：测试基础设施 [P0]
+> 集成测试已部分搭建（orchestrator loop / context_compactor / trace_id / response_envelope 各自的 fixture），还差跨模块通用基建
+
+- [x] `tests/integration/conftest.py` orchestrator loop fixture（llm_response_queue / temp_tool / clean_hook_manager / clean_orchestrator_state / patch_* 子系统 stub）
+- [ ] `tests/conftest.py` 顶层扩展：测试 DB fixture（推荐 in-memory SQLite + `metadata.create_all`）
+- [ ] `mock_adapter` fixture（注册到 `adapter_registry`，事先编排事件流）
+- [ ] `clean_stream_service` fixture（清 `_sessions` / `_abort_events` / `_pending` / `_locks` / `_listeners`）
 
 ---
 
 ## 模块一：主链路接通 [P0]
 
+- [x] FastAPI request 入口加 trace_id middleware
 - [ ] structlog 业务代码迁移：在 `chat_service.handle_chat` / `orchestrator.start_loop` / `thread_service._run_thread` 入口 `bind_contextvars(trace_id, user_id, conversation_id)`，逐步把 `logger.info("xxx %s", a)` 改成 `logger.info("xxx", a=a)`
-- [ ] FastAPI request 入口加 trace_id middleware（每个请求 bind 一次，结束 clear），不然 contextvars 链路不会自动带
 
 ---
 
 ## 模块二：Orchestrator 工具链 [P0]
 
-- [ ] orchestrator loop 集成测试（依赖模块零）—— mock LLM/Adapter，跑完整闭环
+- [x] orchestrator loop 集成测试（mock LLM/Adapter，10 用例覆盖八步循环全分支）
 - 🟡 `prompt_builder` 第 3 层 Skill 元数据（**注释固化设计意图，实装代码仍返回 `""`**，待模块五 `skill_service` 实装后回填）
 
 ---
@@ -94,6 +107,7 @@
 
 ## 模块六：消息操作 & 会话补全 [P0]
 
+- [x] `ConversationCreate` agent_ids 长度校验（single 必须 1 个 / group 至少 1 个）
 - [ ] `thread_service` D6：从 `message_repo` 加载会话历史塞进子 Adapter `StreamInput.history`
    （注意：跟 `prompt_builder` 第 6 层"塞 20 条进主 Agent system prompt"是**两件事**——这里是给子 LLM 的对话上下文）
 - [ ] `api/v1/messages.py`：feedback / 软删 / 重新生成
@@ -102,7 +116,7 @@
 ---
 
 ## 模块七：Adapter token / usage 透出 [P1]
-> 基础设施今天完成,只剩各 Adapter 内部填值
+> 基础设施完成,只剩各 Adapter 内部填值
 
 - ✅ `AgentDoneEvent` 加字段（已完成）
 - ✅ `thread_service._run_thread` 收并写库（已完成）
@@ -116,10 +130,10 @@
 ## 模块八：WebSocket & 审批流 [P0]
 > WS 是审批 / Diff 应用的载体,前端联调依赖
 
+- [x] **全局异常处理器**（`api/exception_handlers.py` HTTPException / RequestValidationError / Exception 统一包装）
 - [ ] `api/v1/ws.py`：WebSocket 端点（apply_diff / approval_decision）
 - [ ] `approval.py._publish_approval_block` 接 message_service 创建 ApprovalBlock 消息 + WS 通知前端，完成后翻 `_APPROVAL_CHANNEL_READY = True`
 - [ ] WS handler 收 `ApprovalDecisionRequest` 后调 `approval.decide(block_id, decision, reason)`
-- [ ] `api/middleware/error_handler.py`：全局异常处理（含 hook / Adapter / orchestrator loop 异常的统一传播路径）
 
 ---
 
@@ -136,10 +150,11 @@
 ---
 
 ## 模块十：前端联调 [P0]
+> **后端已完全就绪**：`POST /api/v1/chat`、`POST /api/v1/chat/stop`、`GET /api/v1/chat/stream/{conv_id}`、`POST/GET/PATCH /api/v1/conversations` 全部实装。所有响应已统一为 `{code, message, data}`
 
 - [ ] `types/conversation.ts` / `types/message.ts` / `types/artifact.ts` / `types/api.ts` 补全
 - [ ] camelCase / snake_case 转换层
-- [ ] `api/http.ts`：Axios 实例 + JWT 拦截器 + 响应错误处理
+- [ ] `api/http.ts`：Axios 实例 + JWT 拦截器 + 响应错误处理（注意：响应已包成 `{code, message, data}`，拦截器拆包）
 - [ ] `api/chat.ts`：发消息
 - [ ] `api/sse.ts`：SSE 连接管理（支持 POST + Authorization header）
 - [ ] `api/conversations.ts`：会话 CRUD
@@ -162,14 +177,17 @@
 
 ## 模块十一：可观测性 [P1]
 
+- [x] **trace_id middleware**（contextvars 自动绑 + 响应头 X-Trace-Id 回写）
+- [ ] structlog 业务代码迁移（同模块一）
 - [ ] `core/audit.py`：audit_log 写库接口
-- [ ] `api/middleware/logging.py`：请求日志中间件
+- [ ] `api/middleware/logging.py` 请求日志中间件（已含 trace_id 部分，access log 已有，待与 audit_log 整合）
 - [ ] `post_execution.py` `TODO[audit]` 接通 audit_service
 
 ---
 
 ## 模块十二：部署 & 横向能力 [P2]
 
+- [x] **DB 连接级时区 UTC 化**（engine connect_args，所有时间戳字段对齐）
 - [ ] **DB migration 方案**：Alembic 集成 / 或 startup 调 `Base.metadata.create_all(engine)`
 - [ ] `.env.example` 模板 + 配置说明文档
 - [ ] `core/circuit_breaker.py`：熔断器三态（CLOSED / OPEN / HALF_OPEN）
@@ -180,25 +198,25 @@
 
 ---
 
-## 已知问题清单（5/27 跑 demo 时发现，非阻塞但要处理）
+## 已知问题清单
 
-| # | 问题 | 影响 | 优先级 |
+| # | 问题 | 影响 | 状态 |
 |---|---|---|---|
-| 1 | `threads.started_at` 不写（`thread_repo.mark_status(RUNNING)` 路径漏字段） | 监控 / 计费拿不到主 Agent loop 实际起跑时间 | P1 |
-| 2 | `threads.created_at` UTC vs `finished_at` CST 时区不一致 | duration 计算结果异常 | P1 |
-| 3 | Kimi Anthropic 端点不支持 `/messages/count_tokens` 返回 404 | `context_compactor.estimate_tokens` 已兜底但日志噪音爆 | P2 |
-| 4 | ClaudeAdapter 用 `-p` 参数传 prompt，单条参数有长度上限 | 长 dispatch_prompt 可能截断（今天换行已修，长度限制未处理） | P2 |
-| 5 | `_persist_assistant_message` 只用 mock 单 TextBlock 验证过，多 block / ToolUseBlock / ApprovalBlock 反序列化未实测 | 边角场景可能 silently 跳过 | P2 |
-| 6 | Adapter 流式产出 `_persist_assistant_message` 落库时 `model` 字段为 `None`（agents 表无 model 字段） | messages.model 快照缺失 | P2 |
+| 1 | `threads.started_at` 不写 | 监控 / 计费拿不到主 Agent loop 起跑时间 | ✅ 5/28 已修 |
+| 2 | `created_at` UTC vs `finished_at` CST 时区不一致 | duration 计算结果异常 | ✅ 5/28 已修（engine UTC） |
+| 3 | Kimi `/messages/count_tokens` 返回 404 | 日志噪音 + 浪费 RPM 配额 | ✅ 5/28 已修（降级 + 配置开关） |
+| 4 | ClaudeAdapter `-p` 参数长度上限（命令行参数限制） | 长 dispatch_prompt 可能截断 | P2 待处理（建议改 stdin 传 prompt） |
+| 5 | `_persist_assistant_message` 只用 mock 单 TextBlock 验证过 | 多 block / ToolUseBlock / ApprovalBlock 反序列化未实测 | P2 待处理 |
+| 6 | `_persist_assistant_message` 落库时 `model` 字段为 None | messages.model 快照缺失（agents 表无 model 字段） | P2 待 agents 表加 model 字段 |
 
 ---
 
 ## 优先级路径（上线必需）
 
 ```
-模块零（测试基础设施）
+模块零（测试基础设施补齐）
     ↓
-模块三（auth）+ 模块六（messages/conversations API）+ 模块二集成测试
+模块三（auth）+ 模块六（messages/conversations API）
     ↓
 模块八（ws + approval 接通）
     ↓
