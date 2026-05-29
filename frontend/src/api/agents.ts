@@ -76,6 +76,10 @@ export const agentsApi = {
     return http.patch(`/agents/${id}`, data)
   },
 
+  deactivate(id: string): Promise<AgentResponse> {
+    return http.post(`/agents/${id}/deactivate`, {})
+  },
+
   build(description: string): Promise<{ session_id: string; draft: AgentBuildDraft }> {
     return http.post('/agents/build', { description })
   },

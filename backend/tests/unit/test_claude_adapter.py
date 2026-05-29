@@ -271,3 +271,60 @@ def test_build_system_prompt_with_skills():
 
 def test_build_system_prompt_no_base_no_skills():
     assert _build_system_prompt(None, []) == ""
+
+
+# ---------------------------------------------------------------------------
+# system_prompt 注入 → --append-system-prompt 出现在 CLI 命令中
+# ---------------------------------------------------------------------------
+
+async def test_stream_system_prompt_injected_into_cmd():
+    """StreamInput.system_prompt 非空时，CLI 命令应包含 --append-system-prompt。"""
+    adapter = ClaudeAdapter()
+    proc = _FakeProcess([_assistant_line("ok"), _result_line()])
+    captured_cmd: list[str] = []
+
+    async def _fake_exec(*cmd, **kwargs):
+        captured_cmd.extend(cmd)
+        return proc
+
+    with patch("backend.adapters.claude.asyncio.create_subprocess_exec", side_effect=_fake_exec), \
+         patch("backend.adapters.claude.shutil.which", return_value="claude"):
+        await collect_stream(adapter.stream(_make_inp(system_prompt="你是调研 Agent。")))
+
+    assert "--append-system-prompt" in captured_cmd
+    idx = captured_cmd.index("--append-system-prompt")
+    assert "调研 Agent" in captured_cmd[idx + 1]
+
+
+async def test_stream_no_system_prompt_no_flag():
+    """StreamInput.system_prompt 为 None 时，CLI 命令不应包含 --append-system-prompt。"""
+    adapter = ClaudeAdapter()
+    proc = _FakeProcess([_assistant_line("ok"), _result_line()])
+    captured_cmd: list[str] = []
+
+    async def _fake_exec(*cmd, **kwargs):
+        captured_cmd.extend(cmd)
+        return proc
+
+    with patch("backend.adapters.claude.asyncio.create_subprocess_exec", side_effect=_fake_exec), \
+         patch("backend.adapters.claude.shutil.which", return_value="claude"):
+        await collect_stream(adapter.stream(_make_inp(system_prompt=None)))
+
+    assert "--append-system-prompt" not in captured_cmd
+
+
+async def test_stream_system_prompt_in_events():
+    """注入 system_prompt 后，流式事件序列本身不受影响（Start → Block → Done）。"""
+    adapter = ClaudeAdapter()
+    proc = _FakeProcess([_assistant_line("调研结果"), _result_line()])
+
+    with patch("backend.adapters.claude.asyncio.create_subprocess_exec", return_value=proc), \
+         patch("backend.adapters.claude.shutil.which", return_value="claude"):
+        events = await collect_stream(
+            adapter.stream(_make_inp(system_prompt="你是调研 Agent，输出结构化报告。"))
+        )
+
+    assert isinstance(events[0], AgentStartEvent)
+    assert any(isinstance(e, BlockDeltaEvent) for e in events)
+    assert isinstance(events[-1], AgentDoneEvent)
+
