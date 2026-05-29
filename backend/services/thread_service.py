@@ -74,6 +74,40 @@ _running_tasks: dict[str, asyncio.Task] = {}
 
 
 # ============================================================
+# 辅助:ORM Message → MessageInHistory(子 Adapter 历史注入用)
+# ============================================================
+
+def _orm_message_to_history(orm_msg) -> "MessageInHistory":
+    """
+    ORM Message 转 schemas.MessageInHistory。
+
+    ORM Message.content 是 JSON 列(list[dict]);MessageInHistory.blocks 期望
+    list[ContentBlock](Pydantic discriminated union)。用 TypeAdapter 逐块反序列化。
+    单块反序列化失败时跳过该块,不让一条坏消息把整轮 history 拖死。
+    """
+    from pydantic import TypeAdapter
+    from backend.domain.message import ContentBlock as _ContentBlockUnion
+    from backend.schemas.message import MessageInHistory, MessageRole
+
+    adapter = TypeAdapter(_ContentBlockUnion)
+    blocks = []
+    for raw in (orm_msg.content or []):
+        try:
+            blocks.append(adapter.validate_python(raw))
+        except Exception:
+            logger.warning(
+                "history block 反序列化失败,跳过 msg=%s block=%r",
+                orm_msg.id, raw,
+            )
+
+    return MessageInHistory(
+        role=MessageRole(orm_msg.role),
+        blocks=blocks,
+        sender=orm_msg.sender,
+    )
+
+
+# ============================================================
 # ThreadService
 # ============================================================
 
@@ -487,7 +521,13 @@ class ThreadService:
             agent_system_prompt: Optional[str] = agent_row.system_prompt if agent_row else None
             msg_repo = MessageRepository(own_session)
             raw_history = msg_repo.list_recent(thread.conversation_id, limit=20)
-            history = list(reversed(raw_history))
+            # repo 返回倒序(最新在前),反转为正序送给 Adapter
+            # ORM Message 没有 .blocks 字段(只有 .content JSON 列),
+            # Adapter 期望的是 MessageInHistory schema,这里做转换
+            history = [
+                _orm_message_to_history(m)
+                for m in reversed(raw_history)
+            ]
 
             try:
                 from backend.services.skill_service import SkillService

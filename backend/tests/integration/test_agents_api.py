@@ -35,9 +35,18 @@ from backend.schemas.agent import AgentBuildDraft
 from backend.domain.agent import AgentCapabilities
 
 
-def unwrap(resp) -> dict:
-    """ResponseEnvelopeMiddleware 把所有成功响应包成 {code, message, data}。"""
-    return resp.json()["data"]
+def body(resp):
+    """从 ResponseEnvelopeMiddleware 包装的响应中解包 data 字段。
+
+    包装格式: {"code": <int>, "message": <str>, "data": <T>}
+    成功响应取 data 字段;204 No Content 不包(无 body)。
+    """
+    if resp.status_code == 204 or not resp.content:
+        return None
+    payload = resp.json()
+    if isinstance(payload, dict) and "data" in payload and "code" in payload:
+        return payload["data"]
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -98,13 +107,13 @@ def agent_payload():
 def test_list_agents_empty(client):
     resp = client.get("/api/v1/agents")
     assert resp.status_code == 200
-    assert isinstance(unwrap(resp), list)
+    assert isinstance(body(resp), list)
 
 
 def test_create_agent(client, agent_payload):
     resp = client.post("/api/v1/agents", json=agent_payload)
     assert resp.status_code == 201
-    data = unwrap(resp)
+    data = body(resp)
     assert data["name"] == agent_payload["name"]
     assert data["type"] == agent_payload["type"]
     assert data["is_active"] is True
@@ -115,17 +124,17 @@ def test_list_agents_returns_created(client, agent_payload):
     client.post("/api/v1/agents", json=agent_payload)
     resp = client.get("/api/v1/agents")
     assert resp.status_code == 200
-    names = [a["name"] for a in unwrap(resp)]
+    names = [a["name"] for a in body(resp)]
     assert agent_payload["name"] in names
 
 
 def test_get_agent(client, agent_payload):
     create_resp = client.post("/api/v1/agents", json=agent_payload)
-    agent_id = unwrap(create_resp)["id"]
+    agent_id = body(create_resp)["id"]
 
     resp = client.get(f"/api/v1/agents/{agent_id}")
     assert resp.status_code == 200
-    assert unwrap(resp)["id"] == agent_id
+    assert body(resp)["id"] == agent_id
 
 
 def test_get_agent_not_found(client):
@@ -135,14 +144,14 @@ def test_get_agent_not_found(client):
 
 def test_update_agent(client, agent_payload):
     create_resp = client.post("/api/v1/agents", json=agent_payload)
-    agent_id = unwrap(create_resp)["id"]
+    agent_id = body(create_resp)["id"]
 
     resp = client.patch(
         f"/api/v1/agents/{agent_id}",
         json={"name": "Updated Agent", "tags": ["updated"]},
     )
     assert resp.status_code == 200
-    data = unwrap(resp)
+    data = body(resp)
     assert data["name"] == "Updated Agent"
     assert data["tags"] == ["updated"]
 
@@ -154,20 +163,20 @@ def test_update_agent_not_found(client):
 
 def test_deactivate_activate_agent(client, agent_payload):
     create_resp = client.post("/api/v1/agents", json=agent_payload)
-    agent_id = unwrap(create_resp)["id"]
+    agent_id = body(create_resp)["id"]
 
     deact_resp = client.post(f"/api/v1/agents/{agent_id}/deactivate")
     assert deact_resp.status_code == 200
-    assert unwrap(deact_resp)["is_active"] is False
+    assert body(deact_resp)["is_active"] is False
 
     act_resp = client.post(f"/api/v1/agents/{agent_id}/activate")
     assert act_resp.status_code == 200
-    assert unwrap(act_resp)["is_active"] is True
+    assert body(act_resp)["is_active"] is True
 
 
 def test_delete_agent(client, agent_payload):
     create_resp = client.post("/api/v1/agents", json=agent_payload)
-    agent_id = unwrap(create_resp)["id"]
+    agent_id = body(create_resp)["id"]
 
     del_resp = client.delete(f"/api/v1/agents/{agent_id}")
     assert del_resp.status_code == 204
@@ -206,7 +215,7 @@ def test_build_agent_mock_llm(client):
         resp = client.post("/api/v1/agents/build", json={"description": "I want a mock agent"})
 
     assert resp.status_code == 201
-    data = unwrap(resp)
+    data = body(resp)
     assert data["session_id"] == "test-session-id"
     assert data["draft"]["name"] == "Mock Agent"
 
@@ -239,7 +248,7 @@ def test_build_confirm_creates_agent(client):
         },
     )
     assert resp.status_code == 201
-    data = unwrap(resp)
+    data = body(resp)
     assert data["name"] == "Mock Agent"
 
 
