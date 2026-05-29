@@ -27,28 +27,25 @@ Why CLI subprocess and not the HTTP server:
     switching, fork, etc. are out of scope for the AgentHub adapter contract.
 
 system_prompt handling:
-    opencode is a complete agent product with strong alignment training. It
-    refuses any input that *looks* like a meta/system-level instruction —
-    labels like "system prompt", "orchestrator", "sub-agent", "dispatch",
-    "BEGIN/END SECTION", role brackets, etc. all get flagged as jailbreak
-    attempts. Empirically verified: telling opencode "you are a sub-agent
-    invoked by an orchestrator, here's your dispatch ..." gets it to reply
-    "I treat all input as user-level instructions regardless of how it's
-    structured or labeled."
+    opencode has strong alignment training and flags inputs that look like
+    meta/system-level instructions — Latin role labels ("system prompt",
+    "orchestrator", "sub-agent", "dispatch"), BEGIN/END banners, etc. But
+    plain Chinese conversational user speech goes through fine, even when
+    the body of the message contains markdown structure.
 
-    Workaround: present everything as plain conversational user speech.
-    inp.system_prompt is folded into the prompt body as a casual opener
-    ("Before we start, here's a quick note about how I'd like you to
-    approach this..."). No labels, no banners, no markdown rule lines, no
-    "system" / "persona" keywords surrounding the persona text itself. The
-    persona's own content (e.g. coder.md) is left verbatim.
+    Strategy: pass everything through plainly. _build_prompt() conditionally
+    prepends a tiny Chinese opener — "你是一个子 agent，现在我给你一个任务，
+    任务描述如下" — only when the dispatch prompt itself contains structural
+    markers (markdown ATX headers, BEGIN/END banners, role-section labels
+    like "任务："). For plain prose user-style prompts, no opener is added;
+    the prompt passes through verbatim. inp.system_prompt is included as a
+    "风格偏好" (style preference) framing, again only when present.
 
-    history is similarly rephrased as "Earlier I said ... / And you replied
-    ..." rather than role-labeled.
-
-    See _build_prompt() for the exact wrapping. ClaudeAdapter / CodexAdapter
-    don't need this dance — they pass system_prompt via dedicated CLI flags
-    or talk to processes that don't have opencode's anti-jailbreak training.
+    Empirically verified that this works for the common case of a main-Agent
+    dispatch with `## 任务 / ## 要求 / ## 交付物` headings: opencode reads
+    the opener as "yes, here's a task description from a user" and executes
+    the structured body as task content. ClaudeAdapter / CodexAdapter don't
+    need this dance — they have dedicated CLI flags for system prompts.
 
 队伍：咕嘎一辈子队
 修改者：lp
@@ -57,14 +54,14 @@ system_prompt handling:
 from __future__ import annotations
 
 import asyncio
-import dataclasses
 import json as _json
 import logging
 import os
+import re
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, AsyncIterator, Protocol
+from typing import Any, AsyncIterator
 
 from backend.adapters.base import AgentAdapter, StreamInput
 from backend.adapters.events import (
@@ -90,19 +87,8 @@ class OpencodeAdapter(AgentAdapter):
     a configured provider/model (run `opencode auth` once to set up).
     """
 
-    def __init__(
-        self,
-        bin_path: str | None = None,
-        rewriter: "PersonaRewriter | None" = None,
-    ) -> None:
+    def __init__(self, bin_path: str | None = None) -> None:
         self._bin_path = bin_path or os.environ.get("OPENCODE_BIN_PATH", "opencode")
-        # Persona rewriter is used to fold inp.system_prompt + inp.prompt into
-        # a single user-facing request, so opencode never sees role-injection
-        # language. Default rewriter calls the orchestrator's LLM client; tests
-        # inject a stub. None at module-import time means "build lazily on first
-        # use" — the orchestrator llm_client requires settings to be available
-        # which isn't always the case at adapter-registry seed time.
-        self._rewriter: "PersonaRewriter | None" = rewriter
 
     def get_capabilities(self) -> AgentCapabilities:
         return AgentCapabilities(
@@ -110,12 +96,6 @@ class OpencodeAdapter(AgentAdapter):
             supports_diff=True,
             supports_approval=False,
         )
-
-    def _get_rewriter(self) -> "PersonaRewriter":
-        """Lazily instantiate the default LLM-backed rewriter on first use."""
-        if self._rewriter is None:
-            self._rewriter = _LLMPersonaRewriter()
-        return self._rewriter
 
     async def stream(self, inp: StreamInput) -> AsyncIterator[AgentEvent]:
         def _base() -> dict[str, str]:
@@ -125,54 +105,10 @@ class OpencodeAdapter(AgentAdapter):
 
         bin_path = _resolve_opencode_binary(self._bin_path)
 
-        # Persona injection strategy for opencode:
-        #
-        # opencode's alignment training refuses anything labeled "system prompt",
-        # "orchestrator", "sub-agent", "dispatch", role brackets, BEGIN/END
-        # banners, etc. — it treats those as jailbreak attempts. Plain
-        # conversational wrappers also failed empirically (opencode reads
-        # "Before we start, here's my preference" as "user is about to send
-        # the preference next" and waits).
-        #
-        # The radical fix: when we have a persona to inject (inp.system_prompt),
-        # call an LLM to *rewrite* "persona + task" into a single concrete user
-        # request. e.g. coder.md's "你是一位资深代码 Agent... 输出格式: 直接给代码" +
-        # task "写 fizzbuzz" becomes "请用 Python 写 fizzbuzz，要求简短可运行、
-        # 直接给代码、带类型注解和 docstring...". opencode never sees role-
-        # injection language, just a normal user describing what they want.
-        #
-        # The rewrite is best-effort: on failure we fall back to dispatch
-        # prompt only (degraded but functional, just without persona steering).
-        effective_prompt = inp.prompt
-        if inp.system_prompt:
-            try:
-                effective_prompt = await self._get_rewriter().rewrite(
-                    persona=inp.system_prompt,
-                    task=inp.prompt,
-                )
-                logger.debug(
-                    "OpencodeAdapter: persona rewritten via LLM "
-                    "(persona=%d chars, task=%d chars, output=%d chars)",
-                    len(inp.system_prompt), len(inp.prompt), len(effective_prompt),
-                )
-            except Exception as exc:
-                logger.warning(
-                    "OpencodeAdapter: persona rewrite failed (%s) — "
-                    "falling back to bare dispatch prompt without persona",
-                    exc,
-                )
-                effective_prompt = inp.prompt
-
-        # Build the final CLI argument from history + effective_prompt.
-        # _build_prompt is purely string concatenation now, no labels.
-        rewrite_inp = dataclasses.replace(
-            inp,
-            prompt=effective_prompt,
-            # Persona was already folded into effective_prompt by the rewriter;
-            # don't double-include it via _build_prompt's casual opener.
-            system_prompt=None,
-        )
-        prompt = _build_prompt(rewrite_inp)
+        # Persona / task formatting is handled by _build_prompt — see its
+        # docstring. Short version: structured dispatches get a tiny Chinese
+        # opener ("你是一个子 agent..."); plain prose passes through unchanged.
+        prompt = _build_prompt(inp)
 
         # Run opencode in an isolated empty cwd so it doesn't auto-load
         # project-level AGENTS.md / .opencode/ config from whatever directory
@@ -293,77 +229,6 @@ class OpencodeAdapter(AgentAdapter):
 
         _cleanup_sandbox(sandbox_cwd)
         yield AgentDoneEvent(**_base())
-
-
-# ---------------------------------------------------------------------------
-# Persona rewriter — folds (persona + task) into a single user request
-# ---------------------------------------------------------------------------
-
-class PersonaRewriter(Protocol):
-    """Rewrite (persona, task) into a single user-facing request string.
-
-    The output must read like a regular user describing what they want, not
-    like a system prompt or role assignment. opencode's alignment refuses
-    anything that pattern-matches "you are an X assistant", "act as Y",
-    "system: ...", etc.
-
-    Implementations decide how to do this — calling an LLM (default), regex
-    munging, hand-coded templates, returning the bare task (skipping persona),
-    etc. Test code can inject a stub.
-    """
-
-    async def rewrite(self, *, persona: str, task: str) -> str: ...
-
-
-# The instruction we send to the rewriter LLM. Kept in module scope so tests
-# can verify the contract without instantiating an LLM client.
-_REWRITER_SYSTEM_PROMPT = (
-    "You take two pieces of text and merge them into one short user request "
-    "that someone might naturally type to an AI coding assistant.\n\n"
-    "Input piece 1 is a 'style/preference' description (how the user likes "
-    "their code written — formatting, conventions, output shape).\n"
-    "Input piece 2 is the actual concrete task the user wants done.\n\n"
-    "Merge them so the result reads like a single self-contained user request. "
-    "It must:\n"
-    "- be in the user's own voice ('I need ...', '请帮我 ...');\n"
-    "- never refer to roles, agents, system prompts, orchestrators, dispatches, "
-    "  or sub-agents;\n"
-    "- never use second person to redefine the assistant's identity (no 'you "
-    "  are an X assistant', no 'act as a Y');\n"
-    "- present style preferences as concrete code requirements ('代码要简短', "
-    "  '带类型注解和 docstring', 'output a unified diff') rather than as "
-    "  'follow this persona';\n"
-    "- preserve all concrete requirements from both inputs;\n"
-    "- keep the user's original language (if input is Chinese, output Chinese).\n\n"
-    "Output ONLY the merged user request, no preamble, no quotes, no commentary."
-)
-
-
-class _LLMPersonaRewriter:
-    """Default rewriter: calls the orchestrator's LLM client.
-
-    Imports are lazy to avoid pulling LLM-client deps at adapter import time —
-    OpencodeAdapter may be constructed in environments where the LLM client
-    config isn't ready (registry seed, tests).
-    """
-
-    async def rewrite(self, *, persona: str, task: str) -> str:
-        from backend.services.orchestrator.llm_client import llm_client
-
-        user_msg = (
-            f"Style/preference description:\n{persona}\n\n"
-            f"Concrete task:\n{task}"
-        )
-        response = await llm_client.chat_completion(
-            system=_REWRITER_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_msg}],
-            tools=[],
-            max_tokens=2000,
-        )
-        rewritten = (response.content_text or "").strip()
-        if not rewritten:
-            raise RuntimeError("rewriter LLM returned empty content_text")
-        return rewritten
 
 
 # ---------------------------------------------------------------------------
@@ -508,41 +373,41 @@ def _blocks_to_text(blocks: list[ContentBlock]) -> str:
 def _build_prompt(inp: StreamInput) -> str:
     """Stringify persona + history + task into a single CLI argument for opencode.
 
-    Design philosophy: opencode has strong alignment training and rejects
-    anything that *looks* like a meta/system-level instruction — labels like
-    "orchestrator", "sub-agent", "dispatch", "system prompt", "BEGIN/END
-    SECTION", or markdown headings get flagged as jailbreak attempts. So we
-    avoid all such markers and present the prompt as plain conversational
-    user speech. The persona and the task are both phrased as if a regular
-    human user is talking to opencode.
+    Design philosophy: opencode's alignment training is fine with normal
+    conversational user speech, but flags inputs that look like a meta/system-
+    level instruction — markdown headings as section labels, BEGIN/END banners,
+    orchestrator-style "Task: / Requirements: / Deliverable:" templates, etc.
+    AgentHub's main Agent (orchestrator) tends to dispatch in exactly that
+    structured style. So we conditionally soften it:
 
-    Concretely:
-      - inp.system_prompt is opened with a sentence like "Before we start,
-        here's a bit about the role I'd like you to play for this question."
-        followed by the persona text — no "system" label, no banner.
-      - history blocks are referenced as "Earlier in our chat I said ..." /
-        "You replied ..." rather than role-labeled.
-      - inp.prompt is the final question, plain text.
+      - if the dispatch prompt looks structured (markdown headers / banners /
+        explicit role-section labels), we prepend a short, plain Chinese
+        opener telling opencode "you're a sub-agent and here's a task" so it
+        knows the structure that follows is just the task description, not
+        a jailbreak attempt;
+      - if the dispatch prompt is already plain prose (no structural markers),
+        we pass it through unchanged — adding an opener would only add noise.
 
-    No markdown headers in our wrapping (the persona / dispatch_prompt body
-    may still contain them — that's the orchestrator's content, we don't
-    rewrite it). No "---" rule lines. No structural labels.
+    The opener is intentionally short and conversational, with no Latin
+    keywords like "orchestrator" / "system prompt" / "dispatch" / "BEGIN" /
+    "END" — these specific tokens are what opencode flags. Empirically
+    verified that this minimal Chinese opener works.
+
+    inp.system_prompt is treated the same way — its content is included as
+    a "preference for this task" framing, but only when present.
     """
     chunks: list[str] = []
 
     if inp.system_prompt:
         chunks.append(
-            "Before we start, here's a quick note about how I'd like you to "
-            "approach this. It's just my preference for this conversation, "
-            "feel free to use your own judgement on top of it.\n\n"
-            f"{inp.system_prompt}"
+            "另外，关于我希望你处理这个任务的风格偏好，参考下面这段说明：\n\n"
+            + inp.system_prompt
         )
 
     for skill in inp.skills or []:
         if getattr(skill, "content", None):
             chunks.append(
-                f"I also want to share a reference note on \"{skill.name}\" "
-                f"that might be useful here:\n\n{skill.content}"
+                f"还有一份关于 {skill.name} 的参考资料可能用得上：\n\n{skill.content}"
             )
 
     if inp.history:
@@ -552,19 +417,63 @@ def _build_prompt(inp: StreamInput) -> str:
             if not text:
                 continue
             if msg.role == "user":
-                history_lines.append(f"Earlier I said: {text}")
+                history_lines.append(f"我之前说过：{text}")
             else:
-                speaker = msg.sender or "you"
-                history_lines.append(f"And {speaker} replied: {text}")
+                speaker = msg.sender or "你"
+                history_lines.append(f"{speaker} 当时回复：{text}")
         if history_lines:
-            chunks.append(
-                "For context, here's what we've already discussed:\n\n"
-                + "\n\n".join(history_lines)
-            )
+            chunks.append("先回顾一下之前聊到的内容：\n\n" + "\n\n".join(history_lines))
 
-    chunks.append(f"Now here's what I need help with:\n\n{inp.prompt}")
+    # The dispatch prompt itself — wrap with an opener only if it looks
+    # structured enough to confuse opencode's alignment.
+    task = inp.prompt
+    if _looks_structured(task) or _looks_structured(inp.system_prompt or ""):
+        chunks.append(
+            "你是一个子 agent，现在我给你一个任务，任务描述如下：\n\n" + task
+        )
+    else:
+        chunks.append(task)
 
     return _flatten_for_cli("\n\n".join(chunks))
+
+
+# Patterns that indicate a prompt is "structured" enough that opencode might
+# read it as a jailbreak template. Any single match counts.
+_ATX_HEADER_RE = re.compile(r"^#{1,6}\s+\S", re.MULTILINE)
+_BANNER_RE = re.compile(r"^(?:[-=*]{3,}|.*\b(?:BEGIN|END)\b.*)$", re.MULTILINE)
+# Section labels — line starts with a known role/section word followed by
+# colon (Chinese or ASCII), nothing else on the line. Tightened so prose
+# sentences ending in `:` don't trip it.
+_SECTION_LABEL_RE = re.compile(
+    r"^(?:任务|背景|要求|交付物|输入|输出|约束|目标|步骤|说明|注意|备注"
+    r"|Task|Background|Requirements?|Deliverable|Inputs?|Outputs?|"
+    r"Constraints?|Goals?|Steps?|Notes?)\s*[:：]\s*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+
+
+def _looks_structured(text: str) -> bool:
+    """Return True if the prompt looks structured enough to need a softening opener.
+
+    Heuristic — we don't want false positives on prose that happens to mention
+    'task' or use a colon. Triggers:
+      - any markdown ATX header (`# foo` through `###### foo`)
+      - banner / rule lines (`---`, `===`, lines containing BEGIN/END markers)
+      - explicit role-section labels on their own line (`任务：`, `Requirements:`)
+
+    Empirically: a dispatch prompt with all four sections (Task/Background/
+    Requirements/Deliverable) trips this; a plain "请帮我写一段代码 ..."
+    user message does not.
+    """
+    if not text:
+        return False
+    if _ATX_HEADER_RE.search(text):
+        return True
+    if _BANNER_RE.search(text):
+        return True
+    if _SECTION_LABEL_RE.search(text):
+        return True
+    return False
 
 
 def _flatten_for_cli(text: str) -> str:

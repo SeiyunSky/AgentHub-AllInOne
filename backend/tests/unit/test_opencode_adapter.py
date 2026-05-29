@@ -16,6 +16,7 @@ from backend.adapters.base import StreamInput
 from backend.adapters.opencode import (
     OpencodeAdapter,
     _build_prompt,
+    _looks_structured,
 )
 from backend.adapters.events import (
     AgentDoneEvent,
@@ -565,3 +566,72 @@ async def test_stream_uses_sandbox_cwd():
     assert "agenthub-opencode-" in cwd
     # Sandbox is cleaned up after stream() finishes
     assert not _os.path.exists(cwd)
+
+
+# ---------------------------------------------------------------------------
+# Conditional sub-agent opener — only added when prompt looks "structured"
+# ---------------------------------------------------------------------------
+
+_OPENER_MARKER = "你是一个子 agent"
+
+
+def test_looks_structured_detects_markdown_headers():
+    assert _looks_structured("## 任务\n写代码")
+    assert _looks_structured("# Title\nbody")
+    assert _looks_structured("### Output\n- a\n- b")
+
+
+def test_looks_structured_detects_banner_lines():
+    assert _looks_structured("---\nsection\n---")
+    assert _looks_structured("===\nsection")
+    assert _looks_structured("Some text\n--- BEGIN TASK ---\nbody")
+
+
+def test_looks_structured_detects_section_labels():
+    assert _looks_structured("任务：\n写代码")
+    assert _looks_structured("Task:\nwrite code")
+    assert _looks_structured("Requirements:\n- short")
+
+
+def test_looks_structured_passes_plain_prose():
+    """Pure conversational prompts should NOT trigger structure detection."""
+    assert not _looks_structured("请帮我写一个 Python 的 fizzbuzz 函数")
+    assert not _looks_structured("Can you write me a fibonacci function?")
+    assert not _looks_structured("我有个问题，需要你帮忙看看")
+    # Inline mention of "task" or "requirements" without colon-on-its-own-line
+    # should not trigger.
+    assert not _looks_structured(
+        "I have a task: write some code. Requirements include type hints."
+    )
+
+
+def test_build_prompt_adds_opener_for_structured_task():
+    """Markdown-structured dispatch prompt → opener prepended."""
+    inp = _make_inp(prompt="## 任务\n写一段代码\n## 要求\n- 简短\n- 可运行")
+    out = _build_prompt(inp)
+    assert _OPENER_MARKER in out
+    # Original markdown body preserved verbatim (just collapsed onto one line
+    # by _flatten_for_cli)
+    assert "## 任务" in out
+    assert "## 要求" in out
+
+
+def test_build_prompt_no_opener_for_plain_prose():
+    """Plain conversational task → no opener added."""
+    inp = _make_inp(prompt="请帮我写一个 Python 的 fizzbuzz 函数，要简短")
+    out = _build_prompt(inp)
+    assert _OPENER_MARKER not in out
+    # Original task survives as-is
+    assert "请帮我写一个 Python 的 fizzbuzz 函数" in out
+
+
+def test_build_prompt_adds_opener_when_persona_is_structured():
+    """Plain task but persona contains markdown → opener still triggered, since
+    opencode would see the structured persona and get suspicious otherwise.
+    """
+    inp = _make_inp(
+        prompt="请帮我写代码",
+        system_prompt="## 工作原则\n- 简洁\n- 直接",
+    )
+    out = _build_prompt(inp)
+    assert _OPENER_MARKER in out
