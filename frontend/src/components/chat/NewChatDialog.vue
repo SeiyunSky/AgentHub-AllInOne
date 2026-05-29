@@ -104,7 +104,7 @@
                   <p class="text-[13px] font-medium text-on-surface truncate">{{ agent.name }}</p>
                   <p v-if="agent.description" class="text-[10px] text-on-surface-variant truncate">{{ agent.description }}</p>
                 </div>
-                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="typeDotClass(agent.type)"></span>
+                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md border shrink-0" :class="typeBadgeClass(agent.type)">{{ typeLabel(agent.type) }}</span>
               </div>
             </div>
           </div>
@@ -162,7 +162,7 @@ const titleInputRef = ref<HTMLInputElement>()
 
 const filteredAgents = computed(() => {
   const available = agentsStore.agents.filter(
-    (a) => !selectedAgents.value.some((s) => s.id === a.id)
+    (a) => a.id !== 'orchestrator' && !selectedAgents.value.some((s) => s.id === a.id)
   )
   if (!searchQuery.value) return available
   const q = searchQuery.value.toLowerCase()
@@ -175,14 +175,25 @@ const canCreate = computed(() =>
   title.value.trim().length > 0 && selectedAgents.value.length > 0
 )
 
-function typeDotClass(type: string) {
+
+function typeLabel(type: string) {
   const map: Record<string, string> = {
-    claude: 'bg-amber-400',
-    codex: 'bg-emerald-400',
-    opencode: 'bg-blue-400',
-    custom: 'bg-purple-400',
+    claude: 'Claude Code',
+    codex: 'Codex',
+    opencode: 'OpenCode',
+    custom: 'Custom',
   }
-  return map[type] || 'bg-gray-400'
+  return map[type] || type
+}
+
+function typeBadgeClass(type: string) {
+  const map: Record<string, string> = {
+    claude: 'bg-amber-50 text-amber-600 border-amber-200',
+    codex: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    opencode: 'bg-blue-50 text-blue-600 border-blue-200',
+    custom: 'bg-purple-50 text-purple-600 border-purple-200',
+  }
+  return map[type] || 'bg-gray-50 text-gray-600 border-gray-200'
 }
 
 function chipAvatarClass(type: string) {
