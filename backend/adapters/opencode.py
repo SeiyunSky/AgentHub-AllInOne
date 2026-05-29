@@ -9,7 +9,8 @@ AgentHub's block-level streaming protocol (AgentEvent / ContentBlock).
 
 Stream-JSON line format (relevant types we consume):
     {"type":"step_start", ...}                       # ignored (internal)
-    {"type":"step_finish", ...}                      # ignored (internal)
+    {"type":"step_finish",
+        "part":{"tokens":{"input":N,"output":M,...}, ...}}  # → token accounting
     {"type":"text", "part":{"text":"..."}}           # → TextBlock delta
     {"type":"tool_use", "part":{"tool":"...",
         "callID":"...",
@@ -159,6 +160,13 @@ class OpencodeAdapter(AgentAdapter):
         # principle support streaming tool output; opencode currently emits
         # tool_use only after completion, so this is forward-looking).
         tool_block_ids: dict[str, str] = {}
+        # Per-stream() token accumulators. opencode emits a `step_finish`
+        # event after each LLM round (including ones triggered by tool
+        # invocations), each carrying part.tokens={input, output, ...}. We
+        # sum across all rounds and surface the total in AgentDoneEvent so
+        # thread_service can roll it into threads.tokens_total.
+        total_tokens_input = 0
+        total_tokens_output = 0
 
         assert proc.stdout is not None
         async for raw_line in proc.stdout:
@@ -208,7 +216,25 @@ class OpencodeAdapter(AgentAdapter):
                 async for ev in _emit_tool_use(_base, part, tool_block_ids):
                     yield ev
 
-            # step_start / step_finish / other types: ignored — they describe
+            elif event_type == "step_finish":
+                # Accumulate token usage. opencode reports per-round usage in
+                # `part.tokens.{input, output}` after each LLM round. Other
+                # fields (reasoning, cache.read/write, cost) are richer than
+                # AgentHub's AgentDoneEvent currently models — we pull only
+                # the two fields the protocol exposes and drop the rest.
+                tokens = (part.get("tokens") if isinstance(part, dict) else None) or {}
+                try:
+                    total_tokens_input += int(tokens.get("input", 0) or 0)
+                    total_tokens_output += int(tokens.get("output", 0) or 0)
+                except (TypeError, ValueError):
+                    # Defensive: a malformed tokens object shouldn't sink the
+                    # whole stream — just skip this round's contribution.
+                    logger.debug(
+                        "OpencodeAdapter: malformed step_finish.part.tokens=%r, skipping",
+                        tokens,
+                    )
+
+            # step_start and any other types: ignored — they describe
             # internal opencode runtime state with no AgentHub equivalent.
 
         # Close any still-open text block
@@ -228,7 +254,11 @@ class OpencodeAdapter(AgentAdapter):
             return
 
         _cleanup_sandbox(sandbox_cwd)
-        yield AgentDoneEvent(**_base())
+        yield AgentDoneEvent(
+            **_base(),
+            tokens_input=total_tokens_input,
+            tokens_output=total_tokens_output,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -350,24 +380,68 @@ async def _emit_tool_use(
 # Prompt building (mirrors ClaudeAdapter — string-concatenated history)
 # ---------------------------------------------------------------------------
 
-def _blocks_to_text(blocks: list[ContentBlock]) -> str:
+def _blocks_to_text(blocks) -> str:
+    """Reduce a heterogeneous block list to plain text.
+
+    Accepts both shapes the codebase passes around in practice:
+      - Pydantic ContentBlock instances (from MessageInHistory.blocks) —
+        access fields via attribute (b.type, b.content, ...)
+      - dicts (from ORM Message.content, which is a JSON column) — access
+        fields via .get(...)
+
+    thread_service.list_recent currently returns ORM Message rows directly
+    into StreamInput.history (despite the type hint saying MessageInHistory),
+    so we have to be tolerant. See backend/repositories/message_repo.py.
+    """
     parts: list[str] = []
-    for b in blocks:
-        if b.type == "text":
-            parts.append(b.content)
-        elif b.type == "thinking":
+    for b in blocks or []:
+        if isinstance(b, dict):
+            btype = b.get("type")
+            get = b.get
+        else:
+            btype = getattr(b, "type", None)
+            get = lambda k, default=None, _b=b: getattr(_b, k, default)
+
+        if btype == "text":
+            parts.append(get("content") or "")
+        elif btype == "thinking":
             pass
-        elif b.type == "tool_use":
-            output = b.output or "pending"
-            parts.append(f"[Tool: {b.tool_name} -> {output}]")
-        elif b.type == "code":
-            fname = b.filename or "file"
-            add = b.additions or 0
-            delete = b.deletions or 0
+        elif btype == "tool_use":
+            output = get("output") or "pending"
+            parts.append(f"[Tool: {get('tool_name')} -> {output}]")
+        elif btype == "code":
+            fname = get("filename") or "file"
+            add = get("additions") or 0
+            delete = get("deletions") or 0
             parts.append(f"[Code: {fname} +{add}/-{delete}]")
-        elif b.type == "approval":
-            parts.append(f"[Approval: {b.action} ({b.status})]")
+        elif btype == "approval":
+            parts.append(f"[Approval: {get('action')} ({get('status')})]")
     return "\n".join(parts)
+
+
+def _msg_field(msg, name: str, default=None):
+    """Read `msg.<name>` from either a Pydantic schema or an ORM model.
+
+    For ORM Message, the body is in `.content` (JSON list), not `.blocks`.
+    Pydantic shapes can use either name. We fall back to dict access too,
+    since some call sites pass plain dicts.
+    """
+    # Special-case the blocks/content rename: Pydantic schema uses .blocks,
+    # ORM Message uses .content. Try blocks first since that's the protocol.
+    if name == "blocks":
+        if isinstance(msg, dict):
+            return msg.get("blocks") or msg.get("content") or default
+        val = getattr(msg, "blocks", None)
+        if val is None:
+            val = getattr(msg, "content", None)
+        return val if val is not None else default
+    if isinstance(msg, dict):
+        return msg.get(name, default)
+    val = getattr(msg, name, default)
+    # role might be an enum on the ORM model; normalise to plain str
+    if name == "role" and hasattr(val, "value"):
+        return val.value
+    return val
 
 
 def _build_prompt(inp: StreamInput) -> str:
@@ -413,13 +487,14 @@ def _build_prompt(inp: StreamInput) -> str:
     if inp.history:
         history_lines: list[str] = []
         for msg in inp.history:
-            text = _blocks_to_text(msg.blocks)
+            text = _blocks_to_text(_msg_field(msg, "blocks"))
             if not text:
                 continue
-            if msg.role == "user":
+            role = _msg_field(msg, "role", "user")
+            if role == "user":
                 history_lines.append(f"我之前说过：{text}")
             else:
-                speaker = msg.sender or "你"
+                speaker = _msg_field(msg, "sender") or "你"
                 history_lines.append(f"{speaker} 当时回复：{text}")
         if history_lines:
             chunks.append("先回顾一下之前聊到的内容：\n\n" + "\n\n".join(history_lines))
