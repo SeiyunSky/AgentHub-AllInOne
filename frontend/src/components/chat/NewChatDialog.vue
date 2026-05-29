@@ -63,7 +63,6 @@
 
         <!-- Agent dropdown picker -->
         <el-popover
-          ref="popoverRef"
           trigger="click"
           placement="bottom-start"
           :width="300"
@@ -155,12 +154,11 @@ const visible = computed({
   set: (v) => emit('update:modelValue', v),
 })
 
-const title = ref('New Chat')
+const title = ref('')
 const selectedAgents = ref<Agent[]>([])
 const creating = ref(false)
 const searchQuery = ref('')
 const titleInputRef = ref<HTMLInputElement>()
-const popoverRef = ref()
 
 const filteredAgents = computed(() => {
   const available = agentsStore.agents.filter(
@@ -234,9 +232,10 @@ async function createChat() {
   if (!canCreate.value) return
   creating.value = true
   try {
+    const mode = selectedAgents.value.length > 1 ? 'group' : 'single'
     const conv = await conversationsStore.create(
       title.value.trim(),
-      'single',
+      mode,
       selectedAgents.value.map((a) => a.id)
     )
     visible.value = false
@@ -252,14 +251,10 @@ async function loadAgents() {
 
 watch(visible, async (open) => {
   if (open) {
-    title.value = 'New Chat'
+    title.value = ''
     selectedAgents.value = []
     searchQuery.value = ''
     await loadAgents()
-    const orchestrator = agentsStore.agents.find((a) => a.id === 'orchestrator')
-    if (orchestrator) {
-      selectedAgents.value.push(orchestrator)
-    }
   }
 })
 </script>

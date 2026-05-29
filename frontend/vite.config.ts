@@ -31,17 +31,8 @@ export default defineConfig({
     tailwindcss(),
     viteMockServe({
       mockPath: 'mock',
-      enable: true,
+      enable: false,
     }),
-    {
-      name: 'mock-agents',
-      configureServer(server) {
-        server.middlewares.use('/api/v1/agents', (req, res, next) => {
-          if (req.method === 'GET') return MOCK_AGENTS(req, res)
-          next()
-        })
-      },
-    },
   ],
   resolve: {
     alias: {
