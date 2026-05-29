@@ -493,6 +493,10 @@ class ThreadService:
                 from backend.services.skill_service import SkillService
                 agent_skills = SkillService(own_session).list_with_content_for_agent(thread.agent_id)
             except Exception:
+                logger.exception(
+                    "Thread %s 加载 agent_skills 失败，以空列表继续（Skill 功能不可用）",
+                    thread.id,
+                )
                 agent_skills = []
 
             stream_input = StreamInput(
