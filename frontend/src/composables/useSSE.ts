@@ -6,6 +6,8 @@ import type { SSEEvent } from '@/types/api'
 const controllers = ref<Map<string, AbortController>>(new Map())
 
 function handleEvent(convId: string, event: SSEEvent) {
+  // 临时诊断:打印每个 SSE 事件,确认前端实际收到了什么
+  console.log('[SSE]', convId, event)
   const chatStore = useChatStore()
   switch (event.type) {
     case 'agent_start':

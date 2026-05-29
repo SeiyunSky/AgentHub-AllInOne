@@ -22,7 +22,7 @@ agents 相关 Pydantic DTO
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.domain.agent import AgentCapabilities, AgentType
 
@@ -124,6 +124,13 @@ class AgentResponse(BaseModel):
     )
     created_at: datetime
     updated_at: datetime
+
+    # ORM Agent.tags 列允许 NULL,旧数据 / seed 数据可能没写入 → 进 schema 时兜底成空 list,
+    # 否则 pydantic 会报 list_type 错(NoneType 不是合法 list)。
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _tags_none_to_empty(cls, v):
+        return [] if v is None else v
 
 
 # ============================================================
