@@ -232,7 +232,9 @@ async function createChat() {
   if (!canCreate.value) return
   creating.value = true
   try {
-    const mode = selectedAgents.value.length > 1 ? 'group' : 'single'
+    // 后端 ConversationCreate 校验:single 必须恰好 1 个 agent_id,group 必须 >=1 个。
+    // 选 1 个就是单聊,选多个自动走群聊(orchestrator 主 Agent 由后端补上)。
+    const mode = selectedAgents.value.length === 1 ? 'single' : 'group'
     const conv = await conversationsStore.create(
       title.value.trim(),
       mode,
@@ -255,6 +257,8 @@ watch(visible, async (open) => {
     selectedAgents.value = []
     searchQuery.value = ''
     await loadAgents()
+    // 不要默认塞 orchestrator:它是群聊主 Agent,由后端在 group 模式自动挂,
+    // 用户手动勾上反而会让 single 模式被算成 2 个 Agent → 422。
   }
 })
 </script>

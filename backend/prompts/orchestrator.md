@@ -179,11 +179,9 @@ The Q3 financial review highlights a 12% YoY revenue growth driven primarily by 
 
 上游 Thread 的代码产出:
 
-{{UPSTREAM_CODE_OUTPUT}}
-
-(说明:`{{UPSTREAM_CODE_OUTPUT}}` 是占位符——派活前你需要先调读取 Thread 结果的工具
-拿到上游 Codex Thread 的实际产出,把代码完整粘贴替换这一段。子 Agent 看不到你的对话历史,
-不替换它就拿不到代码。)
+<这里在派活前必须用 read_thread_result 工具读出上游 Thread 的实际代码,
+完整粘贴进来,替换掉本提示文字。子 Agent 看不到你的对话历史,
+绝对不能把 `{{...}}` 这种占位符或本提示文字直接发给子 Agent>
 
 ## 要求
 重点检查:

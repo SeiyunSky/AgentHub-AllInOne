@@ -23,6 +23,10 @@ export function useChat() {
 
     chatStore.addUserMessage(id, content)
 
+    // 关键顺序:必须先连 SSE 再发 POST。
+    // 后端 group 路径 await orchestrator_service.start_loop(...) 阻塞 HTTP 响应,
+    // 当 POST /chat 返回时,主 Agent 这一轮的事件已经全部 push 完毕。
+    // SSE 是 push-only 不回放,先 POST 后 connect 必然漏掉所有事件 → 前端永远等不到回复。
     sse.connect(id)
 
     const response = await chatApi.send({

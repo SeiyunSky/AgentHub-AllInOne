@@ -259,6 +259,24 @@ class OrchestratorService:
         total_tokens_out = 0
         round_count = 0
 
+        # 第一轮必须有一条 user 消息作为 messages[0],否则 Anthropic API 报
+        # 400 "messages array cannot be empty"。把当前轮触发的用户消息原文取出注入。
+        # 历史更早的对话由 prompt_builder 第 6 层塞进 system,这里只放本轮用户原话。
+        from backend.services.message_service import message_service as _msg_svc
+        try:
+            _user_msg = await _msg_svc.get(user_message_id)
+        except Exception:
+            _user_msg = None
+        if _user_msg is not None and _user_msg.content:
+            _user_text_parts = [
+                str(b.get("content", ""))
+                for b in (_user_msg.content or [])
+                if isinstance(b, dict) and b.get("type") == "text" and b.get("content")
+            ]
+            _user_text = "\n\n".join(_user_text_parts).strip()
+            if _user_text:
+                messages.append({"role": "user", "content": _user_text})
+
         # 三路恢复 attempt 计数器(每路独立维护,某路重试成功后**不**重置:
         # 同一 loop 内累计触发次数,达到上限 → give up)
         attempt_max_tokens = 0
@@ -431,7 +449,12 @@ class OrchestratorService:
                         break
                     # 唤醒后回步 1 消费新 pending_events
                     continue
-                # 没有未完成子 Thread → 真正收敛
+                if response.content_text and response.content_text.strip():
+                    await self._emit_assistant_text(
+                        conversation_id=conversation_id,
+                        thread_id=thread_id,
+                        text=response.content_text,
+                    )
                 break
 
             # ---- 步 5:tool_use 派发 ----
@@ -542,6 +565,67 @@ class OrchestratorService:
             return True
         except asyncio.TimeoutError:
             return False
+
+    async def _emit_assistant_text(
+        self,
+        *,
+        conversation_id: str,
+        thread_id: str,
+        text: str,
+    ) -> None:
+        """
+        主 Agent end_turn 时直接说话(没调 respond_to_user)的兜底:
+        把 LLM 输出的纯文本作为一条 assistant 消息落库 + 推 SSE,
+        与 respond_to_user 工具产生的效果完全一致。
+        否则前端永远收不到 agent_start / block_start,看不到主 Agent 的回复。
+        """
+        from backend.adapters.events import (
+            AgentDoneEvent,
+            AgentStartEvent,
+            BlockStartEvent,
+            BlockStopEvent,
+        )
+        from backend.domain.message import TextBlock
+        from backend.services.message_service import message_service
+        from backend.services.stream_service import stream_service
+        from backend.core.utils import gen_uuid
+
+        _ORCHESTRATOR_AGENT_ID = "orchestrator"
+        _ORCHESTRATOR_AGENT_NAME = "主 Agent"
+
+        block_id = gen_uuid()
+        msg = await message_service.create_assistant_message(
+            conversation_id=conversation_id,
+            agent_id=_ORCHESTRATOR_AGENT_ID,
+            content_blocks=[TextBlock(block_id=block_id, content=text)],
+            sender=_ORCHESTRATOR_AGENT_NAME,
+            thread_id=thread_id,
+        )
+
+        base = {
+            "agent_id": _ORCHESTRATOR_AGENT_ID,
+            "thread_id": thread_id,
+            "message_id": msg.id,
+        }
+        await stream_service.push_event(
+            conversation_id,
+            AgentStartEvent(**base, agent_name=_ORCHESTRATOR_AGENT_NAME),
+        )
+        await stream_service.push_event(
+            conversation_id,
+            BlockStartEvent(
+                **base,
+                block=TextBlock(block_id=block_id, content=text),
+            ),
+        )
+        await stream_service.push_event(
+            conversation_id,
+            BlockStopEvent(**base, block_id=block_id),
+        )
+        await stream_service.push_event(
+            conversation_id,
+            AgentDoneEvent(**base),
+        )
 
     def _has_unfinished_children(
         self,

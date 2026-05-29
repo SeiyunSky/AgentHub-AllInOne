@@ -533,6 +533,10 @@ class ThreadService:
                 from backend.services.skill_service import SkillService
                 agent_skills = SkillService(own_session).list_with_content_for_agent(thread.agent_id)
             except Exception:
+                logger.exception(
+                    "Thread %s 加载 agent_skills 失败，以空列表继续（Skill 功能不可用）",
+                    thread.id,
+                )
                 agent_skills = []
 
             stream_input = StreamInput(
@@ -613,6 +617,12 @@ class ThreadService:
                         thread.id, len(block_order), block_order,
                         event.tokens_input or 0, event.tokens_output or 0,
                     )
+                    # adapter.stream 跑期间 own_session 上累积了未提交的只读事务
+                    # (AgentRepository.get / list_recent / SkillService 等),
+                    # 在调 _persist_assistant_message(内部起独立 SessionLocal 写 messages
+                    # + conversations.last_message_at)之前必须先把这个长事务关掉,
+                    # 否则 MVCC 快照锁 / 行锁会和写入者抢同一行,造成 MySQL 端等锁挂死。
+                    own_session.rollback()
                     await self._persist_assistant_message(
                         thread=thread,
                         agent_row=agent_row,
