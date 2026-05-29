@@ -259,6 +259,24 @@ class OrchestratorService:
         total_tokens_out = 0
         round_count = 0
 
+        # 第一轮必须有一条 user 消息作为 messages[0],否则 Anthropic API 报
+        # 400 "messages array cannot be empty"。把当前轮触发的用户消息原文取出注入。
+        # 历史更早的对话由 prompt_builder 第 6 层塞进 system,这里只放本轮用户原话。
+        from backend.services.message_service import message_service as _msg_svc
+        try:
+            _user_msg = await _msg_svc.get(user_message_id)
+        except Exception:
+            _user_msg = None
+        if _user_msg is not None and _user_msg.content:
+            _user_text_parts = [
+                str(b.get("content", ""))
+                for b in (_user_msg.content or [])
+                if isinstance(b, dict) and b.get("type") == "text" and b.get("content")
+            ]
+            _user_text = "\n\n".join(_user_text_parts).strip()
+            if _user_text:
+                messages.append({"role": "user", "content": _user_text})
+
         # 三路恢复 attempt 计数器(每路独立维护,某路重试成功后**不**重置:
         # 同一 loop 内累计触发次数,达到上限 → give up)
         attempt_max_tokens = 0

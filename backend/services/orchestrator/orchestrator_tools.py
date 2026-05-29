@@ -34,7 +34,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from backend.adapters.events import (
     AgentDoneEvent,
@@ -150,6 +150,15 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
 
     parsed = DispatchToAgentInput.model_validate(tool_input)
 
+    # ----- 占位符兜底:LLM 经常忘了把上游产出贴进 prompt,留 {{...}} 字面量给子 Agent。
+    # 这里检测到任何 {{...}} 占位符就尝试用 blocked_by 列出的上游 Thread 产出自动替换。
+    # 替换后还有 {{...}} 残留就直接报错让 LLM 重派,避免子 Agent 拿到无效 prompt。
+    final_prompt, placeholder_error = _resolve_upstream_placeholders(
+        parsed.prompt, parsed.blocked_by or []
+    )
+    if placeholder_error is not None:
+        return {"error": placeholder_error}
+
     session = SessionLocal()
     try:
         ts = ThreadService(session)
@@ -158,7 +167,7 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
             message_id=ctx.user_message_id,
             agent_id=parsed.agent_id,
             blocked_by=parsed.blocked_by,
-            dispatch_prompt=parsed.prompt,
+            dispatch_prompt=final_prompt,
         )
         session.commit()
         await ts.schedule_conversation(ctx.conversation_id)
@@ -172,6 +181,85 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
         raise
     finally:
         session.close()
+
+
+def _extract_text_from_thread_messages(messages: list) -> str:
+    """从 Thread 的 messages 列表里抽出所有 text block,拼成一段文本。
+
+    messages 元素是 ORM Message,content 是 ContentBlock dict 列表。
+    """
+    parts: list[str] = []
+    for m in messages:
+        for block in (m.content or []):
+            if isinstance(block, dict) and block.get("type") == "text":
+                txt = block.get("content")
+                if txt:
+                    parts.append(str(txt))
+    return "\n\n".join(parts)
+
+
+def _resolve_upstream_placeholders(
+    prompt: str,
+    blocked_by: list[str],
+) -> tuple[str, Optional[str]]:
+    """识别 prompt 里 {{...}} 占位符,用 blocked_by 上游 Thread 产出替换。
+
+    返回 (替换后 prompt, error)。error 非 None 时 caller 应放弃 dispatch。
+
+    替换策略(简单粗暴):
+    - 没有 {{...}}:直接返回原 prompt
+    - 有占位符但 blocked_by 为空:报错(LLM 没声明依赖却引用上游)
+    - 有占位符且 blocked_by 非空:用第 1 个上游 Thread 的产出替换全部 {{...}}
+      (MVP 阶段不区分 {{UPSTREAM_X}} / {{UPSTREAM_Y}} 这种细分,直接全替成同一份)
+    - 替换后还有 {{...}} 残留:报错(替换没用,LLM 留了别的占位符)
+    """
+    import re
+
+    placeholders = re.findall(r"\{\{[^{}]+\}\}", prompt)
+    if not placeholders:
+        return prompt, None
+
+    if not blocked_by:
+        return prompt, (
+            f"prompt 含占位符 {placeholders} 但 blocked_by 为空。"
+            "若需引用上游产出,请在 dispatch 时声明 blocked_by;"
+            "否则请把占位符替换成实际内容再派活。"
+        )
+
+    # 拿第 1 个上游 Thread 的产出
+    from backend.core.database import SessionLocal
+    from backend.repositories.message_repo import MessageRepository
+    from backend.repositories.thread_repo import ThreadRepository
+
+    upstream_id = blocked_by[0]
+    session = SessionLocal()
+    try:
+        session.expire_all()
+        thread = ThreadRepository(session).get(upstream_id)
+        if thread is None:
+            return prompt, f"上游 Thread {upstream_id} 不存在,无法填充占位符。"
+        if thread.status != "done":
+            return prompt, (
+                f"上游 Thread {upstream_id} 状态为 {thread.status},尚未 done,"
+                "暂不能用于占位符替换。请等其完成后再 dispatch,或先调 read_thread_status 确认。"
+            )
+        messages = MessageRepository(session).list_by_thread(upstream_id)
+    finally:
+        session.close()
+
+    upstream_text = _extract_text_from_thread_messages(messages)
+    if not upstream_text.strip():
+        return prompt, f"上游 Thread {upstream_id} 没有可用文本产出,无法填充占位符。"
+
+    # 全部 {{...}} 都替换成上游产出
+    replaced = re.sub(r"\{\{[^{}]+\}\}", upstream_text, prompt)
+
+    # 替换后还有 {{...}}? 不应该,但 upstream_text 里可能本身就包含模板 → 不报错
+    # 只检查没替换成功的情况(replaced 跟原 prompt 一样长且仍有占位符)
+    if replaced == prompt and re.search(r"\{\{[^{}]+\}\}", replaced):
+        return prompt, "占位符替换失败:请检查 prompt 格式或手动替换占位符后再派活。"
+
+    return replaced, None
 
 
 @register_tool(
