@@ -25,8 +25,8 @@
         :key="item.id"
         :icon="item.icon"
         :label="item.label"
-        :active="uiStore.sidebarActiveTab === item.id"
-        @click="uiStore.setSidebarTab(item.id)"
+        :active="isActive(item)"
+        @click="navigateTo(item.routeName)"
       />
     </div>
 
@@ -39,19 +39,35 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter, useRoute } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
 import NavRailItem from './NavRailItem.vue'
-import { ChatDotRound, User, MagicStick, FolderOpened, QuestionFilled, Setting, Search } from '@element-plus/icons-vue'
+import { ChatDotRound, User, MagicStick, QuestionFilled, Setting, Search } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
+const router = useRouter()
+const route = useRoute()
 const uiStore = useUIStore()
 
 const navItems = [
-  { id: 'chat', icon: ChatDotRound, label: 'Chat' },
-  { id: 'agents', icon: User, label: 'Agents' },
-  { id: 'skills', icon: MagicStick, label: 'Skills' },
-  { id: 'projects', icon: FolderOpened, label: 'Projects' },
+  { id: 'chat', icon: ChatDotRound, label: 'Chat', routeName: 'chat' as const },
+  { id: 'agents', icon: User, label: 'Agents', routeName: 'agents' as const },
+  { id: 'skills', icon: MagicStick, label: 'Skills', routeName: 'skills' as const },
 ] as const
+
+function isActive(item: { id: string; routeName: string }): boolean {
+  if (item.id === 'chat') {
+    return route.name === 'chat' || route.name === 'chat-detail'
+  }
+  return route.name === item.routeName
+}
+
+function navigateTo(routeName: string) {
+  if (uiStore.sidebarCollapsed) {
+    uiStore.sidebarCollapsed = false
+  }
+  router.push({ name: routeName })
+}
 
 function showSearchDialog() {
   // TODO: Replace with actual search modal

@@ -5,7 +5,6 @@ import type { ActiveArtifact, ArtifactItem } from '@/types/artifact'
 export const useUIStore = defineStore('ui', () => {
   // Sidebar
   const sidebarCollapsed = ref(false)
-  const sidebarActiveTab = ref<'chat' | 'agents' | 'skills' | 'projects'>('chat')
 
   // Panel sizes (percentage for splitpanes)
   const chatPanePercent = ref(55)
@@ -24,13 +23,6 @@ export const useUIStore = defineStore('ui', () => {
 
   function toggleSidebar() {
     sidebarCollapsed.value = !sidebarCollapsed.value
-  }
-
-  function setSidebarTab(tab: typeof sidebarActiveTab.value) {
-    sidebarActiveTab.value = tab
-    if (sidebarCollapsed.value) {
-      sidebarCollapsed.value = false
-    }
   }
 
   function openArtifact(messageId: string, item: ArtifactItem, itemIndex: number) {
@@ -78,7 +70,6 @@ export const useUIStore = defineStore('ui', () => {
 
   return {
     sidebarCollapsed,
-    sidebarActiveTab,
     chatPanePercent,
     rightPanelActiveTab,
     rightPanelVisible,
@@ -86,7 +77,6 @@ export const useUIStore = defineStore('ui', () => {
     isResizing,
     sidebarWidth,
     toggleSidebar,
-    setSidebarTab,
     openArtifact,
     closeArtifact,
     setPreviewMode,
