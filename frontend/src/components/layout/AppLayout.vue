@@ -9,9 +9,10 @@
       class="flex-1 flex flex-col transition-all duration-300 overflow-hidden"
       :style="{ marginLeft: `${uiStore.sidebarWidth}px` }"
     >
-      <!-- Content: Chat + Right Panel via Splitpanes -->
+      <!-- Content switches based on active sidebar tab -->
       <main class="flex-1 overflow-hidden">
-        <Splitpanes class="splitpanes-theme" @resized="onPaneResized">
+        <!-- Chat view: Splitpanes with Chat + Right panel -->
+        <Splitpanes v-if="uiStore.sidebarActiveTab === 'chat'" class="splitpanes-theme" @resized="onPaneResized">
           <Pane :size="chatPaneSize" :min-size="chatPaneMinSize" :max-size="chatPaneMaxSize">
             <ChatPanel />
           </Pane>
@@ -19,6 +20,15 @@
             <RightPanel />
           </Pane>
         </Splitpanes>
+
+        <!-- Agents view -->
+        <AgentsPanel v-else-if="uiStore.sidebarActiveTab === 'agents'" />
+
+        <!-- Skills view -->
+        <SkillsPanel v-else-if="uiStore.sidebarActiveTab === 'skills'" />
+
+        <!-- Projects view -->
+        <ProjectsPanel v-else-if="uiStore.sidebarActiveTab === 'projects'" />
       </main>
     </div>
   </div>
@@ -32,6 +42,9 @@ import 'splitpanes/dist/splitpanes.css'
 import LeftPanel from './LeftPanel.vue'
 import ChatPanel from './ChatPanel.vue'
 import RightPanel from './RightPanel.vue'
+import AgentsPanel from './AgentsPanel.vue'
+import SkillsPanel from './SkillsPanel.vue'
+import ProjectsPanel from './ProjectsPanel.vue'
 
 const uiStore = useUIStore()
 
