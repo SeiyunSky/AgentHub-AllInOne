@@ -3,30 +3,19 @@
     <!-- Content area -->
     <div class="p-6 overflow-y-auto h-full custom-scrollbar">
 
-      <!-- Search + Filter Bar -->
-      <div class="flex items-center gap-3 mb-5">
-        <div class="flex-1 relative">
-          <el-icon class="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" :size="15"><Search /></el-icon>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search agents..."
-            class="w-full pl-9 pr-4 py-2 rounded-xl border border-outline-variant bg-surface-container-low text-[13px] outline-none transition-all focus:border-brand focus:bg-white focus:shadow-[0_0_0_3px_rgba(59,130,246,0.08)]"
-          />
-        </div>
-        <div class="flex items-center gap-1.5">
-          <button
-            v-for="f in filterOptions"
-            :key="f.value"
-            class="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer"
-            :class="activeFilter === f.value
-              ? 'bg-brand text-white shadow-soft'
-              : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'"
-            @click="activeFilter = f.value"
-          >
-            {{ f.label }}
-          </button>
-        </div>
+      <!-- Filter Bar -->
+      <div class="flex items-center gap-1.5 flex-wrap mb-5">
+        <button
+          v-for="f in filterOptions"
+          :key="f.value"
+          class="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer whitespace-nowrap"
+          :class="activeFilter === f.value
+            ? 'bg-brand text-white shadow-soft'
+            : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'"
+          @click="activeFilter = f.value"
+        >
+          {{ f.label }}
+        </button>
       </div>
 
       <!-- Empty state -->
@@ -179,7 +168,6 @@ const agentsStore = useAgentsStore()
 const agents = agentsStore.agents
 const isLoading = ref(false)
 const showBuilderDialog = ref(false)
-const searchQuery = ref('')
 const activeFilter = ref('all')
 
 const filterOptions = [
@@ -191,23 +179,12 @@ const filterOptions = [
 ]
 
 const filteredAgents = computed(() => {
-  let result = agents
-  // Filter by type/status
   if (activeFilter.value === 'active') {
-    result = result.filter(a => a.isActive)
+    return agents.filter(a => a.isActive)
   } else if (activeFilter.value !== 'all') {
-    result = result.filter(a => a.type === activeFilter.value)
+    return agents.filter(a => a.type === activeFilter.value)
   }
-  // Filter by search
-  if (searchQuery.value.trim()) {
-    const q = searchQuery.value.toLowerCase()
-    result = result.filter(a =>
-      a.name.toLowerCase().includes(q) ||
-      (a.description ?? '').toLowerCase().includes(q) ||
-      a.tags.some(t => t.toLowerCase().includes(q))
-    )
-  }
-  return result
+  return agents
 })
 
 onMounted(async () => {

@@ -34,8 +34,8 @@
             <img v-else :src="getAgentTypeIcon(agent.type)" :alt="agent.type" class="w-6 h-6 object-contain" @error="hideImg" />
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-[13px] font-semibold text-on-surface truncate">{{ agent.name }}</p>
-            <p class="text-[10px] text-on-surface-variant truncate capitalize">{{ agent.type }}</p>
+            <p class="text-[14px] font-semibold text-on-surface truncate">{{ agent.name }}</p>
+            <p class="text-[11px] text-on-surface-variant truncate">{{ agent.description || 'No description' }}</p>
           </div>
           <div
             class="shrink-0"
