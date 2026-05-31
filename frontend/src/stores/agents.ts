@@ -1,24 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Agent, AgentDraft, AgentCapabilities } from '@/types/agent'
+import type { Agent, AgentDraft } from '@/types/agent'
 import { agentsApi, type AgentResponse } from '@/api/agents'
-
-const defaultCapabilities: AgentCapabilities = {
-  supportsCode: true,
-  supportsDiff: false,
-  supportsApproval: false,
-  supportsImage: false,
-}
-
-const defaultDraft: AgentDraft = {
-  name: '',
-  description: '',
-  type: 'claude',
-  systemPrompt: '',
-  capabilities: { ...defaultCapabilities },
-  tags: [],
-  isPublic: false,
-}
 
 function mapAgentResponse(a: AgentResponse): Agent {
   return {
@@ -44,9 +27,13 @@ function mapAgentResponse(a: AgentResponse): Agent {
 
 export const useAgentsStore = defineStore('agents', () => {
   const agents = ref<Agent[]>([])
-  const currentDraft = ref<AgentDraft>({ ...defaultDraft })
   const isLoading = ref(false)
   const isSaving = ref(false)
+
+  // Form state — shared between sidebar and main panel
+  const showConfigForm = ref(false)
+  const editingAgentId = ref<string | undefined>(undefined)
+  const initialDraft = ref<Partial<AgentDraft> | undefined>(undefined)
 
   let loadPromise: Promise<void> | null = null
 
@@ -65,35 +52,34 @@ export const useAgentsStore = defineStore('agents', () => {
     return loadPromise
   }
 
-  function resetDraft() {
-    currentDraft.value = { ...defaultDraft }
+  function openCreate() {
+    editingAgentId.value = undefined
+    initialDraft.value = undefined
+    showConfigForm.value = true
   }
 
-  function setDraft(draft: AgentDraft) {
-    currentDraft.value = { ...draft }
+  function openEdit(agentId: string) {
+    editingAgentId.value = agentId
+    initialDraft.value = undefined
+    showConfigForm.value = true
   }
 
-  function loadFromAgent(agent: Agent) {
-    currentDraft.value = {
-      name: agent.name,
-      description: agent.description,
-      type: agent.type,
-      avatar: agent.avatar,
-      systemPrompt: agent.systemPrompt,
-      capabilities: { ...agent.capabilities },
-      tags: [...agent.tags],
-      isPublic: agent.isPublic,
-    }
+  function closeConfigForm() {
+    showConfigForm.value = false
+    editingAgentId.value = undefined
+    initialDraft.value = undefined
   }
 
   return {
     agents,
-    currentDraft,
     isLoading,
     isSaving,
+    showConfigForm,
+    editingAgentId,
+    initialDraft,
     loadAgents,
-    resetDraft,
-    setDraft,
-    loadFromAgent,
+    openCreate,
+    openEdit,
+    closeConfigForm,
   }
 })

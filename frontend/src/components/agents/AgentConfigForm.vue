@@ -9,7 +9,7 @@
   >
     <div class="flex flex-col h-full">
       <div class="flex-1 overflow-y-auto">
-        <AgentForm v-model="localDraft" />
+        <AgentForm :draft="localDraft" />
       </div>
       <div class="px-6 py-4 border-t border-outline-variant flex justify-end gap-2 shrink-0">
         <el-button @click="handleClose">Cancel</el-button>
