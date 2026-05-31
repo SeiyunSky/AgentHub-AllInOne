@@ -13,7 +13,7 @@
 import { useSidebarTab } from '@/composables/useSidebarTab'
 import ConversationList from '@/components/sidebar/ConversationList.vue'
 import AgentContactList from '@/components/sidebar/AgentContactList.vue'
-import SkillsList from './SkillsList.vue'
+import SkillsList from '@/components/sidebar/SkillsList.vue'
 
 const activeTab = useSidebarTab()
 </script>

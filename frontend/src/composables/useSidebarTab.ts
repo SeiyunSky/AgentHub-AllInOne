@@ -14,7 +14,7 @@ export function useSidebarTab() {
     const name = route.name as string
     if (name === 'chat' || name === 'chat-detail') return 'chat'
     if (name === 'agents' || name === 'agent-create' || name === 'agent-edit') return 'agents'
-    if (name === 'skills') return 'skills'
+    if (name === 'skills' || name === 'skill-create' || name === 'skill-edit') return 'skills'
     return 'chat'
   })
 

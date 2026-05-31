@@ -32,3 +32,13 @@ export interface SkillUpdate {
   isPublic?: boolean
   isActive?: boolean
 }
+
+/** Form draft — used by SkillForm / SkillFormPanel (no id / timestamps) */
+export interface SkillDraft {
+  name: string
+  displayName?: string
+  description?: string
+  category?: string
+  content: string
+  isPublic: boolean
+}

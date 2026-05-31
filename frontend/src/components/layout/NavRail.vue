@@ -62,6 +62,9 @@ function isActive(item: { id: string; routeName: string }): boolean {
   if (item.id === 'agents') {
     return route.name === 'agents' || route.name === 'agent-create' || route.name === 'agent-edit'
   }
+  if (item.id === 'skills') {
+    return route.name === 'skills' || route.name === 'skill-create' || route.name === 'skill-edit'
+  }
   return route.name === item.routeName
 }
 
