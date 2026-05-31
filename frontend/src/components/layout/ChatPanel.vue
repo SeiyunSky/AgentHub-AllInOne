@@ -3,6 +3,7 @@
     :title="title"
     :status="statusText"
     :messages="currentMessages"
+    :hide-header="hideHeader"
     @send="onSend"
     @stop="onStop"
     @react="onReact"
@@ -35,6 +36,10 @@ const uiStore = useUIStore()
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
 const { sendMessage, stopGeneration } = useChat()
+
+defineProps<{
+  hideHeader?: boolean
+}>()
 
 const convId = computed(() => conversationsStore.currentId)
 

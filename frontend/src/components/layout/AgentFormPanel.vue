@@ -1,40 +1,59 @@
 <template>
-  <PanelContainer
-    :title="isEditMode ? 'Edit Agent' : 'Create Agent'"
-    :icon="User"
-    variant="brand"
-  >
-    <template #headerActions>
-      <div class="flex items-center gap-2">
-        <el-button @click="handleCancel">Cancel</el-button>
-        <el-button
-          type="primary"
-          :loading="isSaving"
-          @click="handleSave"
-        >
-          {{ isEditMode ? 'Save Changes' : 'Create Agent' }}
-        </el-button>
-      </div>
-    </template>
-
-    <div class="h-full flex flex-col">
-      <div class="flex-1 overflow-y-auto">
-        <AgentForm :draft="localDraft" />
-      </div>
-    </div>
-  </PanelContainer>
+  <Splitpanes class="splitpanes-theme" @resized="onPaneResized">
+    <Pane :size="chatPaneSize" :min-size="35">
+      <PanelContainer
+        :title="isEditMode ? 'Edit Agent' : 'Create Agent'"
+        :icon="User"
+        variant="brand"
+      >
+        <template #headerActions>
+          <div class="flex items-center gap-2">
+            <el-button @click="handleCancel">Cancel</el-button>
+            <el-button
+              type="primary"
+              :loading="isSaving"
+              @click="handleSave"
+            >
+              {{ isEditMode ? 'Save Changes' : 'Create Agent' }}
+            </el-button>
+            <el-button
+              circle
+              text
+              size="small"
+              class="!text-on-surface-variant hover:!bg-surface-container"
+              @click="toggleChat"
+            >
+              <el-icon :size="16">
+                <ArrowRight v-if="chatVisible" />
+                <ArrowLeft v-else />
+              </el-icon>
+            </el-button>
+          </div>
+        </template>
+        <div class="flex-1 overflow-y-auto">
+          <AgentForm :draft="localDraft" />
+        </div>
+      </PanelContainer>
+    </Pane>
+    <Pane v-if="chatVisible" :size="100 - chatPaneSize" :min-size="25">
+      <ChatPanel hide-header />
+    </Pane>
+  </Splitpanes>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User } from '@element-plus/icons-vue'
+import { User, ArrowRight, ArrowLeft } from '@element-plus/icons-vue'
+import { Splitpanes, Pane } from 'splitpanes'
+import 'splitpanes/dist/splitpanes.css'
 import { useAgentsStore } from '@/stores/agents'
 import { agentsApi } from '@/api/agents'
 import type { Agent, AgentDraft } from '@/types/agent'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
 import AgentForm from '@/components/agents/AgentForm.vue'
+import ChatPanel from '@/components/layout/ChatPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -42,6 +61,8 @@ const agentsStore = useAgentsStore()
 
 const isSaving = ref(false)
 const isLoading = ref(false)
+const chatVisible = ref(true)
+const chatPaneSize = ref(70)
 
 const agentId = computed(() => route.params.agentId as string | undefined)
 const isEditMode = computed(() => !!agentId.value)
@@ -128,6 +149,19 @@ function handleCancel() {
   router.push({ name: 'agents' })
 }
 
+function onPaneResized(event: ({ size: number })[]) {
+  if (event.length > 0) {
+    chatPaneSize.value = event[0].size
+  }
+}
+
+function toggleChat() {
+  if (!chatVisible.value) {
+    chatPaneSize.value = 70
+  }
+  chatVisible.value = !chatVisible.value
+}
+
 async function handleSave() {
   if (!localDraft.value.name.trim()) {
     ElMessage.warning('Agent name is required')
@@ -183,7 +217,10 @@ async function handleSave() {
       agentsStore.agents.unshift(agent)
     }
     ElMessage.success(isEditMode.value ? 'Agent updated' : 'Agent created')
-    router.push({ name: 'agents' })
+    if (!isEditMode.value) {
+      // After create, navigate to the edit page for the new agent
+      router.replace({ name: 'agent-edit', params: { agentId: saved.id } })
+    }
   } catch {
     ElMessage.error('Failed to save agent')
   } finally {

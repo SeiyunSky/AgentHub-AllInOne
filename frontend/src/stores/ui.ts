@@ -48,6 +48,9 @@ export const useUIStore = defineStore('ui', () => {
   }
 
   function toggleRightPanel() {
+    if (!rightPanelVisible.value) {
+      chatPanePercent.value = 70
+    }
     rightPanelVisible.value = !rightPanelVisible.value
   }
 

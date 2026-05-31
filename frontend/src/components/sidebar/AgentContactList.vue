@@ -4,7 +4,8 @@
     <div class="space-y-2">
       <!-- New Agent -->
       <div
-        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand hover:bg-brand-light/30 cursor-pointer transition-colors"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors"
+        :class="isSelected('new') ? 'bg-brand-light/50 text-brand' : 'text-brand hover:bg-brand-light/30'"
         @click="router.push({ name: 'agent-create' })"
       >
         <el-icon :size="16"><Plus /></el-icon>
@@ -14,7 +15,8 @@
       <div
         v-for="agent in agentsStore.agents"
         :key="agent.id"
-        class="group p-3 rounded-xl bg-white border border-outline-variant hover:border-brand hover:bg-brand-light/40 cursor-pointer transition-all duration-200 hover-lift"
+        class="group p-3 rounded-xl bg-white border cursor-pointer transition-all duration-200 hover-lift"
+        :class="isSelected(agent.id) ? 'border-brand bg-brand-light/40' : 'border-outline-variant hover:border-brand hover:bg-brand-light/40'"
         @click="router.push({ name: 'agent-edit', params: { agentId: agent.id } })"
       >
         <div class="flex items-center gap-3">
@@ -39,13 +41,23 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { User, Plus } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
 
 const router = useRouter()
+const route = useRoute()
 const agentsStore = useAgentsStore()
+
+const currentAgentId = computed(() => route.params.agentId as string | undefined)
+
+function isSelected(agentId: string) {
+  if (agentId === 'new') {
+    return route.name === 'agent-create'
+  }
+  return route.name === 'agent-edit' && currentAgentId.value === agentId
+}
 
 onMounted(() => {
   agentsStore.loadAgents()

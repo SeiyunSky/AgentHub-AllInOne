@@ -3,7 +3,7 @@
     <Pane :size="chatPaneSize" :min-size="chatPaneMinSize" :max-size="chatPaneMaxSize">
       <ChatPanel />
     </Pane>
-    <Pane v-if="uiStore.rightPanelVisible" :min-size="rightPaneMinSize">
+    <Pane v-if="uiStore.rightPanelVisible" :size="100 - chatPaneSize" :min-size="rightPaneMinSize">
       <RightPanel />
     </Pane>
   </Splitpanes>

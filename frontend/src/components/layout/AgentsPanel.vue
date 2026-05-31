@@ -1,24 +1,5 @@
 <template>
   <PanelContainer title="Agents" :icon="User" variant="brand">
-    <template #headerActions>
-      <div class="flex items-center gap-2">
-        <button
-          class="h-8 px-4 rounded-lg flex items-center gap-2 text-[13px] font-medium border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
-          @click="showBuilderDialog = true"
-        >
-          <el-icon :size="14"><MagicStick /></el-icon>
-          Build with AI
-        </button>
-        <button
-          class="h-8 px-4 rounded-lg flex items-center gap-2 bg-brand text-white text-[13px] font-medium shadow-sm hover:bg-brand-dark transition-colors cursor-pointer"
-          @click="router.push({ name: 'agent-create' })"
-        >
-          <el-icon :size="14"><Plus /></el-icon>
-          New Agent
-        </button>
-      </div>
-    </template>
-
     <!-- Card grid -->
     <div class="p-6 overflow-y-auto h-full custom-scrollbar">
       <!-- Empty state -->
@@ -136,7 +117,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { User, Plus, MagicStick, EditPen, Delete } from '@element-plus/icons-vue'
+import { User, EditPen, Delete } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
 import { agentsApi } from '@/api/agents'
 import type { Agent } from '@/types/agent'
