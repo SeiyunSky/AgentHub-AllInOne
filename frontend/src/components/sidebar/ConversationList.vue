@@ -1,5 +1,6 @@
 <template>
   <div class="px-4 py-4">
+    <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">Active Conversations</div>
     <div class="space-y-2">
       <!-- New Chat -->
       <div

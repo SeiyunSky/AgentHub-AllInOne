@@ -913,9 +913,20 @@ const sseMock: MockMethod = {
     if (await tick(200)) return
 
     // 8. block_start — approval (pending)
+    // sendSSE(res, 'block_start', {
+    //   type: 'block_start', agent_id: agentId, thread_id: threadId,
+    //   message_id: messageId, block: { block_id: 'sb-3', type: 'approval', action: 'run_command', detail: 'npm install axios@1.6.0 --save', status: 'pending' }, timestamp: now(),
+    // })
+    // if (await tick(200)) return
+
+    // 8b. block_start — approval (create_file)
     sendSSE(res, 'block_start', {
-      type: 'block_start', agent_id: agentId, thread_id: threadId,
-      message_id: messageId, block: { block_id: 'sb-3', type: 'approval', action: 'run_command', detail: 'npm install axios@1.6.0 --save', status: 'pending' }, timestamp: now(),
+      type: 'block_start', agent_id: 'orchestrator', thread_id: threadId,
+      message_id: messageId, block: {
+        block_id: 'sb-3b', type: 'approval', action: 'create_file',
+        detail: "{'path': 'hello.txt', 'content': '这是一个测试文件 🎉\\n由主 Agent 创建于会话中。\\n'}",
+        status: 'pending', decided_at: null, reject_reason: null,
+      }, timestamp: now(),
     })
     if (await tick(200)) return
 
