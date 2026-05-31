@@ -30,9 +30,7 @@ export const useAgentsStore = defineStore('agents', () => {
   const isLoading = ref(false)
   const isSaving = ref(false)
 
-  // Form state — shared between sidebar and main panel
-  const showConfigForm = ref(false)
-  const editingAgentId = ref<string | undefined>(undefined)
+  // Draft state — used by AI Builder to pass initial values to create form
   const initialDraft = ref<Partial<AgentDraft> | undefined>(undefined)
 
   let loadPromise: Promise<void> | null = null
@@ -52,34 +50,11 @@ export const useAgentsStore = defineStore('agents', () => {
     return loadPromise
   }
 
-  function openCreate() {
-    editingAgentId.value = undefined
-    initialDraft.value = undefined
-    showConfigForm.value = true
-  }
-
-  function openEdit(agentId: string) {
-    editingAgentId.value = agentId
-    initialDraft.value = undefined
-    showConfigForm.value = true
-  }
-
-  function closeConfigForm() {
-    showConfigForm.value = false
-    editingAgentId.value = undefined
-    initialDraft.value = undefined
-  }
-
   return {
     agents,
     isLoading,
     isSaving,
-    showConfigForm,
-    editingAgentId,
     initialDraft,
     loadAgents,
-    openCreate,
-    openEdit,
-    closeConfigForm,
   }
 })

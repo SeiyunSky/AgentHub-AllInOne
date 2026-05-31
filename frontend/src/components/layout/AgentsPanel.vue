@@ -11,7 +11,7 @@
         </button>
         <button
           class="h-8 px-4 rounded-lg flex items-center gap-2 bg-brand text-white text-[13px] font-medium shadow-sm hover:bg-brand-dark transition-colors cursor-pointer"
-          @click="openCreate"
+          @click="router.push({ name: 'agent-create' })"
         >
           <el-icon :size="14"><Plus /></el-icon>
           New Agent
@@ -19,6 +19,7 @@
       </div>
     </template>
 
+    <!-- Card grid -->
     <div class="p-6 overflow-y-auto h-full custom-scrollbar">
       <!-- Empty state -->
       <div
@@ -29,7 +30,7 @@
         <p class="text-[14px]">No agents yet</p>
         <button
           class="px-4 py-2 rounded-lg bg-brand text-white text-[13px] font-medium hover:bg-brand-dark transition-colors cursor-pointer"
-          @click="openCreate"
+          @click="router.push({ name: 'agent-create' })"
         >
           Create your first agent
         </button>
@@ -60,7 +61,7 @@
           v-for="agent in agents"
           :key="agent.id"
           class="group rounded-2xl border border-outline-variant bg-white p-5 hover:border-brand hover:shadow-card hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-          @click="openEdit(agent)"
+          @click="router.push({ name: 'agent-edit', params: { agentId: agent.id } })"
         >
           <div class="flex items-start gap-3 mb-3">
             <div
@@ -106,7 +107,7 @@
               <button
                 class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors"
                 title="Edit"
-                @click.stop="openEdit(agent)"
+                @click.stop="router.push({ name: 'agent-edit', params: { agentId: agent.id } })"
               >
                 <el-icon :size="14"><EditPen /></el-icon>
               </button>
@@ -123,14 +124,6 @@
       </div>
     </div>
 
-    <!-- Create / Edit drawer -->
-    <AgentConfigForm
-      v-model="showConfigForm"
-      :agent-id="editingAgentId"
-      :initial-draft="initialDraft"
-      @saved="onAgentSaved"
-    />
-
     <!-- AI Builder dialog -->
     <AgentBuilderDialog
       v-model="showBuilderDialog"
@@ -146,10 +139,9 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { User, Plus, MagicStick, EditPen, Delete } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
 import { agentsApi } from '@/api/agents'
-import type { Agent, AgentDraft } from '@/types/agent'
+import type { Agent } from '@/types/agent'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
 import AgentCapabilityTags from '@/components/agents/AgentCapabilityTags.vue'
-import AgentConfigForm from '@/components/agents/AgentConfigForm.vue'
 import AgentBuilderDialog from '@/components/agents/AgentBuilderDialog.vue'
 
 const router = useRouter()
@@ -157,11 +149,6 @@ const agentsStore = useAgentsStore()
 
 const agents = agentsStore.agents
 const isLoading = ref(false)
-
-const showConfigForm = ref(false)
-const editingAgentId = ref<string | undefined>(undefined)
-const initialDraft = ref<Partial<AgentDraft> | undefined>(undefined)
-
 const showBuilderDialog = ref(false)
 
 onMounted(async () => {
@@ -198,31 +185,9 @@ function rawToAgent(raw: any): Agent {
   }
 }
 
-function openCreate() {
-  editingAgentId.value = undefined
-  initialDraft.value = undefined
-  showConfigForm.value = true
-}
-
-function openEdit(agent: Agent) {
-  editingAgentId.value = agent.id
-  initialDraft.value = undefined
-  showConfigForm.value = true
-}
-
-function onAgentSaved(saved: Agent) {
-  const idx = agentsStore.agents.findIndex(a => a.id === saved.id)
-  if (idx >= 0) {
-    agentsStore.agents.splice(idx, 1, saved)
-  } else {
-    agentsStore.agents.unshift(saved)
-  }
-}
-
-function onBuilderConfirmed(draft: AgentDraft) {
-  editingAgentId.value = undefined
-  initialDraft.value = draft
-  showConfigForm.value = true
+function onBuilderConfirmed(draft: any) {
+  agentsStore.initialDraft = draft
+  router.push({ name: 'agent-create' })
 }
 
 async function confirmDelete(agent: Agent) {

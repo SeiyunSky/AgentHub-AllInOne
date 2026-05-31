@@ -34,6 +34,16 @@ const router = createRouter({
           component: () => import('@/views/AgentsView.vue'),
         },
         {
+          path: 'agents/new',
+          name: 'agent-create',
+          component: () => import('@/views/AgentFormView.vue'),
+        },
+        {
+          path: 'agents/:agentId',
+          name: 'agent-edit',
+          component: () => import('@/views/AgentFormView.vue'),
+        },
+        {
           path: 'skills',
           name: 'skills',
           component: () => import('@/views/SkillsView.vue'),

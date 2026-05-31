@@ -13,7 +13,7 @@ export function useSidebarTab() {
   const activeTab = computed<SidebarTab>(() => {
     const name = route.name as string
     if (name === 'chat' || name === 'chat-detail') return 'chat'
-    if (name === 'agents') return 'agents'
+    if (name === 'agents' || name === 'agent-create' || name === 'agent-edit') return 'agents'
     if (name === 'skills') return 'skills'
     return 'chat'
   })
