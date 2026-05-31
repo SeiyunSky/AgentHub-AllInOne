@@ -1,11 +1,11 @@
 <template>
-  <div class="overflow-y-auto custom-scrollbar h-full">
-    <div class="py-8 px-8 pr-12 space-y-6">
+  <div class="py-8 px-8 pr-12 space-y-5 custom-scrollbar">
 
       <!-- Agent Identity: Avatar + Name -->
       <section class="flex items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-brand-light to-brand-subtle flex items-center justify-center shrink-0">
-          <el-icon :size="24" class="text-brand"><User /></el-icon>
+        <div class="w-14 h-14 rounded-2xl from-brand-light to-brand-subtle flex items-center justify-center shrink-0 border border-brand/20 shadow-soft overflow-hidden">
+          <img v-if="draft.avatar" :src="draft.avatar" :alt="draft.name" class="w-full h-full object-cover" />
+          <img v-else :src="getAgentTypeIcon(draft.type)" :alt="draft.type" class="w-8 h-8 object-contain" />
         </div>
         <div class="flex-1 min-w-0">
           <el-input
@@ -15,12 +15,16 @@
             class="borderless-input"
             input-style="padding: 0; font-size: 28px; font-weight: 600;"
           />
+          <p v-if="!draft.name" class="text-[11px] text-on-surface-variant mt-1">Give your agent a memorable name</p>
         </div>
       </section>
 
       <!-- Description -->
       <section>
-        <h3 class="text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-3">Description</h3>
+        <h3 class="section-heading">
+          <el-icon :size="14"><Document /></el-icon>
+          Description
+        </h3>
         <el-input
           v-model="draft.description"
           type="textarea"
@@ -31,123 +35,140 @@
         />
       </section>
 
-      <!-- Agent Platform -->
+      <!-- Platform: Visual card selector -->
       <section>
-        <h3 class="text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-3">Platform</h3>
-        <el-select v-model="draft.type" class="!w-[280px]">
-          <el-option label="Claude" value="claude">
-            <span class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
-              Claude
-            </span>
-          </el-option>
-          <el-option label="Codex" value="codex">
-            <span class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-              Codex
-            </span>
-          </el-option>
-          <el-option label="OpenCode" value="opencode">
-            <span class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-blue-400"></span>
-              OpenCode
-            </span>
-          </el-option>
-          <el-option label="Custom" value="custom">
-            <span class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-purple-400"></span>
-              Custom
-            </span>
-          </el-option>
-        </el-select>
-      </section>
-
-      <!-- Skills: Add button first, then active skills as tags -->
-      <section>
-        <h3 class="text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-3">Skills</h3>
-        <div class="flex flex-wrap items-center gap-2">
-          <!-- Add skill button with popup -->
-          <el-popover
-            trigger="click"
-            placement="bottom-start"
-            :width="280"
-            :show-arrow="false"
-            :offset="4"
-            popper-class="skill-dropdown-popper"
+        <h3 class="section-heading">
+          <el-icon :size="14"><SetUp /></el-icon>
+          Platform
+        </h3>
+        <div class="grid grid-cols-3 gap-3">
+          <button
+            v-for="p in platformOptions"
+            :key="p.value"
+            class="relative flex flex-col items-center gap-2 p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
+            :class="draft.type === p.value
+              ? 'border-brand bg-brand-light/30 shadow-soft'
+              : 'border-outline-variant bg-white hover:border-brand/40 hover:bg-brand-light/10'"
+            @click="draft.type = p.value"
           >
-            <template #reference>
-              <button
-                class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium text-brand border border-brand bg-brand-light/30 hover:bg-brand-light/50 transition-all"
-              >
-                <el-icon :size="14"><Plus /></el-icon>
-                Add Skill
-              </button>
-            </template>
-            <!-- Checkbox list in popup -->
-            <div class="py-2">
-              <div
-                v-for="skill in allSkills"
-                :key="skill.key"
-                class="flex items-center gap-3 px-3 py-2.5 text-[13px] cursor-pointer hover:bg-brand-light/30 rounded-lg mx-1 transition-colors"
-                @click="toggleSkill(skill.key)"
-              >
-                <div
-                  class="w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0"
-                  :class="draft.capabilities[skill.key]
-                    ? 'bg-brand text-white'
-                    : 'bg-surface-container text-on-surface-variant'"
-                >
-                  <el-icon :size="12"><component :is="draft.capabilities[skill.key] ? Select : skill.icon" /></el-icon>
-                </div>
-                <span class="font-medium" :class="draft.capabilities[skill.key] ? 'text-brand' : 'text-on-surface'">
-                  {{ skill.label }}
-                </span>
-              </div>
-            </div>
-          </el-popover>
-          <!-- Active skills as tags -->
-          <div
-            v-for="skill in activeSkills"
-            :key="skill.key"
-            class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-surface-container text-on-surface border border-outline-variant"
-          >
-            <el-icon :size="14"><component :is="skill.icon" /></el-icon>
-            {{ skill.label }}
-            <button
-              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-on-surface/10 transition-colors"
-              @click="toggleSkill(skill.key)"
+            <div
+              class="w-10 h-10 rounded-xl flex items-center justify-center"
+              :class="p.bgClass"
             >
-              <el-icon :size="10"><Close /></el-icon>
-            </button>
-          </div>
+              <img :src="p.iconSrc" :alt="p.label" class="w-6 h-6 object-contain" />
+            </div>
+            <span class="text-[12px] font-semibold" :class="draft.type === p.value ? 'text-brand' : 'text-on-surface'">
+              {{ p.label }}
+            </span>
+            <!-- Check indicator -->
+            <div
+              v-if="draft.type === p.value"
+              class="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center"
+            >
+              <el-icon :size="10" class="text-white"><Select /></el-icon>
+            </div>
+          </button>
         </div>
       </section>
 
-      <!-- System Prompt: directly editable, no Edit/Preview toggle -->
+      <!-- Skills: Multi-select with tags -->
       <section>
-        <h3 class="text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-3">System Prompt</h3>
-        <el-input
-          v-model="draft.systemPrompt"
-          type="textarea"
-          :rows="12"
-          resize="none"
-          placeholder="### Goals&#10;Define what the agent should accomplish...&#10;&#10;### Skills&#10;List the agent's core capabilities...&#10;&#10;### Workflow&#10;Describe how the agent should work...&#10;&#10;### Constraints&#10;Set boundaries and limitations..."
-          input-style="padding: 16px; font-size: 13px; font-family: 'JetBrains Mono', 'Fira Code', monospace; line-height: 1.7; resize: none;"
-        />
+        <h3 class="section-heading">
+          <el-icon :size="14"><SetUp /></el-icon>
+          Skills
+        </h3>
+
+        <!-- Selected skills as tags -->
+        <div v-if="selectedSkills.length > 0" class="flex flex-wrap gap-1.5 mb-2">
+          <div
+            v-for="skill in activeSkillDefs"
+            :key="skill.key"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium border"
+            :class="skill.tagClass"
+          >
+            <el-icon :size="12"><component :is="skill.icon" /></el-icon>
+            {{ skill.label }}
+            <button
+              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-black/10 transition-colors"
+              @click="removeSkill(skill.key)"
+            >
+              <el-icon :size="8"><Close /></el-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Dropdown picker -->
+        <el-popover
+          trigger="click"
+          placement="bottom-start"
+          :width="260"
+          :show-arrow="false"
+          :offset="4"
+          popper-class="skill-picker-popper"
+        >
+          <template #reference>
+            <button class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium border border-outline-variant bg-white hover:border-brand hover:bg-brand-light/20 transition-all cursor-pointer">
+              <el-icon :size="14"><Plus /></el-icon>
+              {{ selectedSkills.length > 0 ? 'Add more skills' : 'Select skills' }}
+            </button>
+          </template>
+          <div class="py-1.5">
+            <div
+              v-for="skill in allSkills"
+              :key="skill.key"
+              class="flex items-center gap-3 px-3 py-2.5 text-[13px] cursor-pointer hover:bg-brand-light/30 rounded-lg mx-1 transition-colors"
+              @click="toggleSkillSelection(skill.key)"
+            >
+              <div
+                class="w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0"
+                :class="props.draft.capabilities[skill.key]
+                  ? 'bg-brand text-white'
+                  : 'bg-surface-container text-on-surface-variant'"
+              >
+                <el-icon :size="12"><component :is="props.draft.capabilities[skill.key] ? Select : skill.icon" /></el-icon>
+              </div>
+              <span class="font-medium" :class="props.draft.capabilities[skill.key] ? 'text-brand' : 'text-on-surface'">
+                {{ skill.label }}
+              </span>
+            </div>
+          </div>
+        </el-popover>
       </section>
 
-      <!-- Tags: embedded inline input -->
+      <!-- System Prompt: Code container -->
+      <section class="form-section !p-0 overflow-hidden">
+        <div class="code-container-header">
+          <el-icon :size="12"><Document /></el-icon>
+          System Prompt
+          <span class="ml-auto text-[10px] opacity-60">Markdown supported</span>
+        </div>
+        <div class="code-container">
+          <el-input
+            v-model="draft.systemPrompt"
+            type="textarea"
+            :rows="12"
+            resize="none"
+            placeholder="### Goals&#10;Define what the agent should accomplish...&#10;&#10;### Skills&#10;List the agent's core capabilities...&#10;&#10;### Workflow&#10;Describe how the agent should work...&#10;&#10;### Constraints&#10;Set boundaries and limitations..."
+            input-style="padding: 16px; font-size: 13px; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; line-height: 1.7; resize: none; border: none; box-shadow: none; background: transparent;"
+          />
+        </div>
+      </section>
+
+      <!-- Tags: Enhanced input -->
       <section>
-        <h3 class="text-[12px] font-semibold text-on-surface-variant uppercase tracking-widest mb-3">Tags</h3>
-        <div class="flex flex-wrap items-center gap-1.5 p-2 rounded-xl border border-outline-variant bg-white min-h-[40px]">
+        <h3 class="section-heading">
+          <el-icon :size="14"><PriceTag /></el-icon>
+          Tags
+        </h3>
+        <div class="flex flex-wrap items-center gap-1.5 p-3 rounded-xl border border-outline-variant bg-white min-h-[44px] focus-within:border-brand focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.08)] transition-all">
           <span
             v-for="tag in draft.tags"
             :key="tag"
-            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium bg-brand-light text-brand"
+            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[12px] font-medium bg-brand-light text-brand border border-brand/10"
           >
             {{ tag }}
             <button
-              class="w-3.5 h-3.5 rounded-full flex items-center justify-center hover:bg-brand/20 transition-colors"
+              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-brand/20 transition-colors"
               @click="removeTag(tag)"
             >
               <el-icon :size="8"><Close /></el-icon>
@@ -162,17 +183,33 @@
             @blur="addTag"
           />
         </div>
+        <p class="text-[11px] text-on-surface-variant mt-2">Press Enter to add a tag</p>
       </section>
 
-    </div>
+      <!-- Visibility -->
+      <section>
+        <h3 class="section-heading">
+          <el-icon :size="14"><View /></el-icon>
+          Visibility
+        </h3>
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-[13px] font-medium text-on-surface">Public Agent</p>
+            <p class="text-[12px] text-on-surface-variant">Allow other users to discover and use this agent</p>
+          </div>
+          <el-switch v-model="draft.isPublic" />
+        </div>
+      </section>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { AgentDraft, AgentCapabilities } from '@/types/agent'
+import type { AgentDraft, AgentCapabilities, AgentType } from '@/types/agent'
 import type { Component } from 'vue'
-import { User, Plus, Close, Document, SetUp, Picture, Cpu, Select } from '@element-plus/icons-vue'
+import { Close, Document, SetUp, Picture, Cpu, Select, PriceTag, View, Plus } from '@element-plus/icons-vue'
+import { getAgentTypeIcon } from '@/utils/agentIcons'
 
 const props = defineProps<{
   draft: AgentDraft
@@ -184,22 +221,46 @@ interface SkillDef {
   key: keyof AgentCapabilities
   label: string
   icon: Component
+  tagClass: string
 }
 
 const allSkills: SkillDef[] = [
-  { key: 'supportsCode', label: 'Code Execution', icon: Cpu },
-  { key: 'supportsDiff', label: 'Diff Review', icon: Document },
-  { key: 'supportsApproval', label: 'Approval Flow', icon: SetUp },
-  { key: 'supportsImage', label: 'Image Processing', icon: Picture },
+  { key: 'supportsCode', label: 'Code Execution', icon: Cpu, tagClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/60' },
+  { key: 'supportsDiff', label: 'Diff Review', icon: Document, tagClass: 'bg-blue-50 text-blue-700 border-blue-200/60' },
+  { key: 'supportsApproval', label: 'Approval Flow', icon: SetUp, tagClass: 'bg-amber-50 text-amber-700 border-amber-200/60' },
+  { key: 'supportsImage', label: 'Image Processing', icon: Picture, tagClass: 'bg-purple-50 text-purple-700 border-purple-200/60' },
 ]
 
-const activeSkills = computed(() =>
+const selectedSkills = computed(() =>
+  allSkills.filter(s => props.draft.capabilities[s.key]).map(s => s.key),
+)
+
+const activeSkillDefs = computed(() =>
   allSkills.filter(s => props.draft.capabilities[s.key]),
 )
 
-function toggleSkill(key: keyof AgentCapabilities) {
+function toggleSkillSelection(key: keyof AgentCapabilities) {
   props.draft.capabilities[key] = !props.draft.capabilities[key]
 }
+
+function removeSkill(key: keyof AgentCapabilities) {
+  props.draft.capabilities[key] = false
+}
+
+interface PlatformOption {
+  value: AgentType
+  label: string
+  iconSrc: string
+  bgClass: string
+  iconClass: string
+}
+
+const platformOptions: PlatformOption[] = [
+  { value: 'claude', label: 'Claude Code', iconSrc: getAgentTypeIcon('claude'), bgClass: '', iconClass: 'text-amber-600' },
+  { value: 'codex', label: 'Codex', iconSrc: getAgentTypeIcon('codex'), bgClass: '', iconClass: 'text-teal-600' },
+  { value: 'opencode', label: 'OpenCode', iconSrc: getAgentTypeIcon('opencode'), bgClass: '', iconClass: 'text-slate-600' },
+]
+
 
 function addTag() {
   const tag = tagInput.value.trim()
@@ -229,9 +290,9 @@ function removeTag(tag: string) {
 </style>
 
 <style>
-.skill-dropdown-popper {
+.skill-picker-popper {
   border-radius: 12px !important;
-  border: 1px solid var(--el-border-color-lighter) !important;
+  border: 1px solid var(--color-outline-variant) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04) !important;
   padding: 4px !important;
 }
