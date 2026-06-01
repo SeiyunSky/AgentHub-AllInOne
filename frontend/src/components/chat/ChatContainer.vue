@@ -1,7 +1,7 @@
 <template>
   <section class="flex flex-col bg-surface-elevated h-full overflow-hidden">
     <!-- Header -->
-    <ChatHeader :title="title" :status="status" :icon="ChatLineRound" variant="brand">
+    <ChatHeader v-if="!hideHeader" :title="title" :status="status" :icon="ChatLineRound" variant="brand">
       <template #actions>
         <slot name="headerActions" />
       </template>
@@ -58,6 +58,7 @@ const props = defineProps<{
   title: string
   status?: string
   messages: Message[]
+  hideHeader?: boolean
 }>()
 
 const emit = defineEmits<{

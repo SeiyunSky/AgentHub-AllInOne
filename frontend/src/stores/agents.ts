@@ -1,24 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { Agent, AgentDraft, AgentCapabilities } from '@/types/agent'
+import type { Agent, AgentDraft } from '@/types/agent'
 import { agentsApi, type AgentResponse } from '@/api/agents'
-
-const defaultCapabilities: AgentCapabilities = {
-  supportsCode: true,
-  supportsDiff: false,
-  supportsApproval: false,
-  supportsImage: false,
-}
-
-const defaultDraft: AgentDraft = {
-  name: '',
-  description: '',
-  type: 'claude',
-  systemPrompt: '',
-  capabilities: { ...defaultCapabilities },
-  tags: [],
-  isPublic: false,
-}
 
 function mapAgentResponse(a: AgentResponse): Agent {
   return {
@@ -44,9 +27,11 @@ function mapAgentResponse(a: AgentResponse): Agent {
 
 export const useAgentsStore = defineStore('agents', () => {
   const agents = ref<Agent[]>([])
-  const currentDraft = ref<AgentDraft>({ ...defaultDraft })
   const isLoading = ref(false)
   const isSaving = ref(false)
+
+  // Draft state — used by AI Builder to pass initial values to create form
+  const initialDraft = ref<Partial<AgentDraft> | undefined>(undefined)
 
   let loadPromise: Promise<void> | null = null
 
@@ -65,35 +50,28 @@ export const useAgentsStore = defineStore('agents', () => {
     return loadPromise
   }
 
-  function resetDraft() {
-    currentDraft.value = { ...defaultDraft }
-  }
-
-  function setDraft(draft: AgentDraft) {
-    currentDraft.value = { ...draft }
-  }
-
-  function loadFromAgent(agent: Agent) {
-    currentDraft.value = {
-      name: agent.name,
-      description: agent.description,
-      type: agent.type,
-      avatar: agent.avatar,
-      systemPrompt: agent.systemPrompt,
-      capabilities: { ...agent.capabilities },
-      tags: [...agent.tags],
-      isPublic: agent.isPublic,
+  function upsertAgent(raw: AgentResponse) {
+    const agent = mapAgentResponse(raw)
+    const idx = agents.value.findIndex(a => a.id === agent.id)
+    if (idx >= 0) {
+      agents.value.splice(idx, 1, agent)
+    } else {
+      agents.value.unshift(agent)
     }
+  }
+
+  function removeAgent(id: string) {
+    const idx = agents.value.findIndex(a => a.id === id)
+    if (idx >= 0) agents.value.splice(idx, 1)
   }
 
   return {
     agents,
-    currentDraft,
     isLoading,
     isSaving,
+    initialDraft,
     loadAgents,
-    resetDraft,
-    setDraft,
-    loadFromAgent,
+    upsertAgent,
+    removeAgent,
   }
 })

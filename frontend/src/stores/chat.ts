@@ -265,7 +265,7 @@ export const useChatStore = defineStore('chat', () => {
   function clearRound(convId: string) {
     commitStreamingMessage(convId)
     streamingConvIds.value.delete(convId)
-    pendingApprovals.value.delete(convId)
+    // pendingApprovals is only cleared by resolveApproval (user decision) or finishStreaming (agent_error/cancel)
   }
 
   function resolveApproval(convId: string, messageId: string, blockId: string, decision: 'approved' | 'rejected', reason?: string) {

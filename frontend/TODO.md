@@ -1,9 +1,16 @@
 ## Bug / Critical
 
-- [ ] **AgentCreate camelCase/snake_case 不匹配**
+- [x] **AgentCreate camelCase/snake_case 不匹配**
   - `AgentBuilderView.vue` 直接传 store `currentDraft`（camelCase: `systemPrompt`, `supportsCode`…）给 `agentsApi.create()`，后端 Pydantic 期望 snake_case
   - 影响字段：`system_prompt`、`capabilities` 下所有子字段（`supports_code`/`supports_diff`/`supports_approval`/`supports_image`）
-  - 方案 A：http.ts 加请求拦截器自动转 snake_case；方案 B：AgentBuilderView 提交前做字段映射
+  - ✅ 已修复：添加 `draftToApiPayload()` 函数做字段映射
+
+- [x] **编辑模式加载 agent 数据时类型不匹配**
+  - `agentsApi.get()` 返回 `AgentResponse`（snake_case），但 `loadFromAgent()` 期望 `Agent`（camelCase）
+  - ✅ 已修复：添加 `mapAgentResponse()` 函数做转换后再调用 `loadFromAgent`
+
+- [x] **编辑模式 Save 按钮 → agentsApi.update()**
+  - ✅ 已修复：`saveAgent()` 现区分创建/编辑模式，分别调用 create/update
 
 ## Chat
 
@@ -23,8 +30,9 @@
 
 ## Agents
 
-- [ ] **编辑模式 Save 按钮 → agentsApi.update()**
+- [x] **编辑模式 Save 按钮 → agentsApi.update()**
   - 当前编辑模式加载了 agent 但隐藏保存按钮，保存仍走 create
+  - ✅ 已修复：`AgentBuilderView` 现区分创建/编辑模式
 - [ ] **AgentForm 缺失字段控件**
   - `avatar`：无上传控件
   - `is_public`：store 默认 `false`，无可见性开关

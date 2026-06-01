@@ -33,7 +33,9 @@ core/logging —— 结构化日志配置(structlog + stdlib logging 桥接)
 from __future__ import annotations
 
 import logging
+import logging.handlers
 import sys
+from pathlib import Path
 from typing import Any
 
 import structlog
@@ -122,6 +124,28 @@ def configure_logging() -> None:
     # 清掉已有 handler(防止重复配置时日志重复输出)
     root.handlers.clear()
     root.addHandler(handler)
+
+    # ---- 文件 handler（可选）----
+    # 文件始终用 JSON 格式，方便 grep / ELK 接入
+    if settings.LOG_FILE:
+        log_path = Path(settings.LOG_FILE)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        file_formatter = structlog.stdlib.ProcessorFormatter(
+            foreign_pre_chain=shared_processors,
+            processors=[
+                structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+                structlog.processors.JSONRenderer(),
+            ],
+        )
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_path,
+            maxBytes=10 * 1024 * 1024,  # 10 MB
+            backupCount=5,
+            encoding="utf-8",
+        )
+        file_handler.setFormatter(file_formatter)
+        root.addHandler(file_handler)
+
     root.setLevel(settings.LOG_LEVEL.upper())
 
     # 抑制几个特别吵的第三方库(避免淹没业务日志,可按需扩展)
