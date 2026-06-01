@@ -4,10 +4,12 @@
     <div class="space-y-2">
       <!-- New Chat -->
       <div
-        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-brand hover:bg-brand-light/30 cursor-pointer transition-colors"
+        class="flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 border-2 border-dashed border-outline-variant text-brand hover:border-brand/40 hover:bg-brand-light/20"
         @click="handleNewChat"
       >
-        <el-icon :size="16"><Plus /></el-icon>
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-light">
+          <el-icon :size="16" class="text-brand"><Plus /></el-icon>
+        </div>
         <span class="text-[13px] font-medium">New Chat</span>
       </div>
       <!-- New Chat Dialog -->
@@ -22,8 +24,10 @@
         <div
           v-for="conv in pinnedConversations"
           :key="conv.id"
-          class="group p-3 rounded-xl bg-amber-50/60 border border-amber-200/70 hover:border-amber-400 hover:bg-amber-50 cursor-pointer transition-all duration-200 hover-lift"
-          :class="{ 'list-active !border-brand !bg-brand-light/40': conversationsStore.currentId === conv.id }"
+          class="group p-3 rounded-xl bg-white border cursor-pointer transition-all duration-200 hover-lift"
+          :class="conversationsStore.currentId === conv.id
+            ? 'border-brand bg-brand-light/30'
+            : 'border-outline-variant hover:border-brand/40'"
           @click="handleSelect(conv.id)"
         >
           <ConvItem :conv="conv" @rename="handleRename" @toggle-pin="handleTogglePin" @toggle-archive="handleToggleArchive" />
@@ -38,8 +42,10 @@
         <div
           v-for="conv in unpinnedConversations"
           :key="conv.id"
-          class="group p-3 rounded-xl bg-white border border-outline-variant hover:border-brand hover:bg-brand-light/40 cursor-pointer transition-all duration-200 hover-lift"
-          :class="{ 'list-active !border-brand': conversationsStore.currentId === conv.id }"
+          class="group p-3 rounded-xl bg-white border cursor-pointer transition-all duration-200 hover-lift"
+          :class="conversationsStore.currentId === conv.id
+            ? 'border-brand bg-brand-light/30'
+            : 'border-outline-variant hover:border-brand/40'"
           @click="handleSelect(conv.id)"
         >
           <ConvItem :conv="conv" @rename="handleRename" @toggle-pin="handleTogglePin" @toggle-archive="handleToggleArchive" />

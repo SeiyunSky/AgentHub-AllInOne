@@ -1,16 +1,5 @@
 <template>
   <PanelContainer title="Skills" :icon="MagicStick" variant="brand">
-    <template #headerActions>
-      <div class="flex items-center gap-2">
-        <button
-          class="h-8 px-4 rounded-lg flex items-center gap-2 bg-brand text-white text-[13px] font-medium shadow-sm hover:bg-brand-dark transition-colors cursor-pointer"
-          @click="router.push({ name: 'skill-create' })"
-        >
-          <el-icon :size="14"><Plus /></el-icon>
-          New Skill
-        </button>
-      </div>
-    </template>
 
     <div class="p-6 overflow-y-auto h-full custom-scrollbar">
 
