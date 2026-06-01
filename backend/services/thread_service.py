@@ -639,6 +639,7 @@ class ThreadService:
                 await self._on_thread_terminal(t, summary, success=True)
 
         except asyncio.CancelledError:
+            own_session.rollback()
             t = _mark(ThreadStatus.CANCELLED)
             if t:
                 await self._on_thread_terminal(t, f"Thread {thread.id} 已取消", success=False)
