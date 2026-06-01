@@ -49,7 +49,16 @@ class ConversationService:
         """
         新建会话并挂载初始 Agent 列表。
         agent_ids 为空时是空会话(无成员),后续通过 add_agent 加入。
+
+        重要约定:group 模式必须有 orchestrator(主 Agent),
+        如果调用方没传,这里自动补上——主 Agent 是群聊的协调者,
+        永远在场,用户不需要也不应该感知它的存在/管理。
         """
+        # 群聊兜底:把 orchestrator 放在第一位,其它 agent_ids 跟在后面
+        ids = list(agent_ids or [])
+        if mode == "group" and "orchestrator" not in ids:
+            ids = ["orchestrator", *ids]
+
         session = SessionLocal()
         try:
             repo = ConversationRepository(session)
@@ -62,7 +71,7 @@ class ConversationService:
                 message_count=0,
                 unread_count=0,
             )
-            for agent_id in agent_ids or []:
+            for agent_id in ids:
                 repo.add_agent(conv.id, agent_id)
             session.commit()
             session.refresh(conv)

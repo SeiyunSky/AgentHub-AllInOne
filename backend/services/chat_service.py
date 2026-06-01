@@ -133,6 +133,16 @@ class ChatService:
     async def handle_stop(self, conversation_id: str) -> ChatStopResponse:
         """
         紧急中止:取消所有未结束 Thread + 清空排队 + 推 round_done + 释放锁。
+
+        关键点:必须强制清掉 _locks[conv_id]。
+        否则 handle_chat 那一侧的 `async with lock` 协程可能还在等
+        start_loop 自然结束(start_loop 收到 cancel 后未必立即返回),
+        锁不释放 → 后续 POST /chat 全部进 pending 队列等永远不会到来的 round_done
+        → 会话彻底卡死。
+
+        删除 _locks[conv_id] 让下次 handle_chat 拿到一把全新的空闲锁。
+        旧的 async with 块走完后会触发 RuntimeError(release on already-released lock)
+        但被 asyncio 框架吞掉,不影响业务。MVP 单进程内可接受。
         """
         # 设 stream 中止标志
         stream_service.abort(conversation_id)
@@ -142,6 +152,8 @@ class ChatService:
         cancelled = await self.thread_service.cancel_all_in_conversation(conversation_id)
         # 推整轮结束
         await stream_service.push_round_done(conversation_id)
+        # 强制摘掉旧锁,下次 handle_chat 自动建新锁(defaultdict),保证后续消息能被处理
+        _locks.pop(conversation_id, None)
 
         return ChatStopResponse(
             conversation_id=conversation_id,
