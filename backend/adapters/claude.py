@@ -64,7 +64,7 @@ class ClaudeAdapter(AgentAdapter):
 
         yield AgentStartEvent(
             **_base(),
-            agent_name=inp.agent_id,
+            agent_name=inp.agent_name or inp.agent_id,
         )
 
         bin_path = shutil.which(self._bin_path) or self._bin_path
@@ -117,7 +117,12 @@ class ClaudeAdapter(AgentAdapter):
         last_tokens_output = 0
 
         assert proc.stdout is not None
-        async for raw_line in proc.stdout:
+        # 用 read() 全量读取，避免 readline() 默认 64KB 限制导致 LimitOverrunError。
+        # Claude CLI 输出的每行可能是超大 JSON（含代码/文件内容），readline 会炸。
+        raw_stdout = await proc.stdout.read()
+        raw_lines = raw_stdout.split(b"\n")
+
+        for raw_line in raw_lines:
             if inp.cancel_event and inp.cancel_event.is_set():
                 proc.terminate()
                 if text_block_id:

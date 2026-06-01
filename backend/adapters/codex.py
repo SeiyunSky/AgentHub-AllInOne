@@ -70,7 +70,7 @@ class CodexAdapter(AgentAdapter):
             agent_id=inp.agent_id,
             thread_id=inp.thread_id,
             message_id=inp.message_id,
-            agent_name=inp.agent_id,
+            agent_name=inp.agent_name or inp.agent_id,
         )
 
         if self._mcp_client is not None:

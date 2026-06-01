@@ -541,6 +541,7 @@ class ThreadService:
 
             stream_input = StreamInput(
                 agent_id=thread.agent_id,
+                agent_name=agent_row.name if agent_row else thread.agent_id,
                 thread_id=thread.id,
                 message_id=thread.message_id,
                 prompt=thread.dispatch_prompt or "",
