@@ -109,8 +109,6 @@
             </div>
           </div>
         </el-popover>
-
-        <p v-if="selectedAgents.length === 0" class="text-[11px] text-red-400 mt-1.5 pl-0.5">At least one agent is required</p>
       </section>
     </div>
 
@@ -172,7 +170,7 @@ const filteredAgents = computed(() => {
 })
 
 const canCreate = computed(() =>
-  title.value.trim().length > 0 && selectedAgents.value.length > 0
+  title.value.trim().length > 0
 )
 
 
@@ -243,12 +241,12 @@ async function createChat() {
   if (!canCreate.value) return
   creating.value = true
   try {
-    // 后端 ConversationCreate 校验:single 必须恰好 1 个 agent_id,group 必须 >=1 个。
-    // 选 1 个就是单聊,选多个自动走群聊(orchestrator 主 Agent 由后端补上)。
-    const mode = selectedAgents.value.length === 1 ? 'single' : 'group'
+    // 永远走 group 模式:主 Agent (orchestrator) 默认在场,
+    // 用户选的 Agent 作为"群成员"加入,后端会自动注入 orchestrator。
+    // single/group 是后端实现细节,前端不区分。
     const conv = await conversationsStore.create(
       title.value.trim(),
-      mode,
+      'group',
       selectedAgents.value.map((a) => a.id)
     )
     visible.value = false
