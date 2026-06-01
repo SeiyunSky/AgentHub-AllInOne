@@ -39,9 +39,15 @@ export const useSkillsStore = defineStore('skills', () => {
     return loadPromise
   }
 
+  function removeSkill(id: string) {
+    const idx = skills.value.findIndex(s => s.id === id)
+    if (idx >= 0) skills.value.splice(idx, 1)
+  }
+
   return {
     skills,
     isLoading,
     loadSkills,
+    removeSkill,
   }
 })

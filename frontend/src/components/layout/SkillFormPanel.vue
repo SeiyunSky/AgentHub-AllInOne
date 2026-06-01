@@ -7,6 +7,15 @@
     <template #headerActions>
       <div class="flex items-center gap-2">
         <button
+          v-if="isEditMode"
+          class="h-8 px-4 rounded-lg text-[13px] font-medium border border-red-200 bg-white text-red-500 hover:bg-red-50 hover:border-red-300 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="isDeleting"
+          @click="handleDelete"
+        >
+          <el-icon v-if="isDeleting" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
+          Delete
+        </button>
+        <button
           class="h-8 px-4 rounded-lg text-[13px] font-medium border border-outline-variant bg-white text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all cursor-pointer"
           @click="handleCancel"
         >
@@ -45,7 +54,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { MagicStick, Loading } from '@element-plus/icons-vue'
 import { useSkillsStore } from '@/stores/skills'
 import { skillsApi, type SkillWithContentResponse } from '@/api/skills'
@@ -58,6 +67,7 @@ const router = useRouter()
 const skillsStore = useSkillsStore()
 
 const isSaving = ref(false)
+const isDeleting = ref(false)
 const isLoading = ref(false)
 
 const skillId = computed(() => route.params.skillId as string | undefined)
@@ -70,6 +80,7 @@ const defaultDraft: SkillDraft = {
   category: '',
   content: '',
   isPublic: false,
+  isActive: true,
 }
 
 const localDraft = ref<SkillDraft>({ ...defaultDraft })
@@ -82,6 +93,7 @@ function toDraft(raw: SkillWithContentResponse): SkillDraft {
     category: raw.category ?? '',
     content: raw.content,
     isPublic: raw.is_public,
+    isActive: raw.is_active,
   }
 }
 
@@ -138,6 +150,29 @@ function handleCancel() {
   router.push({ name: 'skills' })
 }
 
+async function handleDelete() {
+  try {
+    await ElMessageBox.confirm(
+      `Delete skill "${localDraft.value.displayName || localDraft.value.name}"? This cannot be undone.`,
+      'Delete Skill',
+      { confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
+    )
+  } catch {
+    return
+  }
+  isDeleting.value = true
+  try {
+    await skillsApi.remove(skillId.value!)
+    skillsStore.removeSkill(skillId.value!)
+    ElMessage.success('Skill deleted')
+    router.push({ name: 'skills' })
+  } catch {
+    ElMessage.error('Failed to delete skill')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
 async function handleSave() {
   if (!localDraft.value.name.trim()) {
     ElMessage.warning('Skill name is required')
@@ -162,6 +197,7 @@ async function handleSave() {
         category: localDraft.value.category || undefined,
         content: localDraft.value.content,
         is_public: localDraft.value.isPublic,
+        is_active: localDraft.value.isActive,
       }
       saved = await skillsApi.update(skillId.value!, updatePayload)
     } else {

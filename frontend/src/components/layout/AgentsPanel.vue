@@ -20,7 +20,7 @@
 
       <!-- Empty state -->
       <div
-        v-if="!isLoading && filteredAgents.length === 0 && agents.length === 0"
+        v-if="!agentsStore.isLoading && filteredAgents.length === 0 && agentsStore.agents.length === 0"
         class="flex flex-col items-center justify-center h-full min-h-[400px] fade-in-up"
       >
         <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-brand-light to-brand-subtle flex items-center justify-center mb-5 shadow-soft">
@@ -38,7 +38,7 @@
 
       <!-- No results (has agents but filtered to none) -->
       <div
-        v-else-if="!isLoading && filteredAgents.length === 0 && agents.length > 0"
+        v-else-if="!agentsStore.isLoading && filteredAgents.length === 0 && agentsStore.agents.length > 0"
         class="flex flex-col items-center justify-center h-64 text-on-surface-variant fade-in-up"
       >
         <el-icon :size="32" class="opacity-30 mb-3"><Search /></el-icon>
@@ -46,7 +46,7 @@
       </div>
 
       <!-- Loading skeleton -->
-      <div v-else-if="isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+      <div v-else-if="agentsStore.isLoading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
         <div v-for="n in 6" :key="n" class="premium-card p-5 space-y-4">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high shimmer"></div>
@@ -71,18 +71,15 @@
         <div
           v-for="agent in filteredAgents"
           :key="agent.id"
-          class="premium-card group overflow-hidden cursor-pointer hover:-translate-y-0.5"
+          class="premium-card overflow-hidden cursor-pointer hover:-translate-y-0.5"
           @click="router.push({ name: 'agent-edit', params: { agentId: agent.id } })"
         >
           <!-- Type accent strip -->
-          <div class="h-1" :class="typeAccentClass(agent.type)"></div>
+          <div class="h-1 bg-gradient-to-r" :class="typeAccentClass(agent.type)"></div>
 
           <div class="p-5">
             <div class="flex items-start gap-3 mb-3">
-              <div
-                class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border overflow-hidden"
-                :class="agentAvatarClass(agent.type)"
-              >
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden border border-outline-variant bg-surface-container">
                 <img v-if="agent.avatar" :src="agent.avatar" :alt="agent.name" class="w-full h-full object-cover" />
                 <img v-else :src="getAgentTypeIcon(agent.type)" :alt="agent.type" class="w-6 h-6 object-contain" @error="hideImg" />
               </div>
@@ -103,7 +100,7 @@
 
             <AgentCapabilityTags :capabilities="agent.capabilities" />
 
-            <div class="mt-3 pt-3 border-t border-outline-variant flex items-center justify-between">
+            <div class="mt-3 flex items-center">
               <div class="flex gap-1 flex-wrap">
                 <span
                   v-for="tag in agent.tags.slice(0, 2)"
@@ -119,22 +116,6 @@
                   +{{ agent.tags.length - 2 }}
                 </span>
               </div>
-              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors"
-                  title="Edit"
-                  @click.stop="router.push({ name: 'agent-edit', params: { agentId: agent.id } })"
-                >
-                  <el-icon :size="14"><EditPen /></el-icon>
-                </button>
-                <button
-                  class="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50 transition-colors"
-                  title="Delete"
-                  @click.stop="confirmDelete(agent)"
-                >
-                  <el-icon :size="14"><Delete /></el-icon>
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -144,7 +125,7 @@
     <!-- AI Builder dialog -->
     <AgentBuilderDialog
       v-model="showBuilderDialog"
-      @confirmed="onBuilderConfirmed"
+      @confirmed="onAgentBuilt"
     />
   </PanelContainer>
 </template>
@@ -152,11 +133,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox, ElMessage } from 'element-plus'
-import { User, EditPen, Delete, Plus, Search } from '@element-plus/icons-vue'
+import { User, Plus, Search } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
-import { agentsApi } from '@/api/agents'
-import type { Agent } from '@/types/agent'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
 import AgentCapabilityTags from '@/components/agents/AgentCapabilityTags.vue'
 import AgentBuilderDialog from '@/components/agents/AgentBuilderDialog.vue'
@@ -165,8 +143,6 @@ import { getAgentTypeIcon } from '@/utils/agentIcons'
 const router = useRouter()
 const agentsStore = useAgentsStore()
 
-const agents = agentsStore.agents
-const isLoading = ref(false)
 const showBuilderDialog = ref(false)
 const activeFilter = ref('all')
 
@@ -179,94 +155,35 @@ const filterOptions = [
 ]
 
 const filteredAgents = computed(() => {
-  if (activeFilter.value === 'active') {
-    return agents.filter(a => a.isActive)
-  } else if (activeFilter.value !== 'all') {
-    return agents.filter(a => a.type === activeFilter.value)
-  }
+  const agents = agentsStore.agents
+  if (activeFilter.value === 'active') return agents.filter(a => a.isActive)
+  if (activeFilter.value !== 'all') return agents.filter(a => a.type === activeFilter.value)
   return agents
 })
 
 onMounted(async () => {
-  if (agents.length === 0) {
-    isLoading.value = true
-    try {
-      const data = await agentsApi.list()
-      agentsStore.agents = data.map(rawToAgent)
-    } finally {
-      isLoading.value = false
-    }
+  if (agentsStore.agents.length === 0) {
+    await agentsStore.loadAgents()
   }
 })
 
-function rawToAgent(raw: any): Agent {
-  return {
-    id: raw.id,
-    name: raw.name,
-    description: raw.description,
-    type: raw.type,
-    avatar: raw.avatar,
-    systemPrompt: raw.system_prompt,
-    capabilities: {
-      supportsCode: raw.capabilities.supports_code,
-      supportsDiff: raw.capabilities.supports_diff,
-      supportsApproval: raw.capabilities.supports_approval,
-      supportsImage: raw.capabilities.supports_image,
-    },
-    tags: raw.tags ?? [],
-    isPublic: raw.is_public,
-    isActive: raw.is_active,
-    createdAt: new Date(raw.created_at),
-    updatedAt: new Date(raw.updated_at),
-  }
-}
-
 function typeAccentClass(type: string) {
   const map: Record<string, string> = {
-    claude: 'bg-gradient-to-r from-amber-300 to-amber-400',
-    codex: 'bg-gradient-to-r from-emerald-400 to-emerald-500',
-    opencode: 'bg-gradient-to-r from-blue-400 to-blue-500',
-    custom: 'bg-gradient-to-r from-purple-400 to-purple-500',
+    claude:    'from-amber-200 to-amber-400',
+    codex:     'from-emerald-200 to-emerald-400',
+    opencode:  'from-blue-200 to-blue-400',
+    custom:    'from-purple-200 to-purple-400',
   }
-  return map[type] || 'bg-gradient-to-r from-slate-300 to-slate-400'
+  return map[type] || 'from-slate-200 to-slate-400'
 }
 
-function agentAvatarClass(type: string) {
-  const map: Record<string, string> = {
-    claude: 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200/50',
-    codex: 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200/50',
-    opencode: 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200/50',
-    custom: 'bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200/50',
-  }
-  return map[type] || 'bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200/50'
-}
 
 function hideImg(e: Event) {
   ;(e.target as HTMLImageElement).style.display = 'none'
 }
 
-function onBuilderConfirmed(draft: any) {
+function onAgentBuilt(draft: any) {
   agentsStore.initialDraft = draft
   router.push({ name: 'agent-create' })
-}
-
-async function confirmDelete(agent: Agent) {
-  try {
-    await ElMessageBox.confirm(
-      `Delete agent "${agent.name}"? This cannot be undone.`,
-      'Delete Agent',
-      { confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
-    )
-  } catch {
-    return
-  }
-  try {
-    await agentsApi.deactivate(agent.id)
-    const idx = agentsStore.agents.findIndex(a => a.id === agent.id)
-    if (idx >= 0) agentsStore.agents.splice(idx, 1)
-    ElMessage.success('Agent deleted')
-  } catch {
-    ElMessage.error('Failed to delete agent')
-  }
 }
 </script>

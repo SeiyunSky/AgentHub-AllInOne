@@ -71,15 +71,15 @@
         </div>
       </section>
 
-      <!-- Skills: Multi-select with tags -->
+      <!-- Skills: capabilities (fixed) + API skills, single picker -->
       <section>
         <h3 class="section-heading">
           <el-icon :size="14"><SetUp /></el-icon>
           Skills
         </h3>
 
-        <!-- Selected skills as tags -->
-        <div v-if="selectedSkills.length > 0" class="flex flex-wrap gap-1.5 mb-2">
+        <!-- Selected tags: capabilities + API skills -->
+        <div v-if="selectedSkills.length > 0 || draft.skillIds.length > 0" class="flex flex-wrap gap-1.5 mb-2">
           <div
             v-for="skill in activeSkillDefs"
             :key="skill.key"
@@ -95,13 +95,27 @@
               <el-icon :size="8"><Close /></el-icon>
             </button>
           </div>
+          <div
+            v-for="skill in selectedApiSkills"
+            :key="skill.id"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium border bg-indigo-50 text-indigo-700 border-indigo-200/60"
+          >
+            <el-icon :size="12"><Promotion /></el-icon>
+            {{ skill.displayName || skill.name }}
+            <button
+              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-black/10 transition-colors"
+              @click="removeApiSkill(skill.id)"
+            >
+              <el-icon :size="8"><Close /></el-icon>
+            </button>
+          </div>
         </div>
 
-        <!-- Dropdown picker -->
+        <!-- Single picker popover -->
         <el-popover
           trigger="click"
           placement="bottom-start"
-          :width="260"
+          :width="280"
           :show-arrow="false"
           :offset="4"
           popper-class="skill-picker-popper"
@@ -109,10 +123,13 @@
           <template #reference>
             <button class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium border border-outline-variant bg-white hover:border-brand hover:bg-brand-light/20 transition-all cursor-pointer">
               <el-icon :size="14"><Plus /></el-icon>
-              {{ selectedSkills.length > 0 ? 'Add more skills' : 'Select skills' }}
+              {{ totalSelected > 0 ? 'Add more skills' : 'Select skills' }}
             </button>
           </template>
-          <div class="py-1.5">
+
+          <div class="py-1.5 max-h-[320px] overflow-y-auto custom-scrollbar">
+            <!-- Capabilities group -->
+            <p class="px-3 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">Capabilities</p>
             <div
               v-for="skill in allSkills"
               :key="skill.key"
@@ -130,6 +147,36 @@
               <span class="font-medium" :class="props.draft.capabilities[skill.key] ? 'text-brand' : 'text-on-surface'">
                 {{ skill.label }}
               </span>
+            </div>
+
+            <!-- Divider -->
+            <div class="my-1.5 mx-3 border-t border-outline-variant/60" />
+
+            <!-- API Skills group -->
+            <p class="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">Skills</p>
+            <div v-if="skillsStore.isLoading" class="px-3 py-2 text-[13px] text-on-surface-variant">Loading...</div>
+            <div v-else-if="skillsStore.skills.length === 0" class="px-3 py-2 text-[13px] text-on-surface-variant">No skills available</div>
+            <div
+              v-else
+              v-for="skill in skillsStore.skills"
+              :key="skill.id"
+              class="flex items-center gap-3 px-3 py-2.5 text-[13px] cursor-pointer hover:bg-brand-light/30 rounded-lg mx-1 transition-colors"
+              @click="toggleApiSkill(skill.id)"
+            >
+              <div
+                class="w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0"
+                :class="draft.skillIds.includes(skill.id)
+                  ? 'bg-brand text-white'
+                  : 'bg-surface-container text-on-surface-variant'"
+              >
+                <el-icon :size="12"><Select v-if="draft.skillIds.includes(skill.id)" /><Promotion v-else /></el-icon>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium truncate" :class="draft.skillIds.includes(skill.id) ? 'text-brand' : 'text-on-surface'">
+                  {{ skill.displayName || skill.name }}
+                </p>
+                <p v-if="skill.description" class="text-[11px] text-on-surface-variant truncate">{{ skill.description }}</p>
+              </div>
             </div>
           </div>
         </el-popover>
@@ -201,19 +248,42 @@
         </div>
       </section>
 
+      <!-- Status -->
+      <section v-if="editMode">
+        <h3 class="section-heading">
+          <el-icon :size="14"><CircleCheck /></el-icon>
+          Status
+        </h3>
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-[13px] font-medium text-on-surface">Active</p>
+            <p class="text-[12px] text-on-surface-variant">Disabled agents cannot be used in conversations</p>
+          </div>
+          <el-switch v-model="draft.isActive" />
+        </div>
+      </section>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import type { AgentDraft, AgentCapabilities, AgentType } from '@/types/agent'
 import type { Component } from 'vue'
-import { Close, Document, SetUp, Picture, Cpu, Select, PriceTag, View, Plus } from '@element-plus/icons-vue'
+import { Close, Document, SetUp, Picture, Cpu, Select, PriceTag, View, Plus, CircleCheck, Promotion } from '@element-plus/icons-vue'
 import { getAgentTypeIcon } from '@/utils/agentIcons'
+import { useSkillsStore } from '@/stores/skills'
 
 const props = defineProps<{
   draft: AgentDraft
+  editMode?: boolean
 }>()
+
+const skillsStore = useSkillsStore()
+
+onMounted(() => {
+  skillsStore.loadSkills()
+})
 
 const tagInput = ref('')
 
@@ -237,6 +307,10 @@ const selectedSkills = computed(() =>
 
 const activeSkillDefs = computed(() =>
   allSkills.filter(s => props.draft.capabilities[s.key]),
+)
+
+const totalSelected = computed(() =>
+  selectedSkills.value.length + props.draft.skillIds.length,
 )
 
 function toggleSkillSelection(key: keyof AgentCapabilities) {
@@ -273,6 +347,24 @@ function addTag() {
 function removeTag(tag: string) {
   const index = props.draft.tags.indexOf(tag)
   if (index > -1) props.draft.tags.splice(index, 1)
+}
+
+const selectedApiSkills = computed(() =>
+  skillsStore.skills.filter(s => props.draft.skillIds.includes(s.id)),
+)
+
+function toggleApiSkill(id: string) {
+  const idx = props.draft.skillIds.indexOf(id)
+  if (idx >= 0) {
+    props.draft.skillIds.splice(idx, 1)
+  } else {
+    props.draft.skillIds.push(id)
+  }
+}
+
+function removeApiSkill(id: string) {
+  const idx = props.draft.skillIds.indexOf(id)
+  if (idx >= 0) props.draft.skillIds.splice(idx, 1)
 }
 </script>
 

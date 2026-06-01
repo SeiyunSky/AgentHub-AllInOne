@@ -9,6 +9,15 @@
         <template #headerActions>
           <div class="flex items-center gap-2">
             <button
+              v-if="isEditMode"
+              class="h-8 px-4 rounded-lg text-[13px] font-medium border border-red-200 bg-white text-red-500 hover:bg-red-50 hover:border-red-300 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="isDeleting"
+              @click="handleDelete"
+            >
+              <el-icon v-if="isDeleting" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
+              Delete
+            </button>
+            <button
               class="h-8 px-4 rounded-lg text-[13px] font-medium border border-outline-variant bg-white text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all cursor-pointer"
               @click="handleCancel"
             >
@@ -48,7 +57,7 @@
               <div class="h-20 rounded-xl bg-surface-container-high shimmer"></div>
             </div>
           </div>
-          <AgentForm v-else :draft="localDraft" />
+          <AgentForm v-else :draft="localDraft" :edit-mode="isEditMode" />
         </div>
       </PanelContainer>
     </Pane>
@@ -61,23 +70,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { User, ArrowRight, ArrowLeft, Loading } from '@element-plus/icons-vue'
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 import { useAgentsStore } from '@/stores/agents'
-import { agentsApi } from '@/api/agents'
-import type { Agent, AgentDraft } from '@/types/agent'
+import { agentsApi, type AgentResponse } from '@/api/agents'
+import type { AgentDraft } from '@/types/agent'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
 import AgentForm from '@/components/agents/AgentForm.vue'
 import ChatPanel from '@/components/layout/ChatPanel.vue'
-import { log } from 'console'
 
 const route = useRoute()
 const router = useRouter()
 const agentsStore = useAgentsStore()
 
 const isSaving = ref(false)
+const isDeleting = ref(false)
 const isLoading = ref(false)
 const chatVisible = ref(true)
 const chatPaneSize = ref(70)
@@ -93,71 +102,56 @@ const defaultDraft: AgentDraft = {
   capabilities: { supportsCode: true, supportsDiff: false, supportsApproval: false, supportsImage: false },
   tags: [],
   isPublic: false,
+  isActive: true,
+  skillIds: [],
 }
 
 const localDraft = ref<AgentDraft>({ ...defaultDraft })
 
-// Load agent data when editing
+function rawToDraft(raw: AgentResponse): AgentDraft {
+  return {
+    name: raw.name,
+    description: raw.description,
+    type: raw.type as AgentDraft['type'],
+    avatar: raw.avatar,
+    systemPrompt: raw.system_prompt,
+    capabilities: {
+      supportsCode: raw.capabilities.supports_code,
+      supportsDiff: raw.capabilities.supports_diff,
+      supportsApproval: raw.capabilities.supports_approval,
+      supportsImage: raw.capabilities.supports_image,
+    },
+    tags: raw.tags,
+    isPublic: raw.is_public,
+    isActive: raw.is_active,
+    skillIds: raw.skill_ids ?? [],
+  }
+}
+
+async function loadAgentById(id: string) {
+  isLoading.value = true
+  try {
+    localDraft.value = rawToDraft(await agentsApi.get(id))
+  } catch {
+    ElMessage.error('Failed to load agent')
+    router.push({ name: 'agents' })
+  } finally {
+    isLoading.value = false
+  }
+}
+
 onMounted(async () => {
   if (isEditMode.value) {
-    isLoading.value = true
-    try {
-      const raw = await agentsApi.get(agentId.value!)
-      localDraft.value = {
-        name: raw.name,
-        description: raw.description,
-        type: raw.type as AgentDraft['type'],
-        avatar: raw.avatar,
-        systemPrompt: raw.system_prompt,
-        capabilities: {
-          supportsCode: raw.capabilities.supports_code,
-          supportsDiff: raw.capabilities.supports_diff,
-          supportsApproval: raw.capabilities.supports_approval,
-          supportsImage: raw.capabilities.supports_image,
-        },
-        tags: raw.tags,
-        isPublic: raw.is_public,
-      }
-    } catch {
-      ElMessage.error('Failed to load agent')
-      router.push({ name: 'agents' })
-    } finally {
-      isLoading.value = false
-    }
+    await loadAgentById(agentId.value!)
   } else {
-    // Create mode: use initialDraft from store if available (e.g., from AI Builder)
     localDraft.value = { ...defaultDraft, ...agentsStore.initialDraft }
-    agentsStore.initialDraft = undefined // clear after use
+    agentsStore.initialDraft = undefined
   }
 })
 
-// Also watch route param changes (if navigating between different agents)
 watch(agentId, async (newId) => {
   if (newId) {
-    isLoading.value = true
-    try {
-      const raw = await agentsApi.get(newId)
-      localDraft.value = {
-        name: raw.name,
-        description: raw.description,
-        type: raw.type as AgentDraft['type'],
-        avatar: raw.avatar,
-        systemPrompt: raw.system_prompt,
-        capabilities: {
-          supportsCode: raw.capabilities.supports_code,
-          supportsDiff: raw.capabilities.supports_diff,
-          supportsApproval: raw.capabilities.supports_approval,
-          supportsImage: raw.capabilities.supports_image,
-        },
-        tags: raw.tags,
-        isPublic: raw.is_public,
-      }
-    } catch {
-      ElMessage.error('Failed to load agent')
-      router.push({ name: 'agents' })
-    } finally {
-      isLoading.value = false
-    }
+    await loadAgentById(newId)
   } else {
     localDraft.value = { ...defaultDraft }
   }
@@ -180,9 +174,30 @@ function toggleChat() {
   chatVisible.value = !chatVisible.value
 }
 
+async function handleDelete() {
+  try {
+    await ElMessageBox.confirm(
+      `Delete agent "${localDraft.value.name}"? This cannot be undone.`,
+      'Delete Agent',
+      { confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
+    )
+  } catch {
+    return
+  }
+  isDeleting.value = true
+  try {
+    await agentsApi.delete(agentId.value!)
+    agentsStore.removeAgent(agentId.value!)
+    ElMessage.success('Agent deleted')
+    router.push({ name: 'agents' })
+  } catch {
+    ElMessage.error('Failed to delete agent')
+  } finally {
+    isDeleting.value = false
+  }
+}
+
 async function handleSave() {
-  console.log(localDraft);
-  
   if (!localDraft.value.name.trim()) {
     ElMessage.warning('Agent name is required')
     return
@@ -203,42 +218,18 @@ async function handleSave() {
       },
       tags: localDraft.value.tags,
       is_public: localDraft.value.isPublic,
+      is_active: localDraft.value.isActive,
+      skill_ids: localDraft.value.skillIds,
     }
-    let saved: any
+    let saved: AgentResponse
     if (isEditMode.value) {
       saved = await agentsApi.update(agentId.value!, payload)
     } else {
       saved = await agentsApi.create(payload)
     }
-    const agent: Agent = {
-      id: saved.id,
-      name: saved.name,
-      description: saved.description,
-      type: saved.type,
-      avatar: saved.avatar,
-      systemPrompt: saved.system_prompt,
-      capabilities: {
-        supportsCode: saved.capabilities.supports_code,
-        supportsDiff: saved.capabilities.supports_diff,
-        supportsApproval: saved.capabilities.supports_approval,
-        supportsImage: saved.capabilities.supports_image,
-      },
-      tags: saved.tags,
-      isPublic: saved.is_public,
-      isActive: saved.is_active,
-      createdAt: new Date(saved.created_at),
-      updatedAt: new Date(saved.updated_at),
-    }
-    // Update store
-    const idx = agentsStore.agents.findIndex(a => a.id === saved.id)
-    if (idx >= 0) {
-      agentsStore.agents.splice(idx, 1, agent)
-    } else {
-      agentsStore.agents.unshift(agent)
-    }
+    agentsStore.upsertAgent(saved)
     ElMessage.success(isEditMode.value ? 'Agent updated' : 'Agent created')
     if (!isEditMode.value) {
-      // After create, navigate to the edit page for the new agent
       router.replace({ name: 'agent-edit', params: { agentId: saved.id } })
     }
   } catch {

@@ -76,6 +76,10 @@ export const agentsApi = {
     return http.patch(`/agents/${id}`, data)
   },
 
+  delete(id: string): Promise<void> {
+    return http.delete(`/agents/${id}`)
+  },
+
   deactivate(id: string): Promise<AgentResponse> {
     return http.post(`/agents/${id}/deactivate`, {})
   },

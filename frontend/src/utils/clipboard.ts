@@ -16,14 +16,3 @@ export async function copyToClipboard(text: string): Promise<void> {
   }
 }
 
-/**
- * Global handler for inline onclick in markdown-rendered code blocks
- * Called via window.__copyCode(buttonElement, codeId)
- */
-;(window as any).__copyCode = async (btn: HTMLButtonElement, codeId: string) => {
-  const el = document.getElementById(codeId)
-  if (!el) return
-  await copyToClipboard(el.textContent || '')
-  btn.textContent = 'Copied!'
-  setTimeout(() => { btn.textContent = 'Copy' }, 1500)
-}

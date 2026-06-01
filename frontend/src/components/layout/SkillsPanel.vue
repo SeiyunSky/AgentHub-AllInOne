@@ -82,7 +82,7 @@
         <div
           v-for="skill in filteredSkills"
           :key="skill.id"
-          class="premium-card group overflow-hidden cursor-pointer hover:-translate-y-0.5"
+          class="premium-card overflow-hidden cursor-pointer hover:-translate-y-0.5"
           @click="router.push({ name: 'skill-edit', params: { skillId: skill.id } })"
         >
           <!-- Brand accent strip -->
@@ -117,24 +117,6 @@
                 {{ skill.category }}
               </span>
               <span v-else class="text-[10px] text-on-surface-variant opacity-50">Uncategorized</span>
-
-              <!-- Hover actions -->
-              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors"
-                  title="Edit"
-                  @click.stop="router.push({ name: 'skill-edit', params: { skillId: skill.id } })"
-                >
-                  <el-icon :size="14"><EditPen /></el-icon>
-                </button>
-                <button
-                  class="w-7 h-7 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50 transition-colors"
-                  title="Delete"
-                  @click.stop="confirmDelete(skill)"
-                >
-                  <el-icon :size="14"><Delete /></el-icon>
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -146,11 +128,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox, ElMessage } from 'element-plus'
-import { MagicStick, Plus, EditPen, Delete, Search } from '@element-plus/icons-vue'
+import { MagicStick, Plus, Search } from '@element-plus/icons-vue'
 import { useSkillsStore } from '@/stores/skills'
-import { skillsApi } from '@/api/skills'
-import type { Skill } from '@/types/skill'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
 
 const router = useRouter()
@@ -182,24 +161,4 @@ onMounted(async () => {
     }
   }
 })
-
-async function confirmDelete(skill: Skill) {
-  try {
-    await ElMessageBox.confirm(
-      `Delete skill "${skill.displayName || skill.name}"? This cannot be undone.`,
-      'Delete Skill',
-      { confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
-    )
-  } catch {
-    return
-  }
-  try {
-    await skillsApi.remove(skill.id)
-    const idx = skillsStore.skills.findIndex(s => s.id === skill.id)
-    if (idx >= 0) skillsStore.skills.splice(idx, 1)
-    ElMessage.success('Skill deleted')
-  } catch {
-    ElMessage.error('Failed to delete skill')
-  }
-}
 </script>

@@ -41,4 +41,5 @@ export interface SkillDraft {
   category?: string
   content: string
   isPublic: boolean
+  isActive: boolean
 }

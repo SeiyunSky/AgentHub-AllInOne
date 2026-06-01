@@ -105,11 +105,26 @@
       </div>
     </section>
 
+    <!-- Status -->
+    <section v-if="editMode">
+      <h3 class="section-heading">
+        <el-icon :size="14"><CircleCheck /></el-icon>
+        Status
+      </h3>
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[13px] font-medium text-on-surface">Active</p>
+          <p class="text-[12px] text-on-surface-variant">Disabled skills cannot be selected by agents</p>
+        </div>
+        <el-switch v-model="draft.isActive" />
+      </div>
+    </section>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { MagicStick, EditPen, Document, PriceTag, View } from '@element-plus/icons-vue'
+import { MagicStick, EditPen, Document, PriceTag, View, CircleCheck } from '@element-plus/icons-vue'
 import type { SkillDraft } from '@/types/skill'
 
 defineProps<{

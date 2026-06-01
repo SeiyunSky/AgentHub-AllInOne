@@ -50,11 +50,28 @@ export const useAgentsStore = defineStore('agents', () => {
     return loadPromise
   }
 
+  function upsertAgent(raw: AgentResponse) {
+    const agent = mapAgentResponse(raw)
+    const idx = agents.value.findIndex(a => a.id === agent.id)
+    if (idx >= 0) {
+      agents.value.splice(idx, 1, agent)
+    } else {
+      agents.value.unshift(agent)
+    }
+  }
+
+  function removeAgent(id: string) {
+    const idx = agents.value.findIndex(a => a.id === id)
+    if (idx >= 0) agents.value.splice(idx, 1)
+  }
+
   return {
     agents,
     isLoading,
     isSaving,
     initialDraft,
     loadAgents,
+    upsertAgent,
+    removeAgent,
   }
 })
