@@ -887,6 +887,8 @@ async def create_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[s
     return {
         "path": _relative_to_sandbox(ctx, abs_path),
         "size": len(parsed.content.encode("utf-8")),
+        "old_content": "",
+        "new_content": parsed.content,
     }
 
 
@@ -956,6 +958,8 @@ async def edit_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str
     return {
         "path": _relative_to_sandbox(ctx, abs_path),
         "replaced": True,
+        "old_content": content,
+        "new_content": new_content,
     }
 
 

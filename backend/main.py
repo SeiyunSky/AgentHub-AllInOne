@@ -163,6 +163,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     from backend.api.v1 import agents as agents_router
     from backend.api.v1 import skills as skills_router
     from backend.api.v1 import files as files_router
+    from backend.api.v1 import artifacts as artifacts_router
 
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
     app.include_router(
@@ -173,6 +174,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
     app.include_router(skills_router.router, prefix="/api/v1", tags=["skills"])
     app.include_router(files_router.router, prefix="/api/v1", tags=["files"])
+    app.include_router(artifacts_router.router, prefix="/api/v1", tags=["artifacts"])
 
     # 静态资源：头像等图片文件
     _static_dir = Path(__file__).parent / "static"

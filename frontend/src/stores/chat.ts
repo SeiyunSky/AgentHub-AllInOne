@@ -451,6 +451,7 @@ export const useChatStore = defineStore('chat', () => {
       }
     }
     streamingConvIds.value.delete(convId)
+    streamingConvIds.value = new Set(streamingConvIds.value)  // 强制触发响应式更新
     // round_done 后 thread 卡片本来该清,但留 5 秒让用户看到完成态会更好
     // MVP 先直接清:
     threadActivitiesMap.value.delete(convId)
@@ -466,6 +467,7 @@ export const useChatStore = defineStore('chat', () => {
       }
     }
     streamingConvIds.value.delete(convId)
+    streamingConvIds.value = new Set(streamingConvIds.value)
     pendingApprovals.value.delete(convId)
   }
 

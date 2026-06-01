@@ -279,6 +279,7 @@ class OrchestratorService:
         total_tokens_in = 0
         total_tokens_out = 0
         round_count = 0
+        _MAX_ROUNDS = 30  # 防止 LLM 陷入无限工具调用循环
 
         # 第一轮必须有一条 user 消息作为 messages[0],否则 Anthropic API 报
         # 400 "messages array cannot be empty"。把当前轮触发的用户消息原文取出注入。
@@ -330,6 +331,17 @@ class OrchestratorService:
 
         while True:
             round_count += 1
+
+            if round_count > _MAX_ROUNDS:
+                logger.error(
+                    "orchestrator %s hit round limit (%d), force-exiting loop",
+                    thread_id,
+                    _MAX_ROUNDS,
+                )
+                raise RuntimeError(
+                    f"orchestrator {thread_id}: 超过最大轮次限制 {_MAX_ROUNDS}，"
+                    "可能陷入工具调用死循环，已强制退出"
+                )
 
             # ---- 步 1:消费 pending_events ----
             pending_summaries = ThreadService.pop_pending_events(thread_id)
