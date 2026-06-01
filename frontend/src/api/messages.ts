@@ -14,6 +14,6 @@ export const messagesApi = {
   },
 
   updateFeedback(messageId: string, feedback: 'up' | 'down' | null): Promise<MessageResponse> {
-    return http.patch(`/messages/${messageId}/feedback`, { feedback })
+    return http.post(`/messages/${messageId}/feedback`, { feedback })
   },
 }
