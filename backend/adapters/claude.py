@@ -70,8 +70,11 @@ class ClaudeAdapter(AgentAdapter):
         bin_path = shutil.which(self._bin_path) or self._bin_path
         prompt = _build_prompt(inp)
 
+        # 不再用 -p 把 prompt 当命令行参数:Windows 命令行硬上限 8191 字符,
+        # 一旦 prompt 含历史/代码长度超限,subprocess 直接报 "The command line is too long"。
+        # 改成 stdin 喂入,长度由 CLI 内部缓冲处理,无 Windows CLI 长度限制。
         cmd = [
-            bin_path, "-p", prompt,
+            bin_path, "-p",
             "--output-format", "stream-json",
             "--verbose",
         ]
@@ -84,6 +87,7 @@ class ClaudeAdapter(AgentAdapter):
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
+                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -92,6 +96,18 @@ class ClaudeAdapter(AgentAdapter):
                 **_base(),
                 error=f"Claude CLI not found at '{bin_path}'. Run `claude login` to set up.",
             )
+            return
+
+        # 把 prompt 从 stdin 喂给 CLI,避免命令行长度限制。
+        # 写完立刻 close,告诉 CLI "输入到此为止",触发它进入流式输出。
+        try:
+            assert proc.stdin is not None
+            proc.stdin.write(prompt.encode("utf-8"))
+            await proc.stdin.drain()
+            proc.stdin.close()
+        except Exception:
+            logger.exception("Claude CLI stdin write failed")
+            yield AgentErrorEvent(**_base(), error="stdin write failed")
             return
 
         text_block_id: str | None = None
