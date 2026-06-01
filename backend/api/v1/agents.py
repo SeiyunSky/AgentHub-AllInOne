@@ -75,6 +75,9 @@ def create_agent(
     fields["is_public"] = 1 if fields.pop("is_public") else 0
     if "capabilities" in fields and fields["capabilities"] is not None:
         fields["capabilities"] = fields["capabilities"].model_dump() if hasattr(fields["capabilities"], "model_dump") else fields["capabilities"]
+    if not fields.get("avatar"):
+        from backend.core.avatars import pick_random_avatar
+        fields["avatar"] = pick_random_avatar()
 
     agent = repo.create(**fields)
     if data.skill_ids:

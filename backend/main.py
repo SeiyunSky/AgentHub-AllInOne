@@ -21,9 +21,11 @@ import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend.adapters.registry import registry as adapter_registry
 from backend.api.exception_handlers import register_exception_handlers
@@ -171,6 +173,11 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
     app.include_router(skills_router.router, prefix="/api/v1", tags=["skills"])
     app.include_router(files_router.router, prefix="/api/v1", tags=["files"])
+
+    # 静态资源：头像等图片文件
+    _static_dir = Path(__file__).parent / "static"
+    _static_dir.mkdir(exist_ok=True)
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
     return app
 

@@ -57,6 +57,7 @@ PRESET_AGENTS: list[dict] = [
         "type": "claude",
         "prompt_key": None,  # orchestrator prompt 不走 agents 目录，由 prompt_builder 加载
         "capabilities": {"supports_diff": False, "supports_approval": False},
+        "avatar": "/static/avatars/avatar-1.jpg",
         "is_active": 1,
         "is_public": 0,
     },
@@ -67,15 +68,11 @@ PRESET_AGENTS: list[dict] = [
         "description": "专业信息收集与结构化报告输出，适合市场调研、技术选型、资料汇总等任务",
         "type": "claude",
         "prompt_key": "research",
-        # supports_web_search / supports_web_fetch：声明性标注，表示本 Agent 需要挂载对应 MCP server。
-        # ClaudeAdapter 通过 claude CLI settings.json 挂载 MCP，AgentHub 侧只做声明。
-        # 推荐在 ~/.claude/settings.json 配置：
-        #   - @modelcontextprotocol/server-brave-search（BRAVE_API_KEY 必填）
-        #   - @modelcontextprotocol/server-fetch
         "capabilities": {
             "supports_web_search": True,
             "supports_web_fetch": True,
         },
+        "avatar": "/static/avatars/avatar-2.jpg",
         "is_active": 1,
         "is_public": 1,
     },
@@ -87,6 +84,7 @@ PRESET_AGENTS: list[dict] = [
         "type": "codex",
         "prompt_key": "coder",
         "capabilities": {},
+        "avatar": "/static/avatars/avatar-3.jpg",
         "is_active": 1,
         "is_public": 1,
     },
@@ -98,6 +96,7 @@ PRESET_AGENTS: list[dict] = [
         "type": "claude",
         "prompt_key": "reviewer",
         "capabilities": {},
+        "avatar": "/static/avatars/avatar-4.jpg",
         "is_active": 1,
         "is_public": 1,
     },
@@ -109,9 +108,10 @@ def seed_agents(db: Session) -> int:
     幂等写入内置 Agent。返回实际插入或更新的行数。
 
     策略：
-      - 不存在 → INSERT
+      - 不存在 → INSERT（含 avatar）
       - 存在但 system_prompt 为空 → UPDATE（补回内置提示词）
-      - 存在且 system_prompt 非空 → SKIP（尊重用户修改）
+      - 存在但 avatar 为空 → UPDATE（补回预置头像）
+      - 存在且 system_prompt / avatar 均非空 → SKIP（尊重用户修改）
     """
     from backend.models.agent import Agent
 
@@ -127,10 +127,17 @@ def seed_agents(db: Session) -> int:
             logger.info("Seeded agent (insert): %s", fields["name"])
             affected += 1
 
-        elif not existing.system_prompt:
-            existing.system_prompt = _load_prompt(prompt_key) if prompt_key else None
-            logger.info("Seeded agent (prompt restored): %s", fields["name"])
-            affected += 1
+        else:
+            updated = False
+            if not existing.system_prompt:
+                existing.system_prompt = _load_prompt(prompt_key) if prompt_key else None
+                updated = True
+            if not existing.avatar and fields.get("avatar"):
+                existing.avatar = fields["avatar"]
+                updated = True
+            if updated:
+                logger.info("Seeded agent (updated): %s", fields["name"])
+                affected += 1
 
     if affected:
         db.commit()

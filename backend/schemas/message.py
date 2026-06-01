@@ -173,6 +173,7 @@ class MessageResponse(BaseModel):
     parent_id: Optional[str] = None
     user_id: Optional[str] = None
     agent_id: Optional[str] = None
+    agent_avatar: Optional[str] = None
     role: MessageRole
     blocks: list[ContentBlock] = Field(default_factory=list)
     status: MessageStatus

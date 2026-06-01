@@ -1,6 +1,6 @@
 <template>
   <div class="flex gap-3 message-enter group">
-    <AgentAvatar :name="message.agentName" :color="avatarColor" />
+    <AgentAvatar :name="message.agentName" :color="avatarColor" :avatar="agentAvatar" />
 
     <div class="flex-1 min-w-0 relative pb-3">
       <!-- Header -->
@@ -144,6 +144,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AgentMessage } from '@/types/chat'
+import { useAgentsStore } from '@/stores/agents'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import AgentAvatar from './AgentAvatar.vue'
 import StreamingCursor from './StreamingCursor.vue'
@@ -174,6 +175,11 @@ defineEmits<{
 }>()
 
 const avatarColor = computed(() => props.message.agentRoleColor ?? 'brand')
+
+const agentsStore = useAgentsStore()
+const agentAvatar = computed(() =>
+  agentsStore.agents.find(a => a.id === props.message.agentId)?.avatar ?? props.message.avatar
+)
 
 const messageContent = computed(() => {
   if (props.message.blocks && props.message.blocks.length > 0) {

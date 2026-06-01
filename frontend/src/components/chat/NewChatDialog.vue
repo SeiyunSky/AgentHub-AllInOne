@@ -48,8 +48,9 @@
             :key="agent.id"
             class="agent-chip group/chip"
           >
-            <div class="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold" :class="chipAvatarClass(agent.type)">
-              {{ agent.name.charAt(0) }}
+            <div class="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold overflow-hidden" :class="agent.avatar ? '' : chipAvatarClass(agent.type)">
+              <img v-if="agent.avatar" :src="agent.avatar" :alt="agent.name" class="w-full h-full object-cover" />
+              <span v-else>{{ agent.name.charAt(0) }}</span>
             </div>
             <span class="text-[12px] font-medium">{{ agent.name }}</span>
             <button
@@ -97,8 +98,9 @@
                 class="agent-option"
                 @click="addAgent(agent.id)"
               >
-                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0" :class="agentAvatarClass(agent.type)">
-                  {{ agent.name.charAt(0) }}
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden" :class="agent.avatar ? '' : agentAvatarClass(agent.type)">
+                  <img v-if="agent.avatar" :src="agent.avatar" :alt="agent.name" class="w-full h-full object-cover" />
+                  <span v-else>{{ agent.name.charAt(0) }}</span>
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-[13px] font-medium text-on-surface truncate">{{ agent.name }}</p>

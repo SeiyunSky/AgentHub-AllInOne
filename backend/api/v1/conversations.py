@@ -210,7 +210,21 @@ async def list_conversation_messages(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
-    return [_message_orm_to_response(m) for m in messages]
+
+    # 批量查 agent avatar，避免 N+1
+    from backend.core.database import SessionLocal
+    from backend.repositories.agent_repo import AgentRepository
+    agent_ids = list({m.agent_id for m in messages if m.agent_id})
+    avatar_map: dict[str, str | None] = {}
+    if agent_ids:
+        session = SessionLocal()
+        try:
+            agents = AgentRepository(session).list_by_ids(agent_ids, include_inactive=True)
+            avatar_map = {a.id: a.avatar for a in agents}
+        finally:
+            session.close()
+
+    return [_message_orm_to_response(m, avatar_map) for m in messages]
 
 
 # ============================================================
@@ -390,11 +404,10 @@ async def get_conversation_token_usage(
 # 内部辅助:Message ORM → MessageResponse
 # ============================================================
 
-def _message_orm_to_response(msg) -> MessageResponse:
+def _message_orm_to_response(msg, avatar_map: dict | None = None) -> MessageResponse:
     """
     把 ORM Message 转成 MessageResponse。
-    重点处理 content 字段:DB 存的是 list[dict](JSON),Pydantic 需要 list[ContentBlock]。
-    MessageResponse 的 blocks 字段会自动反序列化(ContentBlock 是 discriminated union)。
+    avatar_map: {agent_id: avatar_url}，调用方批量查好传入，避免 N+1。
     """
     return MessageResponse.model_validate({
         "id": msg.id,
@@ -403,6 +416,7 @@ def _message_orm_to_response(msg) -> MessageResponse:
         "parent_id": msg.parent_id,
         "user_id": msg.user_id,
         "agent_id": msg.agent_id,
+        "agent_avatar": (avatar_map or {}).get(msg.agent_id) if msg.agent_id else None,
         "role": msg.role,
         "blocks": msg.content or [],  # DB 字段叫 content,API 字段叫 blocks
         "status": msg.status,

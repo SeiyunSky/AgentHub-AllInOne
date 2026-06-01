@@ -45,11 +45,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import type { Message, ChatAgent } from '@/types/chat'
 import type { AgentMember } from '@/types/conversation'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
+import { useAgentsStore } from '@/stores/agents'
 import ChatHeader from '@/components/layout/ChatHeader.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
@@ -72,7 +73,12 @@ const emit = defineEmits<{
 
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
+const agentsStore = useAgentsStore()
 const chatInputRef = ref<{ focus: () => void } | null>(null)
+
+onMounted(() => {
+  agentsStore.loadAgents()
+})
 
 const convId = computed(() => conversationsStore.currentId)
 const isStreaming = computed(() => !!convId.value && chatStore.isStreamingFor(convId.value))

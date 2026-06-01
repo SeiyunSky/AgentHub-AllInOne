@@ -118,6 +118,7 @@ function toUIMessage(msg: MessageResponse): Message {
     type: 'agent',
     agentId: msg.agent_id ?? '',
     agentName: msg.sender ?? msg.agent_id ?? 'Agent',
+    avatar: msg.agent_avatar ?? undefined,
     content: uiBlocks.find(b => b.type === 'text')?.content ?? '',
     timestamp: new Date(msg.created_at),
     blocks: uiBlocks,
