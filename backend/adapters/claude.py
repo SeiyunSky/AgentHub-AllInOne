@@ -111,6 +111,10 @@ class ClaudeAdapter(AgentAdapter):
             return
 
         text_block_id: str | None = None
+        # 从 result 事件抠出 token usage,在 AgentDoneEvent 里上报给 thread_service
+        # claude stream-json 通常在 result 行里给 {"usage":{"input_tokens":N,"output_tokens":N}}
+        last_tokens_input = 0
+        last_tokens_output = 0
 
         assert proc.stdout is not None
         async for raw_line in proc.stdout:
@@ -158,6 +162,21 @@ class ClaudeAdapter(AgentAdapter):
                     yield BlockStopEvent(**_base(), block_id=text_block_id)
                     text_block_id = None
 
+                # 从 result 行解析 usage(claude CLI 当前版本会带,缺省 0)
+                usage = event.get("usage") or {}
+                last_tokens_input = int(
+                    usage.get("input_tokens")
+                    or usage.get("prompt_tokens")
+                    or event.get("input_tokens")
+                    or 0
+                )
+                last_tokens_output = int(
+                    usage.get("output_tokens")
+                    or usage.get("completion_tokens")
+                    or event.get("output_tokens")
+                    or 0
+                )
+
                 if event.get("subtype") != "success" or event.get("is_error"):
                     error_msg = event.get("result") or "Claude CLI returned an error"
                     yield AgentErrorEvent(**_base(), error=error_msg)
@@ -180,7 +199,11 @@ class ClaudeAdapter(AgentAdapter):
         if text_block_id is not None:
             yield BlockStopEvent(**_base(), block_id=text_block_id)
 
-        yield AgentDoneEvent(**_base())
+        yield AgentDoneEvent(
+            **_base(),
+            tokens_input=last_tokens_input,
+            tokens_output=last_tokens_output,
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -167,6 +167,27 @@ class OrchestratorService:
             # 主 Agent thread 从 init 推进到 running,写 started_at(便于监控 loop 起跑时间)
             await ThreadService(loop_session).mark_running(thread_id)
             loop_session.commit()
+
+            # 立刻推 SSE agent_start,让前端 UI 立即出现"主 Agent 正在思考"的气泡。
+            # 否则前端要等到主 Agent 最后调 respond_to_user 才看到反馈,期间几十秒内
+            # 用户以为卡死。orchestrator 没有专属 messageId(自己不直接落消息),
+            # 用 thread_id 作 message_id 占位,前端 streaming 气泡按 agent_id 索引,
+            # 真有消息落库时会再触发新的 agent_start(message_id 不同)。
+            from backend.adapters.events import AgentStartEvent
+            from backend.services.stream_service import stream_service
+            try:
+                await stream_service.push_event(
+                    conversation_id,
+                    AgentStartEvent(
+                        agent_id="orchestrator",
+                        thread_id=thread_id,
+                        message_id=thread_id,  # 占位,respond_to_user 会推真的 message_id
+                        agent_name="主 Agent",
+                    ),
+                )
+            except Exception:
+                logger.exception("failed to push orchestrator agent_start (non-fatal)")
+
             total_tokens_in, total_tokens_out = await self._agent_loop(
                 thread_id=thread_id,
                 conversation_id=conversation_id,
