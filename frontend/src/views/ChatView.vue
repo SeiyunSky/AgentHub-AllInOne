@@ -1,5 +1,12 @@
 <template>
-  <Splitpanes class="splitpanes-theme" @resized="onPaneResized">
+  <template v-if="!hasConversation">
+    <div class="flex flex-col items-center justify-center h-full gap-4 text-on-surface-variant">
+      <el-icon :size="48" class="opacity-30"><ChatLineRound /></el-icon>
+      <p class="text-base">从左侧选择或新建聊天</p>
+    </div>
+  </template>
+
+  <Splitpanes v-else class="splitpanes-theme" @resized="onPaneResized">
     <Pane :size="chatPaneSize" :min-size="chatPaneMinSize" :max-size="chatPaneMaxSize">
       <ChatPanel />
     </Pane>
@@ -16,6 +23,7 @@ import { useUIStore } from '@/stores/ui'
 import { useConversationsStore } from '@/stores/conversations'
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
+import { ChatLineRound } from '@element-plus/icons-vue'
 import ChatPanel from '@/components/layout/ChatPanel.vue'
 import RightPanel from '@/components/layout/RightPanel.vue'
 
@@ -23,7 +31,9 @@ const route = useRoute()
 const uiStore = useUIStore()
 const conversationsStore = useConversationsStore()
 
-// --- Conversation loading (preserved from original ChatView) ---
+const hasConversation = computed(() => !!route.params.conversationId)
+
+// --- Conversation loading ---
 
 async function loadConversation(convId: string) {
   if (conversationsStore.currentId === convId) return

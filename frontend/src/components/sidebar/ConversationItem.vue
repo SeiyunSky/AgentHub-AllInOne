@@ -13,7 +13,7 @@
 
     <!-- Content -->
     <div class="flex-1 min-w-0">
-      <p class="text-[13px] font-semibold text-on-surface truncate">{{ conv.title }}</p>
+      <p class="text-[14px] font-semibold text-on-surface truncate">{{ conv.title }}</p>
       <p class="text-[11px] text-on-surface-variant truncate mt-0.5">{{ conv.last_message_preview ?? 'No messages yet' }}</p>
     </div>
 

@@ -88,7 +88,7 @@ const agentsStore = useAgentsStore()
 const isSaving = ref(false)
 const isDeleting = ref(false)
 const isLoading = ref(false)
-const chatVisible = ref(true)
+const chatVisible = ref(false)
 const chatPaneSize = ref(70)
 
 const agentId = computed(() => route.params.agentId as string | undefined)

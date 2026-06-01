@@ -11,7 +11,7 @@ export const useUIStore = defineStore('ui', () => {
 
   // Right panel
   const rightPanelActiveTab = ref<'workflow' | 'preview'>('workflow')
-  const rightPanelVisible = ref(true)
+  const rightPanelVisible = ref(false)
 
   // Artifact preview
   const activeArtifact = ref<ActiveArtifact | null>(null)
