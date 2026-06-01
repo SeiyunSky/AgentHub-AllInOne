@@ -90,7 +90,8 @@ class ConversationService:
         user_id: str,
         *,
         include_archived: bool = False,
-        limit: Optional[int] = None,
+        limit: int = 20,
+        offset: int = 0,
     ) -> list[Conversation]:
         """某用户的会话列表(置顶 + 最近活跃排序)。"""
         session = SessionLocal()
@@ -99,6 +100,7 @@ class ConversationService:
                 user_id,
                 include_archived=include_archived,
                 limit=limit,
+                offset=offset,
             )
         finally:
             session.close()
@@ -114,6 +116,22 @@ class ConversationService:
         session = SessionLocal()
         try:
             return ConversationRepository(session).list_active_agents(conversation_id)
+        finally:
+            session.close()
+
+    async def get_active_agents_batch(
+        self,
+        conversation_ids: list[str],
+    ) -> dict[str, list[Agent]]:
+        """
+        批量查询多个会话的活跃 Agent，{conversation_id: [Agent]}。
+        用于 list_for_user 场景，避免 N+1 查询。
+        """
+        session = SessionLocal()
+        try:
+            return ConversationRepository(session).list_active_agents_for_conversations(
+                conversation_ids
+            )
         finally:
             session.close()
 

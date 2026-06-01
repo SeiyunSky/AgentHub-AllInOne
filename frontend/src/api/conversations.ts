@@ -12,7 +12,7 @@ export const conversationsApi = {
     return http.post('/conversations', data)
   },
 
-  list(params?: { include_archived?: boolean; limit?: number }): Promise<ConversationListItem[]> {
+  list(params?: { include_archived?: boolean; limit?: number; offset?: number }): Promise<ConversationListItem[]> {
     return http.get('/conversations', { params })
   },
 

@@ -110,15 +110,20 @@ async def list_conversations(
         Query(description="是否包含已归档会话"),
     ] = False,
     limit: Annotated[
-        Optional[int],
-        Query(ge=1, le=200, description="返回上限"),
-    ] = None,
+        int,
+        Query(ge=1, le=200, description="每页返回数量，默认 20"),
+    ] = 20,
+    offset: Annotated[
+        int,
+        Query(ge=0, le=10000, description="分页偏移量"),
+    ] = 0,
 ) -> list[ConversationListItem]:
     """列出当前 user 的所有会话。仅显示自己的(service 内置 user_id 过滤)。"""
     convs = await conversation_service.list_for_user(
         user_id,
         include_archived=include_archived,
         limit=limit,
+        offset=offset,
     )
     return [ConversationListItem.model_validate(c) for c in convs]
 
@@ -197,11 +202,14 @@ async def list_conversation_messages(
 ) -> list[MessageResponse]:
     await conversation_service.assert_owned_by(conversation_id, user_id)
 
-    messages = await message_service.list_recent(
-        conversation_id,
-        limit=limit,
-        before=before,
-    )
+    try:
+        messages = await message_service.list_recent(
+            conversation_id,
+            limit=limit,
+            before=before,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return [_message_orm_to_response(m) for m in messages]
 
 

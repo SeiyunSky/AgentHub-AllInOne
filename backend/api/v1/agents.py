@@ -18,10 +18,12 @@ POST   /agents/build/confirm    用户确认草稿后落库（返回创建的 Ag
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from backend.core.database import get_db
+from backend.api.deps import get_current_user, get_db
 from backend.repositories.agent_repo import AgentRepository
 from backend.repositories.skill_repo import SkillRepository
 from backend.schemas.agent import (
@@ -36,9 +38,6 @@ from backend.services.agent_builder_service import AgentBuilderService
 
 router = APIRouter()
 
-# TODO[auth]: 实装 auth 后把 current_user 从 JWT 取；目前用固定 user_id 占位
-_DEMO_USER_ID = "GUGA"
-
 
 def _to_response(agent, skill_repo: SkillRepository) -> AgentResponse:
     resp = AgentResponse.model_validate(agent)
@@ -47,20 +46,29 @@ def _to_response(agent, skill_repo: SkillRepository) -> AgentResponse:
 
 
 @router.get("/agents", response_model=list[AgentResponse])
-def list_agents(db: Session = Depends(get_db)):
+def list_agents(
+    db: Session = Depends(get_db),
+    user_id: Annotated[str, Depends(get_current_user)] = ...,
+    limit: int = Query(default=20, ge=1, le=200, description="每页返回数量，默认 20"),
+    offset: int = Query(default=0, ge=0, description="分页偏移量"),
+):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
-    agents = repo.list_visible_for_user(_DEMO_USER_ID)
+    agents = repo.list_visible_for_user(user_id, limit=limit, offset=offset)
     return [_to_response(a, skill_repo) for a in agents]
 
 
 @router.post("/agents", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
-def create_agent(data: AgentCreate, db: Session = Depends(get_db)):
+def create_agent(
+    data: AgentCreate,
+    db: Session = Depends(get_db),
+    user_id: Annotated[str, Depends(get_current_user)] = ...,
+):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
 
     fields = data.model_dump(exclude={"skill_ids"})
-    fields["user_id"] = _DEMO_USER_ID
+    fields["user_id"] = user_id
     fields["is_public"] = 1 if fields.pop("is_public") else 0
     if "capabilities" in fields and fields["capabilities"] is not None:
         fields["capabilities"] = fields["capabilities"].model_dump() if hasattr(fields["capabilities"], "model_dump") else fields["capabilities"]
@@ -74,7 +82,11 @@ def create_agent(data: AgentCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/agents/{agent_id}", response_model=AgentResponse)
-def get_agent(agent_id: str, db: Session = Depends(get_db)):
+def get_agent(
+    agent_id: str,
+    db: Session = Depends(get_db),
+    user_id: Annotated[str, Depends(get_current_user)] = ...,
+):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
     agent = repo.get(agent_id)
@@ -84,7 +96,12 @@ def get_agent(agent_id: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/agents/{agent_id}", response_model=AgentResponse)
-def update_agent(agent_id: str, data: AgentUpdate, db: Session = Depends(get_db)):
+def update_agent(
+    agent_id: str,
+    data: AgentUpdate,
+    db: Session = Depends(get_db),
+    user_id: Annotated[str, Depends(get_current_user)] = ...,
+):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
     agent = repo.get(agent_id)
@@ -112,7 +129,11 @@ def update_agent(agent_id: str, data: AgentUpdate, db: Session = Depends(get_db)
 
 
 @router.delete("/agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_agent(agent_id: str, db: Session = Depends(get_db)):
+def delete_agent(
+    agent_id: str,
+    db: Session = Depends(get_db),
+    user_id: Annotated[str, Depends(get_current_user)] = ...,
+):
     repo = AgentRepository(db)
     agent = repo.get(agent_id)
     if agent is None:
@@ -122,7 +143,11 @@ def delete_agent(agent_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/agents/{agent_id}/activate", response_model=AgentResponse)
-def activate_agent(agent_id: str, db: Session = Depends(get_db)):
+def activate_agent(
+    agent_id: str,
+    db: Session = Depends(get_db),
+    user_id: Annotated[str, Depends(get_current_user)] = ...,
+):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
     agent = repo.set_active(agent_id, True)
@@ -133,7 +158,11 @@ def activate_agent(agent_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/agents/{agent_id}/deactivate", response_model=AgentResponse)
-def deactivate_agent(agent_id: str, db: Session = Depends(get_db)):
+def deactivate_agent(
+    agent_id: str,
+    db: Session = Depends(get_db),
+    user_id: Annotated[str, Depends(get_current_user)] = ...,
+):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
     agent = repo.set_active(agent_id, False)
@@ -153,21 +182,29 @@ def deactivate_agent(agent_id: str, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @router.post("/agents/build", response_model=AgentBuildResponse, status_code=status.HTTP_201_CREATED)
-async def build_agent(data: AgentBuildRequest, db: Session = Depends(get_db)):
+async def build_agent(
+    data: AgentBuildRequest,
+    db: Session = Depends(get_db),
+    user_id: Annotated[str, Depends(get_current_user)] = ...,
+):
     """
     LLM 辅助生成 Agent 草稿。返回 session_id 和草稿，供前端展示 / 编辑。
     草稿在内存中暂存（生产环境换 Redis），TTL 1 小时。
     """
     svc = AgentBuilderService(db)
     try:
-        session_id, draft = await svc.build(_DEMO_USER_ID, data.description)
+        session_id, draft = await svc.build(user_id, data.description)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return AgentBuildResponse(session_id=session_id, draft=draft)
 
 
 @router.post("/agents/build/confirm", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
-def confirm_agent_build(data: AgentBuildConfirm, db: Session = Depends(get_db)):
+def confirm_agent_build(
+    data: AgentBuildConfirm,
+    db: Session = Depends(get_db),
+    user_id: Annotated[str, Depends(get_current_user)] = ...,
+):
     """
     用户确认（可编辑）草稿后落库。
 
@@ -179,7 +216,7 @@ def confirm_agent_build(data: AgentBuildConfirm, db: Session = Depends(get_db)):
     svc = AgentBuilderService(db)
     skill_repo = SkillRepository(db)
     try:
-        agent = svc.confirm(_DEMO_USER_ID, data.session_id, data.edited_draft)
+        agent = svc.confirm(user_id, data.session_id, data.edited_draft)
     except LookupError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     db.commit()
