@@ -165,11 +165,15 @@ class SkillService:
 
     def update(self, skill_id: str, author_id: str, data: SkillUpdate) -> Optional[Skill]:
         skill = self._repo.get(skill_id)
-        if skill is None or skill.author_id != author_id:
+        if skill is None:
+            return None
+        # 内置 Skill（author_id='GUGA'）允许任何用户编辑；用户 Skill 只允许本人
+        owner = str(skill.author_id)
+        if owner != "GUGA" and owner != author_id:
             return None
 
         fields = data.model_dump(exclude_unset=True)
-        content = fields.pop("content", None)
+        fields.pop("content", None)  # content 不写文件，只存 DB（若 SkillUpdate 后续加 content 字段）
 
         for key, val in fields.items():
             if key in ("is_public", "is_active"):
@@ -177,18 +181,16 @@ class SkillService:
             else:
                 setattr(skill, key, val)
 
-        if content is not None:
-            abs_path = Path(__file__).parent.parent / skill.file_path
-            abs_path.parent.mkdir(parents=True, exist_ok=True)
-            abs_path.write_text(content, encoding="utf-8")
-
         self._db.flush()
         self._db.commit()
         return skill
 
     def delete(self, skill_id: str, author_id: str) -> bool:
         skill = self._repo.get(skill_id)
-        if skill is None or skill.author_id != author_id:
+        if skill is None:
+            return False
+        owner = str(skill.author_id)
+        if owner != "GUGA" and owner != author_id:
             return False
 
         # 先删本地 .md 文件，再删 DB 行（顺序不可颠倒：DB 行是文件路径的来源）

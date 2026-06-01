@@ -18,10 +18,13 @@ POST   /agents/build/confirm    用户确认草稿后落库（返回创建的 Ag
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from backend.api.deps import get_current_user, get_db
 from backend.repositories.agent_repo import AgentRepository
@@ -115,6 +118,9 @@ def update_agent(
         fields["is_active"] = 1 if fields["is_active"] else 0
     if "capabilities" in fields and fields["capabilities"] is not None:
         fields["capabilities"] = fields["capabilities"].model_dump() if hasattr(fields["capabilities"], "model_dump") else fields["capabilities"]
+    if "type" in fields and fields["type"] is not None:
+        # AgentType 枚举转成字符串值写 DB
+        fields["type"] = fields["type"].value if hasattr(fields["type"], "value") else fields["type"]
 
     for key, val in fields.items():
         setattr(agent, key, val)
@@ -125,6 +131,16 @@ def update_agent(
 
     db.commit()
     db.refresh(agent)
+
+    # type 变更后重建 registry 里的 Adapter，使新类型立即生效
+    if "type" in fields:
+        from backend.adapters.registry import registry
+        from backend.adapters.registry import _build_adapter
+        try:
+            registry.register(agent_id, _build_adapter(agent))
+        except Exception:
+            logger.warning("update_agent: rebuild adapter failed for agent %s", agent_id)
+
     return _to_response(agent, skill_repo)
 
 

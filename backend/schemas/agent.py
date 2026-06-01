@@ -77,14 +77,12 @@ class AgentUpdate(BaseModel):
     """
     PATCH /api/v1/agents/{id} 修改 Agent。
     所有字段 Optional 默认 None;service 用 model_dump(exclude_unset=True) 取被显式传的字段。
-
-    注意:type 字段不可修改(会改变 Adapter 路由,等于换了个 Agent)。
-    用户想换类型应删除原 Agent 后新建。
     """
 
     name: Optional[str] = None
     description: Optional[str] = None
     avatar: Optional[str] = None
+    type: Optional[AgentType] = None
     system_prompt: Optional[str] = None
     capabilities: Optional[AgentCapabilities] = None
     tags: Optional[list[str]] = None
