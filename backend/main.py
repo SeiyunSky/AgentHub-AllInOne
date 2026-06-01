@@ -54,6 +54,27 @@ async def lifespan(app: FastAPI):
     try:
         from backend.services.skill_service import SkillService
 
+        # 收尸:把上次进程崩溃 / 强杀 / reload 留下的 running/init/suspended thread
+        # 标成 error。这些 thread 的 asyncio.Task 早已随旧进程死了,DB 状态和内存
+        # 现实不一致会让 chat_service 误判"当前还有 round 在跑"→ 新消息被押进
+        # pending 队列等永远不会到来的 round_done。每次启动都收一次,代价是一条
+        # UPDATE,换来 DB 状态与现实强一致。
+        from sqlalchemy import text as _sql_text
+
+        result = db.execute(_sql_text("""
+            UPDATE threads
+               SET status = 'error',
+                   finished_at = NOW(),
+                   error_message = 'backend restart, presumed dead'
+             WHERE status IN ('init', 'running', 'suspended')
+        """))
+        db.commit()
+        if result.rowcount:
+            logger.warning(
+                "stale threads reaped on startup: %d rows (presumed dead from previous run)",
+                result.rowcount,
+            )
+
         n_agents = seed_agents(db)
         logger.info("seed_agents: %d rows affected", n_agents)
 
