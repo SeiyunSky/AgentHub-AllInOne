@@ -4,6 +4,9 @@
       <AgentBubble
         v-if="msg.type === 'agent'"
         :message="msg"
+        :streaming="isStreamingMessage(msg)"
+        :activity="streamingActivityFor(msg)"
+        :current-tool="streamingToolFor(msg)"
         @reply="$emit('reply', $event)"
         @copy="$emit('copy', $event)"
         @react="(id, type) => $emit('react', id, type)"
@@ -38,13 +41,17 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { Message } from '@/types/chat'
+import type { Message, AgentMessage } from '@/types/chat'
+import { useChatStore } from '@/stores/chat'
 import AgentBubble from './bubbles/AgentBubble.vue'
 import UserBubble from './bubbles/UserBubble.vue'
 import AgentAvatar from './bubbles/AgentAvatar.vue'
 
 const props = defineProps<{
   messages: Message[]
+  /** 老接口:单个 streaming message id;新版本走 chatStore 按 agentId 索引,可同时 N 个 */
+  streamingMessageId?: string
+  conversationId?: string
 }>()
 
 defineEmits<{
@@ -53,6 +60,31 @@ defineEmits<{
   react: [messageId: string, type: 'like' | 'dislike']
   more: [messageId: string]
 }>()
+
+const chatStore = useChatStore()
+
+/** 判断这条消息是不是某个 Agent 当前正在 streaming 的气泡 */
+function isStreamingMessage(msg: AgentMessage): boolean {
+  if (props.conversationId) {
+    const streaming = chatStore.getAgentStreaming(props.conversationId, msg.agentId)
+    if (streaming && streaming.messageId === msg.id) return true
+  }
+  return msg.id === props.streamingMessageId
+}
+
+function streamingActivityFor(msg: AgentMessage): 'thinking' | 'typing' | 'tool' | 'idle' | undefined {
+  if (!props.conversationId) return undefined
+  const streaming = chatStore.getAgentStreaming(props.conversationId, msg.agentId)
+  if (streaming && streaming.messageId === msg.id) return streaming.activity
+  return undefined
+}
+
+function streamingToolFor(msg: AgentMessage): string | undefined {
+  if (!props.conversationId) return undefined
+  const streaming = chatStore.getAgentStreaming(props.conversationId, msg.agentId)
+  if (streaming && streaming.messageId === msg.id) return streaming.currentTool
+  return undefined
+}
 
 const listRef = ref<HTMLElement>()
 const isNearBottom = ref(false)
@@ -70,17 +102,27 @@ function scrollToBottom() {
   el.scrollTop = el.scrollHeight
 }
 
+// Reset when conversation changes, then scroll to bottom
+watch(() => props.conversationId, () => {
+  initialized = false
+  isNearBottom.value = false
+}, { immediate: false })
+
 watch(
   () => props.messages,
-  () => {
+  (newMessages, oldMessages) => {
     if (!initialized) {
       if (props.messages.length > 0) {
         initialized = true
-        onScroll()
+        scrollToBottom()
       }
       return
     }
-    if (isNearBottom.value) {
+    const isNewMessage = newMessages.length !== oldMessages?.length
+    const isUserMessage = newMessages[newMessages.length - 1]?.type === 'user'
+    if (isNewMessage && isUserMessage) {
+      scrollToBottom()
+    } else if (isNearBottom.value) {
       scrollToBottom()
     }
   },
