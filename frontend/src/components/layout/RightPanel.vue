@@ -43,7 +43,7 @@
   <PanelContainer
     v-else
     title="Workflow"
-    status="Running"
+    :status="workflowStatus"
     :icon="Share"
     variant="brand"
   >
@@ -72,13 +72,22 @@
 import { computed } from 'vue'
 import { useUIStore } from '@/stores/ui'
 import { useArtifactPreview } from '@/composables/useArtifactPreview'
+import { useChatStore } from '@/stores/chat'
+import { useConversationsStore } from '@/stores/conversations'
 import PanelContainer from './PanelContainer.vue'
 import WorkflowView from './WorkflowView.vue'
 import ArtifactRouter from '@/components/chat/artifacts/ArtifactRouter.vue'
 import { Share, Plus, ZoomIn, Aim, Operation, View, CopyDocument, Close } from '@element-plus/icons-vue'
 
 const uiStore = useUIStore()
+const chatStore = useChatStore()
+const conversationsStore = useConversationsStore()
 const { activeArtifact, closeArtifact, setMode } = useArtifactPreview()
 
 const previewMode = computed(() => uiStore.activeArtifact?.mode ?? 'preview')
+
+const convId = computed(() => conversationsStore.currentId ?? '')
+const workflowStatus = computed(() =>
+  chatStore.isStreamingFor(convId.value) ? 'Running' : 'Idle'
+)
 </script>

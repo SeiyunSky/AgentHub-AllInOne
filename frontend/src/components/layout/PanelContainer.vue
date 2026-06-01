@@ -11,7 +11,7 @@
         <div class="flex flex-col">
           <h2 class="text-[14px] font-semibold text-on-surface leading-tight">{{ title }}</h2>
           <p v-if="status" class="text-[10px] text-on-surface-variant flex items-center gap-1.5 leading-tight">
-            <span v-if="statusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span v-if="statusDot" class="w-1.5 h-1.5 rounded-full" :class="statusDotClass"></span>
             {{ status }}
           </p>
         </div>
@@ -46,6 +46,12 @@ const props = withDefaults(defineProps<{
 }>(), {
   variant: 'brand',
   statusDot: true,
+})
+
+const statusDotClass = computed(() => {
+  if (props.status === 'Running') return 'bg-emerald-400 animate-pulse'
+  if (props.status === 'Idle') return 'bg-slate-300'
+  return 'bg-emerald-400'
 })
 
 const iconContainerClass = computed(() => {

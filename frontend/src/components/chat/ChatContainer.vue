@@ -11,6 +11,8 @@
     <MessageList
       class="flex-1 overflow-y-auto custom-scrollbar"
       :messages="messages"
+      :streaming-message-id="streamingMessageId"
+      :conversation-id="convId ?? undefined"
       @reply="onReply"
       @copy="onCopy"
       @react="onReact"
@@ -75,6 +77,7 @@ const chatInputRef = ref<{ focus: () => void } | null>(null)
 const convId = computed(() => conversationsStore.currentId)
 const isStreaming = computed(() => !!convId.value && chatStore.isStreamingFor(convId.value))
 const currentApproval = computed(() => convId.value ? chatStore.getPendingApproval(convId.value) : null)
+const streamingMessageId = computed(() => convId.value ? chatStore.getStreamingMessage(convId.value)?.id : undefined)
 
 const inputText = computed(() => convId.value ? chatStore.getInputDraft(convId.value) : '')
 const inputHtml = computed(() => convId.value ? chatStore.getInputHtmlDraft(convId.value) : '')

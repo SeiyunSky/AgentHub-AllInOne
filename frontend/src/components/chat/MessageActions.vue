@@ -2,8 +2,8 @@
   <div class="absolute -bottom-3 flex items-center gap-0.5 px-1 py-0.5 rounded-lg bg-white/90 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto" :class="variant === 'user' ? 'right-0' : 'left-0'">
     <!-- Like -->
     <button
-      class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-      :class="reaction === 'like' ? 'text-brand bg-brand/20' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
+      class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150"
+      :class="reaction === 'like' ? 'text-brand bg-brand/20 scale-110' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
       title="Like"
       @click="handleReact('like')"
     >
@@ -12,8 +12,8 @@
 
     <!-- Dislike -->
     <button
-      class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors"
-      :class="reaction === 'dislike' ? 'text-red-500 bg-red-200' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
+      class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150"
+      :class="reaction === 'dislike' ? 'text-red-500 bg-red-200 scale-110' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
       title="Dislike"
       @click="handleReact('dislike')"
     >
@@ -51,6 +51,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { ChatRound, DocumentCopy, Select, MoreFilled } from '@element-plus/icons-vue'
 
 const props = defineProps<{
@@ -77,6 +78,17 @@ function handleCopy() {
 }
 
 function handleReact(type: 'like' | 'dislike') {
+  const isToggleOff = props.reaction === type
   emit('react', props.messageId, type)
+  if (isToggleOff) {
+    ElMessage({ message: '已撤销反馈', type: 'info', duration: 1500, plain: true })
+  } else {
+    ElMessage({
+      message: type === 'like' ? '👍 反馈已提交' : '👎 反馈已提交',
+      type: 'success',
+      duration: 1500,
+      plain: true,
+    })
+  }
 }
 </script>

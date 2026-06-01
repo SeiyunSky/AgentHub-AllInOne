@@ -5,6 +5,11 @@ import type { ActiveArtifact, ArtifactItem } from '@/types/artifact'
 export const useUIStore = defineStore('ui', () => {
   // Sidebar
   const sidebarCollapsed = ref(false)
+  const navRailCollapsed = ref(false)
+
+  function toggleNavRail() {
+    navRailCollapsed.value = !navRailCollapsed.value
+  }
 
   // Panel sizes (percentage for splitpanes)
   const chatPanePercent = ref(55)
@@ -19,7 +24,10 @@ export const useUIStore = defineStore('ui', () => {
   // Legacy - no longer used for resizing, but kept for compatibility
   const isResizing = ref(false)
 
-  const sidebarWidth = computed(() => sidebarCollapsed.value ? 160 : 440)
+  const sidebarWidth = computed(() => {
+    if (navRailCollapsed.value) return 0
+    return sidebarCollapsed.value ? 160 : 440
+  })
 
   function toggleSidebar() {
     sidebarCollapsed.value = !sidebarCollapsed.value
@@ -72,6 +80,7 @@ export const useUIStore = defineStore('ui', () => {
   }
 
   return {
+    navRailCollapsed,
     sidebarCollapsed,
     chatPanePercent,
     rightPanelActiveTab,
@@ -79,6 +88,7 @@ export const useUIStore = defineStore('ui', () => {
     activeArtifact,
     isResizing,
     sidebarWidth,
+    toggleNavRail,
     toggleSidebar,
     openArtifact,
     closeArtifact,

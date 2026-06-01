@@ -1,5 +1,14 @@
 <template>
   <div class="px-4 py-3 bg-white">
+    <!-- Hidden file input -->
+    <input
+      ref="fileInputRef"
+      type="file"
+      multiple
+      class="hidden"
+      @change="onFilesSelected"
+    />
+
     <div
       ref="wrapperRef"
       class="relative bg-surface border border-outline-variant rounded-2xl focus-within:border-brand focus-within:shadow-glow transition-all duration-200"
@@ -23,6 +32,34 @@
           </button>
         </div>
 
+        <!-- Attached files bar -->
+        <div
+          v-if="attachedFiles.length > 0"
+          class="flex flex-wrap gap-1.5 px-3 pt-2 pb-1 border-b border-outline-variant"
+        >
+          <div
+            v-for="(file, idx) in attachedFiles"
+            :key="idx"
+            class="flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] text-on-surface max-w-[200px] group transition-colors"
+            :class="file.uploading
+              ? 'bg-brand-light/30 border-brand/30 text-brand'
+              : 'bg-surface-container-low border-outline-variant'"
+          >
+            <el-icon :size="12" class="shrink-0" :class="file.uploading ? 'animate-spin text-brand' : 'text-on-surface-variant'">
+              <Loading v-if="file.uploading" />
+              <Document v-else />
+            </el-icon>
+            <span class="truncate">{{ file.name }}</span>
+            <button
+              v-if="!file.uploading"
+              class="w-4 h-4 rounded flex items-center justify-center text-on-surface-variant/50 hover:text-error hover:bg-error-light opacity-0 group-hover:opacity-100 transition-all cursor-pointer shrink-0"
+              @click="removeFile(idx)"
+            >
+              <el-icon :size="10"><Close /></el-icon>
+            </button>
+          </div>
+        </div>
+
         <!-- contenteditable div -->
         <div
           ref="editorRef"
@@ -43,7 +80,12 @@
             <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer">
               <el-icon :size="18"><Plus /></el-icon>
             </button>
-            <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer">
+            <button
+              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+              :class="attachedFiles.length > 0 ? 'text-brand bg-brand-light/40 hover:bg-brand-light' : 'text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container'"
+              :title="attachedFiles.length > 0 ? `${attachedFiles.length} file(s) attached` : 'Attach files'"
+              @click="fileInputRef?.click()"
+            >
               <el-icon :size="18"><Paperclip /></el-icon>
             </button>
           </div>
@@ -61,8 +103,8 @@
           <button
             v-else
             class="w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 cursor-pointer"
-            :class="hasContent ? 'bg-slate-700 text-white hover:bg-slate-600' : 'text-on-surface-variant/40'"
-            :disabled="!hasContent"
+            :class="hasContent || attachedFiles.length > 0 ? 'bg-slate-700 text-white hover:bg-slate-600' : 'text-on-surface-variant/40'"
+            :disabled="!hasContent && attachedFiles.length === 0"
             @click="handleSend"
           >
             <el-icon :size="18"><Promotion /></el-icon>
@@ -85,9 +127,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { Plus, Paperclip, Promotion, Close } from '@element-plus/icons-vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { Plus, Paperclip, Promotion, Close, Document, Loading } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import MentionPicker from './MentionPicker.vue'
+import { filesApi } from '@/api/files'
 import type { ChatAgent, ReplyPreview } from '@/types/chat'
 
 const props = withDefaults(defineProps<{
@@ -98,7 +142,7 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   streaming?: boolean
 }>(), {
-  placeholder: 'Ask Nexus anything...',
+  placeholder: 'Ask anything...',
   streaming: false,
   htmlDraft: '',
 })
@@ -112,9 +156,54 @@ const emit = defineEmits<{
 
 const wrapperRef = ref<HTMLDivElement | null>(null)
 const editorRef = ref<HTMLDivElement | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 const mentionPickerRef = ref<{ navigate: (dir: 1 | -1) => void; confirmSelection: () => void } | null>(null)
 
 const isComposing = ref(false)
+const hasContent = ref(false)
+
+// ── Attached files ──
+interface AttachedFile {
+  name: string
+  path: string       // server-side path after upload
+  uploading: boolean
+}
+const attachedFiles = ref<AttachedFile[]>([])
+
+async function onFilesSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (!input.files || input.files.length === 0) return
+
+  const selected = Array.from(input.files)
+  input.value = ''
+
+  // Add placeholder entries with uploading=true
+  const placeholders: AttachedFile[] = selected.map(f => ({
+    name: f.name,
+    path: '',
+    uploading: true,
+  }))
+  const startIdx = attachedFiles.value.length
+  attachedFiles.value.push(...placeholders)
+
+  try {
+    const { paths } = await filesApi.upload(selected)
+    paths.forEach((p, i) => {
+      attachedFiles.value[startIdx + i].path = p
+      attachedFiles.value[startIdx + i].uploading = false
+    })
+  } catch {
+    // Remove the failed placeholders
+    attachedFiles.value.splice(startIdx, selected.length)
+    ElMessage({ message: '文件上传失败，请重试', type: 'error', duration: 2000, plain: true })
+  }
+}
+
+function removeFile(idx: number) {
+  attachedFiles.value.splice(idx, 1)
+}
+
+// ── Mention state ──
 const mentionState = ref<{
   visible: boolean
   query: string
@@ -126,8 +215,6 @@ const mentionState = ref<{
   startIndex: 0,
   position: { top: 0, left: 0 },
 })
-
-const hasContent = ref(false)
 
 function syncHasContent() {
   if (!editorRef.value) { hasContent.value = false; return }
@@ -189,12 +276,10 @@ function detectMentionTrigger() {
   const text = textNode.textContent ?? ''
   const cursorOffset = range.startOffset
 
-  // Walk backward from cursor to find @
   let atIndex = -1
   for (let i = cursorOffset - 1; i >= 0; i--) {
     const char = text[i]
     if (char === '@') {
-      // Check if preceded by whitespace or at start
       if (i === 0 || /\s/.test(text[i - 1])) {
         atIndex = i
         break
@@ -210,7 +295,6 @@ function detectMentionTrigger() {
     mentionState.value.query = query
     mentionState.value.startIndex = atIndex
 
-    // Compute position
     const cloneRange = range.cloneRange()
     cloneRange.setStart(textNode, atIndex)
     cloneRange.setEnd(textNode, atIndex)
@@ -235,7 +319,6 @@ function onEditorInput() {
 function onEditorKeydown(e: KeyboardEvent) {
   if (isComposing.value) return
 
-  // Mention picker navigation
   if (mentionState.value.visible) {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault()
@@ -254,14 +337,12 @@ function onEditorKeydown(e: KeyboardEvent) {
     }
   }
 
-  // Enter to send (without Shift)
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     if (!props.streaming) handleSend()
     return
   }
 
-  // Backspace: delete whole chip if cursor after it
   if (e.key === 'Backspace') {
     handleBackspace(e)
   }
@@ -269,13 +350,10 @@ function onEditorKeydown(e: KeyboardEvent) {
 
 function handleBackspace(e: KeyboardEvent) {
   if (!editorRef.value) return
-
   const selection = window.getSelection()
   if (!selection || selection.rangeCount === 0) return
-
   const range = selection.getRangeAt(0)
   const textNode = range.startContainer
-
   if (textNode.nodeType === Node.TEXT_NODE && range.startOffset === 0) {
     const prev = textNode.previousSibling
     if (prev && prev.nodeType === Node.ELEMENT_NODE && (prev as HTMLElement).dataset.mentionId) {
@@ -288,22 +366,17 @@ function handleBackspace(e: KeyboardEvent) {
 
 function onMentionSelect(agent: ChatAgent) {
   if (!editorRef.value) return
-
   const selection = window.getSelection()
   if (!selection || selection.rangeCount === 0) return
-
   const range = selection.getRangeAt(0)
   const textNode = range.startContainer
-
   if (textNode.nodeType !== Node.TEXT_NODE) return
 
-  // Delete @query text
   const deleteRange = range.cloneRange()
   deleteRange.setStart(textNode, mentionState.value.startIndex)
   deleteRange.setEnd(textNode, range.startOffset)
   deleteRange.deleteContents()
 
-  // Create mention chip
   const chip = document.createElement('span')
   chip.setAttribute('contenteditable', 'false')
   chip.setAttribute('data-mention-id', agent.id)
@@ -311,14 +384,10 @@ function onMentionSelect(agent: ChatAgent) {
   chip.className = 'inline-flex items-center px-1.5 py-0.5 mx-0.5 rounded-md bg-brand-light text-brand text-[12px] font-medium select-none cursor-pointer'
   chip.textContent = `@${agent.name}`
 
-  // Insert chip
   range.insertNode(chip)
-
-  // Insert zero-width space for cursor positioning
   const zwsp = document.createTextNode('​')
   chip.after(zwsp)
 
-  // Move cursor after chip
   const newRange = document.createRange()
   newRange.setStart(zwsp, 1)
   newRange.collapse(true)
@@ -342,28 +411,38 @@ function onPaste(e: ClipboardEvent) {
 function handleSend() {
   if (props.streaming) return
   const { text, mentions } = getTextContent()
-  if (!text) return
+  if (!text && attachedFiles.value.length === 0) return
+
+  // Don't send while any file is still uploading
+  if (attachedFiles.value.some(f => f.uploading)) {
+    ElMessage({ message: '文件上传中，请稍候', type: 'warning', duration: 1500, plain: true })
+    return
+  }
+
+  // Append server-side file paths to content
+  let finalContent = text
+  if (attachedFiles.value.length > 0) {
+    const pathLines = attachedFiles.value.map(f => `[file: ${f.path}]`).join('\n')
+    finalContent = text ? `${text}\n${pathLines}` : pathLines
+  }
 
   const replyToId = props.replyTo?.messageId
-  emit('send', text, mentions, replyToId)
+  emit('send', finalContent, mentions, replyToId)
   emit('update:modelValue', '')
 
-  // Clear editor
+  // Clear editor and files
   if (editorRef.value) {
     editorRef.value.innerHTML = ''
     hasContent.value = false
     autoResize()
   }
+  attachedFiles.value = []
 }
-
-// HTML draft restored by parent; modelValue is text-only for v-model compat
-const htmlDraft = ref('')
 
 function focus() {
   editorRef.value?.focus()
 }
 
-// Restore editor content from htmlDraft when switching conversations
 watch(() => props.htmlDraft, (newHtml) => {
   if (!editorRef.value) return
   const currentHtml = editorRef.value.innerHTML
@@ -378,7 +457,6 @@ watch(() => props.htmlDraft, (newHtml) => {
   }
 })
 
-// Click outside to dismiss picker
 function onDocClick(e: MouseEvent) {
   if (!wrapperRef.value?.contains(e.target as Node)) {
     dismissMentionPicker()
@@ -387,7 +465,6 @@ function onDocClick(e: MouseEvent) {
 
 onMounted(() => {
   document.addEventListener('mousedown', onDocClick)
-  // Initialize content from htmlDraft (preserves mention chips)
   if (editorRef.value) {
     const html = props.htmlDraft || (props.modelValue || '')
     if (html) {
