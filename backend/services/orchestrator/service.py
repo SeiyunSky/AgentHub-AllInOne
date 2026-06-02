@@ -167,6 +167,27 @@ class OrchestratorService:
             # 主 Agent thread 从 init 推进到 running,写 started_at(便于监控 loop 起跑时间)
             await ThreadService(loop_session).mark_running(thread_id)
             loop_session.commit()
+
+            # 立刻推 SSE agent_start,让前端 UI 立即出现"主 Agent 正在思考"的气泡。
+            # 否则前端要等到主 Agent 最后调 respond_to_user 才看到反馈,期间几十秒内
+            # 用户以为卡死。orchestrator 没有专属 messageId(自己不直接落消息),
+            # 用 thread_id 作 message_id 占位,前端 streaming 气泡按 agent_id 索引,
+            # 真有消息落库时会再触发新的 agent_start(message_id 不同)。
+            from backend.adapters.events import AgentStartEvent
+            from backend.services.stream_service import stream_service
+            try:
+                await stream_service.push_event(
+                    conversation_id,
+                    AgentStartEvent(
+                        agent_id="orchestrator",
+                        thread_id=thread_id,
+                        message_id=thread_id,  # 占位,respond_to_user 会推真的 message_id
+                        agent_name="主 Agent",
+                    ),
+                )
+            except Exception:
+                logger.exception("failed to push orchestrator agent_start (non-fatal)")
+
             total_tokens_in, total_tokens_out = await self._agent_loop(
                 thread_id=thread_id,
                 conversation_id=conversation_id,
@@ -258,6 +279,25 @@ class OrchestratorService:
         total_tokens_in = 0
         total_tokens_out = 0
         round_count = 0
+        _MAX_ROUNDS = 30  # 防止 LLM 陷入无限工具调用循环
+
+        # 第一轮必须有一条 user 消息作为 messages[0],否则 Anthropic API 报
+        # 400 "messages array cannot be empty"。把当前轮触发的用户消息原文取出注入。
+        # 历史更早的对话由 prompt_builder 第 6 层塞进 system,这里只放本轮用户原话。
+        from backend.services.message_service import message_service as _msg_svc
+        try:
+            _user_msg = await _msg_svc.get(user_message_id)
+        except Exception:
+            _user_msg = None
+        if _user_msg is not None and _user_msg.content:
+            _user_text_parts = [
+                str(b.get("content", ""))
+                for b in (_user_msg.content or [])
+                if isinstance(b, dict) and b.get("type") == "text" and b.get("content")
+            ]
+            _user_text = "\n\n".join(_user_text_parts).strip()
+            if _user_text:
+                messages.append({"role": "user", "content": _user_text})
 
         # 三路恢复 attempt 计数器(每路独立维护,某路重试成功后**不**重置:
         # 同一 loop 内累计触发次数,达到上限 → give up)
@@ -291,6 +331,17 @@ class OrchestratorService:
 
         while True:
             round_count += 1
+
+            if round_count > _MAX_ROUNDS:
+                logger.error(
+                    "orchestrator %s hit round limit (%d), force-exiting loop",
+                    thread_id,
+                    _MAX_ROUNDS,
+                )
+                raise RuntimeError(
+                    f"orchestrator {thread_id}: 超过最大轮次限制 {_MAX_ROUNDS}，"
+                    "可能陷入工具调用死循环，已强制退出"
+                )
 
             # ---- 步 1:消费 pending_events ----
             pending_summaries = ThreadService.pop_pending_events(thread_id)
@@ -431,7 +482,12 @@ class OrchestratorService:
                         break
                     # 唤醒后回步 1 消费新 pending_events
                     continue
-                # 没有未完成子 Thread → 真正收敛
+                if response.content_text and response.content_text.strip():
+                    await self._emit_assistant_text(
+                        conversation_id=conversation_id,
+                        thread_id=thread_id,
+                        text=response.content_text,
+                    )
                 break
 
             # ---- 步 5:tool_use 派发 ----
@@ -542,6 +598,67 @@ class OrchestratorService:
             return True
         except asyncio.TimeoutError:
             return False
+
+    async def _emit_assistant_text(
+        self,
+        *,
+        conversation_id: str,
+        thread_id: str,
+        text: str,
+    ) -> None:
+        """
+        主 Agent end_turn 时直接说话(没调 respond_to_user)的兜底:
+        把 LLM 输出的纯文本作为一条 assistant 消息落库 + 推 SSE,
+        与 respond_to_user 工具产生的效果完全一致。
+        否则前端永远收不到 agent_start / block_start,看不到主 Agent 的回复。
+        """
+        from backend.adapters.events import (
+            AgentDoneEvent,
+            AgentStartEvent,
+            BlockStartEvent,
+            BlockStopEvent,
+        )
+        from backend.domain.message import TextBlock
+        from backend.services.message_service import message_service
+        from backend.services.stream_service import stream_service
+        from backend.core.utils import gen_uuid
+
+        _ORCHESTRATOR_AGENT_ID = "orchestrator"
+        _ORCHESTRATOR_AGENT_NAME = "主 Agent"
+
+        block_id = gen_uuid()
+        msg = await message_service.create_assistant_message(
+            conversation_id=conversation_id,
+            agent_id=_ORCHESTRATOR_AGENT_ID,
+            content_blocks=[TextBlock(block_id=block_id, content=text)],
+            sender=_ORCHESTRATOR_AGENT_NAME,
+            thread_id=thread_id,
+        )
+
+        base = {
+            "agent_id": _ORCHESTRATOR_AGENT_ID,
+            "thread_id": thread_id,
+            "message_id": msg.id,
+        }
+        await stream_service.push_event(
+            conversation_id,
+            AgentStartEvent(**base, agent_name=_ORCHESTRATOR_AGENT_NAME),
+        )
+        await stream_service.push_event(
+            conversation_id,
+            BlockStartEvent(
+                **base,
+                block=TextBlock(block_id=block_id, content=text),
+            ),
+        )
+        await stream_service.push_event(
+            conversation_id,
+            BlockStopEvent(**base, block_id=block_id),
+        )
+        await stream_service.push_event(
+            conversation_id,
+            AgentDoneEvent(**base),
+        )
 
     def _has_unfinished_children(
         self,

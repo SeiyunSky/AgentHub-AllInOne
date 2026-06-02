@@ -302,3 +302,61 @@ Phase 4  Day 17-20   Execution Layer + 审批 Action + 文档 + Demo 视频
 | 前端组件库 | 待选型 | Element Plus vs Naive UI vs 纯 Tailwind，取决于团队偏好 |
 | 团队分工 | 待定 | 前端/后端/Orchestrator 各模块负责人未分配 |
 | Execution Layer 优先级 | P2 | Sandbox/Deploy 不进 Phase 1-2 关键路径 |
+
+---
+
+# 开发日志 2 — MVP 端到端联调现状与下一阶段任务（2026-05-29）
+
+## 一、当前现状
+
+基本消息交互、持久化、单聊 / 群聊功能都已经跑通。
+
+- 前端 → 后端 → Orchestrator → 子 Agent 三层链路打通
+- SSE 流式推送、消息落库、Thread 调度、依赖编排（blocked_by）都正常
+- 主 Agent 能正确派活给 Coder / Researcher / Reviewer 等子 Agent
+
+`@` 功能还有小问题正在排查，目前看是 **提示词注入** 的问题：长对话下子 Agent 那边上下文累积过长，已经修好了（`claude` CLI 的 prompt 从命令行参数改走 stdin，规避 Windows 命令行 8191 字符上限）。
+
+---
+
+## 二、已知 MVP 小问题
+
+| 问题 | 归属 | 说明 |
+|---|---|---|
+| 审批 UI 缺失 | 前端 | 基于消息类型做审批渲染，消息 content 里有 `type=approval` 的块就是。比较简单。 |
+| 消息分页 | 后端 + 前端 | 数据库拉消息是最新到最旧 → **后端**做分页接口；**前端**消息窗口设上限条数，往上翻时按需加载若干条旧消息 |
+| 主 Agent prompt 调优 | 沫路 | 提示词还需迭代，并补几个 SKILL，让派活更精确 |
+| 子 Agent 消息管理 | 后端 | Adapter 层再确认一下，特别是上下文累积策略 |
+| 用户交互体验 | 前端 | 当前消息发出后界面是静态的，等基础功能稳了再优化交互反馈 |
+
+这几项收口后，进入下一阶段。
+
+---
+
+## 三、下一阶段任务分工
+
+### Wang, Chenhui 玛叔叔
+- 前端基础功能实现（P0）
+- 个性化前端（变好看 + 交互性变强，P2）
+- 路由切换改成 `#` hash 路由（不需要参与浏览器搜索排名，当前路由切换 bug 问题挺大）
+
+### Wu, Lvsheng 令姐姐
+- SKILL 和 Agent 创建部分再看看
+- 子 Agent token 记录
+- Artifacts 复杂项目本地化处理 + 一键部署的调研与案例设计
+
+### 沫路
+- 主 Agent prompt 工程调优
+- Artifacts 模块基本功能实现
+- 结构化日志实现
+
+### Liu, Pan 刘盘
+- Auth 模块全栈实现
+- 子 Agent token 记录
+- 有空看看 Codex 什么情况
+
+### Feng, Yuxuan 冯瑜轩
+- 前后端联调找 BUG
+- SAP MCP 服务与 Business 结合的调研
+- 下下一阶段（6/10 后）基于 SAP 功能侧的拓展实现，就以这周的调研情况为基础
+

@@ -217,8 +217,8 @@ class MessageService:
         before: Optional[str] = None,
     ) -> list[Message]:
         """
-        某会话最近 N 条消息(倒序)。
-        调用方按时间线展示时需要自行 reversed()。
+        某会话最近 N 条消息，按 created_at ASC（从旧到新）返回，与时间线顺序一致。
+        before 游标无效时抛 ValueError（由 API 层转 400）。
         """
         session = SessionLocal()
         try:

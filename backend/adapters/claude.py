@@ -64,14 +64,17 @@ class ClaudeAdapter(AgentAdapter):
 
         yield AgentStartEvent(
             **_base(),
-            agent_name=inp.agent_id,
+            agent_name=inp.agent_name or inp.agent_id,
         )
 
         bin_path = shutil.which(self._bin_path) or self._bin_path
         prompt = _build_prompt(inp)
 
+        # 不再用 -p 把 prompt 当命令行参数:Windows 命令行硬上限 8191 字符,
+        # 一旦 prompt 含历史/代码长度超限,subprocess 直接报 "The command line is too long"。
+        # 改成 stdin 喂入,长度由 CLI 内部缓冲处理,无 Windows CLI 长度限制。
         cmd = [
-            bin_path, "-p", prompt,
+            bin_path, "-p",
             "--output-format", "stream-json",
             "--verbose",
         ]
@@ -84,6 +87,7 @@ class ClaudeAdapter(AgentAdapter):
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
+                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
@@ -94,10 +98,31 @@ class ClaudeAdapter(AgentAdapter):
             )
             return
 
+        # 把 prompt 从 stdin 喂给 CLI,避免命令行长度限制。
+        # 写完立刻 close,告诉 CLI "输入到此为止",触发它进入流式输出。
+        try:
+            assert proc.stdin is not None
+            proc.stdin.write(prompt.encode("utf-8"))
+            await proc.stdin.drain()
+            proc.stdin.close()
+        except Exception:
+            logger.exception("Claude CLI stdin write failed")
+            yield AgentErrorEvent(**_base(), error="stdin write failed")
+            return
+
         text_block_id: str | None = None
+        # 从 result 事件抠出 token usage,在 AgentDoneEvent 里上报给 thread_service
+        # claude stream-json 通常在 result 行里给 {"usage":{"input_tokens":N,"output_tokens":N}}
+        last_tokens_input = 0
+        last_tokens_output = 0
 
         assert proc.stdout is not None
-        async for raw_line in proc.stdout:
+        # 用 read() 全量读取，避免 readline() 默认 64KB 限制导致 LimitOverrunError。
+        # Claude CLI 输出的每行可能是超大 JSON（含代码/文件内容），readline 会炸。
+        raw_stdout = await proc.stdout.read()
+        raw_lines = raw_stdout.split(b"\n")
+
+        for raw_line in raw_lines:
             if inp.cancel_event and inp.cancel_event.is_set():
                 proc.terminate()
                 if text_block_id:
@@ -142,6 +167,21 @@ class ClaudeAdapter(AgentAdapter):
                     yield BlockStopEvent(**_base(), block_id=text_block_id)
                     text_block_id = None
 
+                # 从 result 行解析 usage(claude CLI 当前版本会带,缺省 0)
+                usage = event.get("usage") or {}
+                last_tokens_input = int(
+                    usage.get("input_tokens")
+                    or usage.get("prompt_tokens")
+                    or event.get("input_tokens")
+                    or 0
+                )
+                last_tokens_output = int(
+                    usage.get("output_tokens")
+                    or usage.get("completion_tokens")
+                    or event.get("output_tokens")
+                    or 0
+                )
+
                 if event.get("subtype") != "success" or event.get("is_error"):
                     error_msg = event.get("result") or "Claude CLI returned an error"
                     yield AgentErrorEvent(**_base(), error=error_msg)
@@ -164,7 +204,11 @@ class ClaudeAdapter(AgentAdapter):
         if text_block_id is not None:
             yield BlockStopEvent(**_base(), block_id=text_block_id)
 
-        yield AgentDoneEvent(**_base())
+        yield AgentDoneEvent(
+            **_base(),
+            tokens_input=last_tokens_input,
+            tokens_output=last_tokens_output,
+        )
 
 
 # ---------------------------------------------------------------------------

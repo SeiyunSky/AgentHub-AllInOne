@@ -37,7 +37,8 @@ class ConversationRepository(BaseRepository[Conversation]):
         user_id: str,
         *,
         include_archived: bool = False,
-        limit: Optional[int] = None,
+        limit: int = 20,
+        offset: int = 0,
     ) -> list[Conversation]:
         """
         某用户的会话列表,按 last_message_at 倒序。
@@ -54,8 +55,7 @@ class ConversationRepository(BaseRepository[Conversation]):
             desc(Conversation.last_message_at),
             desc(Conversation.updated_at),
         )
-        if limit is not None:
-            query = query.limit(limit)
+        query = query.offset(offset).limit(limit)
         return query.all()
 
     # --------------------------------------------------------
@@ -169,3 +169,28 @@ class ConversationRepository(BaseRepository[Conversation]):
         existing.is_active = 0
         self.session.flush()
         return True
+
+    def list_active_agents_for_conversations(
+        self, conversation_ids: list[str]
+    ) -> dict[str, list[Agent]]:
+        """
+        批量查询多个会话的活跃 Agent，返回 {conversation_id: [Agent, ...]}。
+        1 次 IN 查询代替 N 次单独查询，消除 conversation list 的 N+1 问题。
+        """
+        if not conversation_ids:
+            return {}
+        rows = (
+            self.session.query(ConversationAgent.conversation_id, Agent)
+            .join(Agent, Agent.id == ConversationAgent.agent_id)
+            .filter(
+                ConversationAgent.conversation_id.in_(conversation_ids),
+                ConversationAgent.is_active == 1,
+                Agent.is_active == 1,
+            )
+            .order_by(ConversationAgent.conversation_id, ConversationAgent.joined_at.asc())
+            .all()
+        )
+        result: dict[str, list[Agent]] = {cid: [] for cid in conversation_ids}
+        for conv_id, agent in rows:
+            result[conv_id].append(agent)
+        return result

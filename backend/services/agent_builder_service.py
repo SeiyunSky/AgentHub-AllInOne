@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -51,15 +52,29 @@ logger = logging.getLogger(__name__)
 # 内存草稿存储（Redis 可替换）
 # ---------------------------------------------------------------------------
 _store_lock = threading.Lock()
-_draft_store: dict[str, dict] = {}  # key → {"user_id": ..., "draft": {...}}
+_draft_store: dict[str, dict] = {}  # key → {"user_id": ..., "draft": {...}, "expires_at": float}
 
-_DRAFT_TTL = 3600  # 秒，内存版不做 TTL；Redis 版用 setex
+_DRAFT_TTL = 3600  # 秒，内存版主动 evict；Redis 版用 setex
 
 
 def _store_put(user_id: str, session_id: str, draft: AgentBuildDraft) -> None:
     key = f"agent_draft:{user_id}:{session_id}"
     with _store_lock:
-        _draft_store[key] = {"user_id": user_id, "draft": draft.model_dump()}
+        _draft_store[key] = {
+            "user_id": user_id,
+            "draft": draft.model_dump(),
+            "expires_at": time.monotonic() + _DRAFT_TTL,
+        }
+        # 顺手清理已过期条目，防止长跑进程内存泄漏
+        _evict_expired()
+
+
+def _evict_expired() -> None:
+    """删除已超过 TTL 的草稿（调用方持锁）。"""
+    now = time.monotonic()
+    expired = [k for k, v in _draft_store.items() if v.get("expires_at", 0) < now]
+    for k in expired:
+        del _draft_store[k]
 
 
 def _store_get(user_id: str, session_id: str) -> Optional[AgentBuildDraft]:
@@ -67,6 +82,9 @@ def _store_get(user_id: str, session_id: str) -> Optional[AgentBuildDraft]:
     with _store_lock:
         entry = _draft_store.get(key)
     if entry is None or entry["user_id"] != user_id:
+        return None
+    if time.monotonic() > entry.get("expires_at", 0):
+        _store_delete(user_id, session_id)
         return None
     return AgentBuildDraft.model_validate(entry["draft"])
 
@@ -155,7 +173,9 @@ class AgentBuilderService:
             LookupError: session_id 不存在或不属于 user_id
             LookupError: suggested_skill_names 中有找不到的 skill name
         """
-        # 校验 session（防止 session 伪造）
+        # 校验 session（防止 session 伪造 / TTL 过期）。
+        # 用户提交的 edited_draft 可能与原草稿不同（用户可以修改），
+        # 所以落库以 edited_draft 为准，stored 仅作 session 合法性校验。
         stored = _store_get(user_id, session_id)
         if stored is None:
             raise LookupError(f"Draft session not found: {session_id}")
@@ -215,12 +235,18 @@ def _parse_draft(raw: str) -> AgentBuildDraft:
     2. Markdown 代码块包裹的 JSON（```json ... ```）
     """
     text = raw.strip()
-    # 剥掉 markdown 代码块
+    # 剥掉 markdown 代码块（只取第一个代码块内容，防止 LLM 在 ``` 后附加额外文字）
     if text.startswith("```"):
-        lines = text.splitlines()
-        # 去掉第一行（```json 或 ```）和最后一行（```）
-        inner = "\n".join(lines[1:-1]) if lines[-1].strip() == "```" else "\n".join(lines[1:])
-        text = inner.strip()
+        # 找到第一行结束和闭合的 ``` 行
+        first_newline = text.find("\n")
+        if first_newline != -1:
+            rest = text[first_newline + 1:]
+            close = rest.find("\n```")
+            if close != -1:
+                text = rest[:close].strip()
+            else:
+                # 没有找到闭合标记，取第一行之后的全部内容
+                text = rest.strip()
 
     try:
         data = json.loads(text)

@@ -32,6 +32,16 @@ import backend.models  # noqa: F401 — 确保所有 ORM 模型注册到 Base.me
 from backend.models.base import Base
 
 
+def body(resp):
+    """从 ResponseEnvelopeMiddleware 包装的响应中解包 data 字段。"""
+    if resp.status_code == 204 or not resp.content:
+        return None
+    payload = resp.json()
+    if isinstance(payload, dict) and "data" in payload and "code" in payload:
+        return payload["data"]
+    return payload
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -114,14 +124,14 @@ def _patch_skill_read(content: str = "# skill content"):
 def test_list_skills_empty(client):
     resp = client.get("/api/v1/skills")
     assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    assert isinstance(body(resp), list)
 
 
 def test_create_skill(client, skill_payload):
     with _patch_skill_io(), _patch_skill_read(skill_payload["content"]):
         resp = client.post("/api/v1/skills", json=skill_payload)
     assert resp.status_code == 201
-    data = resp.json()
+    data = body(resp)
     assert data["name"] == skill_payload["name"]
     assert data["content"] == skill_payload["content"]
     assert "id" in data
@@ -138,11 +148,11 @@ def test_get_skill(client, skill_payload):
     unique_payload = {**skill_payload, "name": "get_test_skill"}
     with _patch_skill_io(), _patch_skill_read(unique_payload["content"]):
         create_resp = client.post("/api/v1/skills", json=unique_payload)
-        skill_id = create_resp.json()["id"]
+        skill_id = body(create_resp)["id"]
 
         resp = client.get(f"/api/v1/skills/{skill_id}")
     assert resp.status_code == 200
-    assert resp.json()["id"] == skill_id
+    assert body(resp)["id"] == skill_id
 
 
 def test_get_skill_not_found(client):
@@ -155,7 +165,7 @@ def test_update_skill(client, skill_payload):
     unique_payload = {**skill_payload, "name": "update_test_skill"}
     with _patch_skill_io(), _patch_skill_read():
         create_resp = client.post("/api/v1/skills", json=unique_payload)
-        skill_id = create_resp.json()["id"]
+        skill_id = body(create_resp)["id"]
 
     with _patch_skill_io(), _patch_skill_read("# updated content"):
         resp = client.patch(
@@ -163,7 +173,7 @@ def test_update_skill(client, skill_payload):
             json={"description": "Updated description", "content": "# updated content"},
         )
     assert resp.status_code == 200
-    assert resp.json()["content"] == "# updated content"
+    assert body(resp)["content"] == "# updated content"
 
 
 def test_update_skill_not_found(client):
@@ -179,7 +189,7 @@ def test_delete_skill(client, skill_payload):
     unique_payload = {**skill_payload, "name": "delete_test_skill"}
     with _patch_skill_io(), _patch_skill_read():
         create_resp = client.post("/api/v1/skills", json=unique_payload)
-        skill_id = create_resp.json()["id"]
+        skill_id = body(create_resp)["id"]
 
     with _patch_skill_io(), _patch_skill_read():
         del_resp = client.delete(f"/api/v1/skills/{skill_id}")

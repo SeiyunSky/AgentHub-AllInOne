@@ -9,10 +9,10 @@
     <div class="w-full max-w-md p-8 relative z-10">
       <!-- Logo -->
       <div class="text-center mb-8">
-        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand to-brand-dark mx-auto flex items-center justify-center text-white text-2xl font-bold mb-4 shadow-glow">
-          N
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand to-brand-dark mx-auto flex items-center justify-center text-4xl mb-4 shadow-glow">
+          🐧
         </div>
-        <h1 class="text-2xl font-bold text-on-surface tracking-tight">Nexus AI</h1>
+        <h1 class="text-2xl font-bold text-on-surface tracking-tight">AgentHub</h1>
         <p class="text-[13px] text-on-surface-variant mt-1.5">Agent Orchestrator Platform</p>
       </div>
 

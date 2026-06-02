@@ -102,7 +102,7 @@ class OpencodeAdapter(AgentAdapter):
         def _base() -> dict[str, str]:
             return {"agent_id": inp.agent_id, "thread_id": inp.thread_id, "message_id": inp.message_id}
 
-        yield AgentStartEvent(**_base(), agent_name=inp.agent_id)
+        yield AgentStartEvent(**_base(), agent_name=inp.agent_name or inp.agent_id)
 
         bin_path = _resolve_opencode_binary(self._bin_path)
 

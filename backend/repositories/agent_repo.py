@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, desc, or_
 
 from backend.models.agent import Agent
 from backend.repositories.base import BaseRepository
@@ -33,12 +33,15 @@ class AgentRepository(BaseRepository[Agent]):
         user_id: str,
         *,
         include_inactive: bool = False,
+        limit: int = 20,
+        offset: int = 0,
     ) -> list[Agent]:
         """
         某用户的联系人列表:自己创建的 + 公开的(去重)。
 
         条件:WHERE is_active=1 AND (user_id=:me OR is_public=1)
         include_inactive=True 时不过滤 is_active(管理后台用)。
+        按 created_at 倒序(新建的排在前)。
         """
         conds = [
             or_(Agent.user_id == user_id, Agent.is_public == 1),
@@ -49,7 +52,9 @@ class AgentRepository(BaseRepository[Agent]):
         return (
             self.session.query(Agent)
             .filter(and_(*conds))
-            .order_by(Agent.name.asc())
+            .order_by(desc(Agent.created_at))
+            .offset(offset)
+            .limit(limit)
             .all()
         )
 

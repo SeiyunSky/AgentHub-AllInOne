@@ -67,7 +67,7 @@ class CustomAdapter(AgentAdapter):
             agent_id=inp.agent_id,
             thread_id=inp.thread_id,
             message_id=inp.message_id,
-            agent_name=inp.agent_id,
+            agent_name=inp.agent_name or inp.agent_id,
         )
 
         messages = _build_openai_messages(inp.system_prompt, inp.skills, inp.history, inp.prompt)

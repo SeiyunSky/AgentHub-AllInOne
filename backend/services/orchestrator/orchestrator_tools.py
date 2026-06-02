@@ -34,7 +34,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from backend.adapters.events import (
     AgentDoneEvent,
@@ -127,11 +127,7 @@ def _relative_to_sandbox(ctx: ToolContext, abs_path: Path) -> str:
 
 @register_tool(
     name="dispatch_to_agent",
-    description=(
-        "异步派任务给某个 Agent,可声明依赖。立即启动该 Thread,返回 thread_id;"
-        "Thread 完成时通过事件回注主 Agent context。与 add_task 区别:"
-        "dispatch_to_agent 立即启动,add_task 仅加入任务图等待调度。"
-    ),
+    description="派任务给某个子 Agent,立即启动并异步执行,返回 thread_id。",
     input_model=DispatchToAgentInput,
 )
 async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -150,6 +146,15 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
 
     parsed = DispatchToAgentInput.model_validate(tool_input)
 
+    # ----- 占位符兜底:LLM 经常忘了把上游产出贴进 prompt,留 {{...}} 字面量给子 Agent。
+    # 这里检测到任何 {{...}} 占位符就尝试用 blocked_by 列出的上游 Thread 产出自动替换。
+    # 替换后还有 {{...}} 残留就直接报错让 LLM 重派,避免子 Agent 拿到无效 prompt。
+    final_prompt, placeholder_error = _resolve_upstream_placeholders(
+        parsed.prompt, parsed.blocked_by or []
+    )
+    if placeholder_error is not None:
+        return {"error": placeholder_error}
+
     session = SessionLocal()
     try:
         ts = ThreadService(session)
@@ -158,7 +163,7 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
             message_id=ctx.user_message_id,
             agent_id=parsed.agent_id,
             blocked_by=parsed.blocked_by,
-            dispatch_prompt=parsed.prompt,
+            dispatch_prompt=final_prompt,
         )
         session.commit()
         await ts.schedule_conversation(ctx.conversation_id)
@@ -172,6 +177,85 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
         raise
     finally:
         session.close()
+
+
+def _extract_text_from_thread_messages(messages: list) -> str:
+    """从 Thread 的 messages 列表里抽出所有 text block,拼成一段文本。
+
+    messages 元素是 ORM Message,content 是 ContentBlock dict 列表。
+    """
+    parts: list[str] = []
+    for m in messages:
+        for block in (m.content or []):
+            if isinstance(block, dict) and block.get("type") == "text":
+                txt = block.get("content")
+                if txt:
+                    parts.append(str(txt))
+    return "\n\n".join(parts)
+
+
+def _resolve_upstream_placeholders(
+    prompt: str,
+    blocked_by: list[str],
+) -> tuple[str, Optional[str]]:
+    """识别 prompt 里 {{...}} 占位符,用 blocked_by 上游 Thread 产出替换。
+
+    返回 (替换后 prompt, error)。error 非 None 时 caller 应放弃 dispatch。
+
+    替换策略(简单粗暴):
+    - 没有 {{...}}:直接返回原 prompt
+    - 有占位符但 blocked_by 为空:报错(LLM 没声明依赖却引用上游)
+    - 有占位符且 blocked_by 非空:用第 1 个上游 Thread 的产出替换全部 {{...}}
+      (MVP 阶段不区分 {{UPSTREAM_X}} / {{UPSTREAM_Y}} 这种细分,直接全替成同一份)
+    - 替换后还有 {{...}} 残留:报错(替换没用,LLM 留了别的占位符)
+    """
+    import re
+
+    placeholders = re.findall(r"\{\{[^{}]+\}\}", prompt)
+    if not placeholders:
+        return prompt, None
+
+    if not blocked_by:
+        return prompt, (
+            f"prompt 含占位符 {placeholders} 但 blocked_by 为空。"
+            "若需引用上游产出,请在 dispatch 时声明 blocked_by;"
+            "否则请把占位符替换成实际内容再派活。"
+        )
+
+    # 拿第 1 个上游 Thread 的产出
+    from backend.core.database import SessionLocal
+    from backend.repositories.message_repo import MessageRepository
+    from backend.repositories.thread_repo import ThreadRepository
+
+    upstream_id = blocked_by[0]
+    session = SessionLocal()
+    try:
+        session.expire_all()
+        thread = ThreadRepository(session).get(upstream_id)
+        if thread is None:
+            return prompt, f"上游 Thread {upstream_id} 不存在,无法填充占位符。"
+        if thread.status != "done":
+            return prompt, (
+                f"上游 Thread {upstream_id} 状态为 {thread.status},尚未 done,"
+                "暂不能用于占位符替换。请等其完成后再 dispatch,或先调 read_thread_status 确认。"
+            )
+        messages = MessageRepository(session).list_by_thread(upstream_id)
+    finally:
+        session.close()
+
+    upstream_text = _extract_text_from_thread_messages(messages)
+    if not upstream_text.strip():
+        return prompt, f"上游 Thread {upstream_id} 没有可用文本产出,无法填充占位符。"
+
+    # 全部 {{...}} 都替换成上游产出
+    replaced = re.sub(r"\{\{[^{}]+\}\}", upstream_text, prompt)
+
+    # 替换后还有 {{...}}? 不应该,但 upstream_text 里可能本身就包含模板 → 不报错
+    # 只检查没替换成功的情况(replaced 跟原 prompt 一样长且仍有占位符)
+    if replaced == prompt and re.search(r"\{\{[^{}]+\}\}", replaced):
+        return prompt, "占位符替换失败:请检查 prompt 格式或手动替换占位符后再派活。"
+
+    return replaced, None
 
 
 @register_tool(
@@ -208,10 +292,7 @@ async def read_thread_status(tool_input: dict[str, Any], *, ctx: ToolContext) ->
 
 @register_tool(
     name="read_thread_result",
-    description=(
-        "读取 Thread 完整结果,包括状态、token 总量、关联消息列表(子 Agent 产出)。"
-        "需要看子 Thread 具体说了什么时调用。"
-    ),
+    description="读子 Thread 的完整产出(状态 + 子 Agent 的回复消息列表)。",
     input_model=ReadThreadResultInput,
 )
 async def read_thread_result(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -257,7 +338,7 @@ async def read_thread_result(tool_input: dict[str, Any], *, ctx: ToolContext) ->
 
 @register_tool(
     name="cancel_thread",
-    description="主动中止某个子 Thread(配合 cancel_dependents 传播取消依赖该 Thread 的下游)。",
+    description="中止某个子 Thread。",
     input_model=CancelThreadInput,
 )
 async def cancel_thread(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -293,10 +374,7 @@ async def cancel_thread(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict
 
 @register_tool(
     name="create_task_plan",
-    description=(
-        "创建结构化任务计划(含依赖图)落地到 threads 表。每个 TaskPlanItem 形成一行 Thread,"
-        "blocked_by 满足后由调度器统一启动。返回所有 thread_id 列表。"
-    ),
+    description="一次性创建多个任务(含依赖图),由调度器按 blocked_by 决定启动顺序。",
     input_model=CreateTaskPlanInput,
 )
 async def create_task_plan(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -329,10 +407,7 @@ async def create_task_plan(tool_input: dict[str, Any], *, ctx: ToolContext) -> d
 
 @register_tool(
     name="update_task_status",
-    description=(
-        "更新任务状态。主 Agent 仅可把任务标为 cancelled(主动放弃执行);"
-        "其他状态由 thread_service / Adapter 自动管理,主 Agent 不应直接操作。"
-    ),
+    description="标记任务为 cancelled(主动放弃)。其他状态由系统自动管理。",
     input_model=UpdateTaskStatusInput,
 )
 async def update_task_status(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -362,7 +437,7 @@ async def update_task_status(tool_input: dict[str, Any], *, ctx: ToolContext) ->
 
 @register_tool(
     name="read_task_plan",
-    description="读取当前轮次的完整任务图(threads 表里同 message_id 的所有行,含主 Agent 自己)。",
+    description="读取本轮所有任务的状态(任务图全貌)。",
     input_model=ReadTaskPlanInput,
 )
 async def read_task_plan(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -398,10 +473,7 @@ async def read_task_plan(tool_input: dict[str, Any], *, ctx: ToolContext) -> dic
 
 @register_tool(
     name="add_task",
-    description=(
-        "往当前任务图追加任务节点(blocked_by 满足后由调度器统一启动)。"
-        "与 dispatch_to_agent 区别:add_task 不立即启动,等依赖就绪;dispatch_to_agent 立即启动。"
-    ),
+    description="追加一个待启动的任务节点(等 blocked_by 满足后调度器再启动)。",
     input_model=AddTaskInput,
 )
 async def add_task(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -441,7 +513,7 @@ async def add_task(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str,
 
 @register_tool(
     name="remove_task",
-    description="运行中移除尚未启动的任务(仅支持 status=init)。已启动的任务请用 cancel_thread。",
+    description="移除尚未启动的任务(已启动的请用 cancel_thread)。",
     input_model=RemoveTaskInput,
 )
 async def remove_task(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -470,10 +542,7 @@ async def remove_task(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[s
 
 @register_tool(
     name="respond_to_user",
-    description=(
-        "直接给用户回话(不走子 Agent)。整轮可多次调用,最终触发 round_done。"
-        "用户能在 IM 气泡里看到这条消息。"
-    ),
+    description="给用户回话(本轮用户能看到的输出走这里)。",
     input_model=RespondToUserInput,
 )
 async def respond_to_user(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -529,10 +598,7 @@ async def respond_to_user(tool_input: dict[str, Any], *, ctx: ToolContext) -> di
 
 @register_tool(
     name="request_user_clarification",
-    description=(
-        "主动问用户澄清问题(暂停整轮等待用户回复)。"
-        "调用后主 Agent loop 应该 end_turn 退出本轮,等待用户下一条消息。"
-    ),
+    description="向用户提问澄清,本轮挂起等待回复。",
     input_model=RequestUserClarificationInput,
 )
 async def request_user_clarification(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -603,10 +669,7 @@ async def request_user_clarification(tool_input: dict[str, Any], *, ctx: ToolCon
 
 @register_tool(
     name="present_task_plan_for_review",
-    description=(
-        "向用户展示拟执行的任务计划,等用户批准后再 dispatch。"
-        "调用后主 Agent loop 应该 end_turn 退出,等用户审批回复。"
-    ),
+    description="把任务计划发给用户审批,本轮挂起等用户确认后再实际派活。",
     input_model=PresentTaskPlanForReviewInput,
 )
 async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -704,10 +767,7 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
 
 @register_tool(
     name="read_conversation_history",
-    description=(
-        "读取当前会话最近 N 条消息(默认 20,最多 200)。"
-        "结果按时间正序(早→晚)便于阅读。"
-    ),
+    description="拉本会话最近的消息(默认 20 条)。",
     input_model=ReadConversationHistoryInput,
 )
 async def read_conversation_history(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -744,10 +804,7 @@ async def read_conversation_history(tool_input: dict[str, Any], *, ctx: ToolCont
 
 @register_tool(
     name="list_available_agents",
-    description=(
-        "列出当前会话挂载的所有 Agent + 能力概要(name / description / capabilities / tags)。"
-        "派活前必须先调本工具看清楚有谁可用。"
-    ),
+    description="列出本会话所有子 Agent 的概要(派活前用)。",
     input_model=ListAvailableAgentsInput,
 )
 async def list_available_agents(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -772,10 +829,7 @@ async def list_available_agents(tool_input: dict[str, Any], *, ctx: ToolContext)
 
 @register_tool(
     name="get_agent_capabilities",
-    description=(
-        "查某个 Agent 的详细能力(完整 capabilities / tags / system_prompt 摘要)。"
-        "list_available_agents 给的是概要,需要更细粒度判断时调本工具。"
-    ),
+    description="查某个 Agent 的详细能力(list_available_agents 不够细时用)。",
     input_model=GetAgentCapabilitiesInput,
 )
 async def get_agent_capabilities(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -815,11 +869,7 @@ async def get_agent_capabilities(tool_input: dict[str, Any], *, ctx: ToolContext
 
 @register_tool(
     name="create_file",
-    description=(
-        "创建新文件(任务说明 / 阶段总结 / 计划文档 / 新记忆)。"
-        "path 是相对当前会话工作目录的路径,如 'plan.md' 或 'subdir/note.txt'。"
-        "已存在时报错(防止误覆盖,要更新用 edit_file)。"
-    ),
+    description="新建文件(已存在会报错,要更新用 edit_file)。",
     input_model=CreateFileInput,
 )
 async def create_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -837,16 +887,14 @@ async def create_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[s
     return {
         "path": _relative_to_sandbox(ctx, abs_path),
         "size": len(parsed.content.encode("utf-8")),
+        "old_content": "",
+        "new_content": parsed.content,
     }
 
 
 @register_tool(
     name="read_file",
-    description=(
-        "读取文件(子 Agent 产出 / 记忆文件)。"
-        "path 是相对当前会话工作目录的路径。"
-        "limit 给定时按行截断,大文件先读前 N 行避免撑爆 context。"
-    ),
+    description="读文件内容(可选 limit 截断行数)。",
     input_model=ReadFileInput,
 )
 async def read_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -876,10 +924,7 @@ async def read_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str
 
 @register_tool(
     name="edit_file",
-    description=(
-        "精确替换文件中一段文字(编辑 MEMORY.md / 记忆文件 / 任务文档)。"
-        "old_text 必须在文件中**唯一出现**,否则报错(防误改)。"
-    ),
+    description="精确替换文件中的一段文字(old_text 必须在文件中唯一出现)。",
     input_model=EditFileInput,
 )
 async def edit_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -913,16 +958,14 @@ async def edit_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str
     return {
         "path": _relative_to_sandbox(ctx, abs_path),
         "replaced": True,
+        "old_content": content,
+        "new_content": new_content,
     }
 
 
 @register_tool(
     name="list_directory",
-    description=(
-        "列目录(探索记忆目录 / 浏览子 Agent 产出)。"
-        "path 用 '.' 表示当前会话工作目录根。"
-        "返回每个条目的 name / type(file/dir)/ size(file 时的字节数)。"
-    ),
+    description="列出目录下的文件和子目录。",
     input_model=ListDirectoryInput,
 )
 async def list_directory(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:

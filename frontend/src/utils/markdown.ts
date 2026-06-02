@@ -1,7 +1,6 @@
 import MarkdownIt from 'markdown-it'
 import { createHighlighter, type Highlighter } from 'shiki'
 import DOMPurify from 'dompurify'
-import '@/utils/clipboard'
 
 let highlighterPromise: Promise<Highlighter> | null = null
 let cachedHighlighter: Highlighter | null = null
@@ -41,7 +40,7 @@ md.renderer.rules.fence = (tokens, idx, options, _env, self) => {
   const codeId = `code-${idx}-${Date.now()}`
   const wrapperId = `wrap-${idx}-${Date.now()}`
 
-  const header = `<div class="shiki-header" onclick="document.getElementById('${wrapperId}').classList.toggle('collapsed')"><span class="shiki-toggle">▼</span><span class="shiki-lang">${lang}</span><button class="shiki-copy-btn" onclick="event.stopPropagation();window.__copyCode(this,'${codeId}')">Copy</button></div>`
+  const header = `<div class="shiki-header" data-action="toggle" data-target="${wrapperId}"><span class="shiki-toggle">▼</span><span class="shiki-lang">${lang}</span><button class="shiki-copy-btn" data-action="copy" data-target="${codeId}">Copy</button></div>`
 
   try {
     const hl = cachedHighlighter
@@ -67,7 +66,7 @@ export async function initHighlighter() {
 export function renderMarkdown(text: string): string {
   const raw = md.render(text)
   return DOMPurify.sanitize(raw, {
-    ADD_ATTR: ['onclick', 'id'],
+    ADD_ATTR: ['id', 'data-action', 'data-target'],
   })
 }
 

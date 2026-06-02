@@ -1,7 +1,7 @@
 <template>
   <section class="flex flex-col bg-surface-elevated h-full overflow-hidden">
     <!-- Header -->
-    <ChatHeader :title="title" :status="status" :icon="ChatLineRound" variant="brand">
+    <ChatHeader v-if="!hideHeader" :title="title" :status="status" :icon="ChatLineRound" variant="brand">
       <template #actions>
         <slot name="headerActions" />
       </template>
@@ -11,6 +11,8 @@
     <MessageList
       class="flex-1 overflow-y-auto custom-scrollbar"
       :messages="messages"
+      :streaming-message-id="streamingMessageId"
+      :conversation-id="convId ?? undefined"
       @reply="onReply"
       @copy="onCopy"
       @react="onReact"
@@ -43,11 +45,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import type { Message, ChatAgent } from '@/types/chat'
 import type { AgentMember } from '@/types/conversation'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
+import { useAgentsStore } from '@/stores/agents'
 import ChatHeader from '@/components/layout/ChatHeader.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
@@ -58,6 +61,7 @@ const props = defineProps<{
   title: string
   status?: string
   messages: Message[]
+  hideHeader?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -69,11 +73,17 @@ const emit = defineEmits<{
 
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
+const agentsStore = useAgentsStore()
 const chatInputRef = ref<{ focus: () => void } | null>(null)
+
+onMounted(() => {
+  agentsStore.loadAgents()
+})
 
 const convId = computed(() => conversationsStore.currentId)
 const isStreaming = computed(() => !!convId.value && chatStore.isStreamingFor(convId.value))
 const currentApproval = computed(() => convId.value ? chatStore.getPendingApproval(convId.value) : null)
+const streamingMessageId = computed(() => convId.value ? chatStore.getStreamingMessage(convId.value)?.id : undefined)
 
 const inputText = computed(() => convId.value ? chatStore.getInputDraft(convId.value) : '')
 const inputHtml = computed(() => convId.value ? chatStore.getInputHtmlDraft(convId.value) : '')

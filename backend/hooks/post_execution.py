@@ -1,15 +1,15 @@
 """
-PostExecutionHook —— 工具调用后异步审计
+PostExecutionHook —— 工具调用后异步审计 + Diff 消息推送
 
 注册到 HookEvent.POST_TOOL_USE，在主 Agent loop 每次工具调用后 fire。
 属于 AsyncHook：发后即忘，不阻塞主流程。
 
 当前实装：
 1. 记录工具调用审计日志（tool_name / tool_input / tool_output / user_id / conversation_id）
+2. create_file / edit_file 后构造 CodeBlock diff 消息推给前端
 
 预留（依赖未实装模块）：
 - TODO[audit]: 接通 audit_service，写 audit_logs 表
-- TODO[diff]:  识别 create_file / edit_file 产物 → 调 diff_service → 推 diff 消息
 - TODO[preview]: 识别 HTML 产物 → 调 preview_service → 推 preview URL 消息
 
 队伍：咕嘎一辈子队
@@ -36,7 +36,7 @@ def _truncate_error(err: object) -> str:
 
 
 class PostExecutionHook(AsyncHook):
-    """工具执行后异步审计。"""
+    """工具执行后异步审计 + diff 消息推送。"""
 
     async def handle(self, ctx: HookContext) -> None:
         tool_name = ctx.tool_name or ""
@@ -65,5 +65,73 @@ class PostExecutionHook(AsyncHook):
             )
 
         # TODO[audit]: audit_service.record(ctx) 写 audit_logs 表
-        # TODO[diff]:  if tool_name in {"create_file", "edit_file"}: diff_service.push(ctx)
+
+        # 3. 文件写操作 → 构造 diff CodeBlock 消息推前端
+        if (
+            tool_name in {"create_file", "edit_file"}
+            and isinstance(tool_output, dict)
+            and not tool_output.get("error")
+            and ctx.conversation_id
+            and ctx.agent_id
+        ):
+            await self._push_diff_message(ctx, tool_output)
+
         # TODO[preview]: if _is_html_output(tool_output): preview_service.push(ctx)
+
+    async def _push_diff_message(self, ctx: HookContext, tool_output: dict) -> None:
+        """构造 CodeBlock diff 消息并通过 SSE 推给前端。"""
+        filename = tool_output.get("path") or ""
+        old_content = tool_output.get("old_content", "")
+        new_content = tool_output.get("new_content", "")
+
+        if not filename or not new_content:
+            return
+
+        try:
+            from backend.services.diff_service import diff_service
+            from backend.services.message_service import message_service
+            from backend.services.stream_service import stream_service
+            from backend.adapters.events import BlockStartEvent, BlockStopEvent
+
+            code_block = diff_service.build_code_block(filename, old_content, new_content)
+
+            msg = await message_service.create_assistant_message(
+                conversation_id=ctx.conversation_id,
+                agent_id=ctx.agent_id,
+                content_blocks=[code_block],
+                thread_id=ctx.thread_id,
+            )
+
+            await stream_service.push_event(
+                ctx.conversation_id,
+                BlockStartEvent(
+                    agent_id=ctx.agent_id,
+                    thread_id=ctx.thread_id or "",
+                    message_id=msg.id,
+                    block=code_block,
+                ),
+            )
+            await stream_service.push_event(
+                ctx.conversation_id,
+                BlockStopEvent(
+                    agent_id=ctx.agent_id,
+                    thread_id=ctx.thread_id or "",
+                    message_id=msg.id,
+                    block_id=code_block.block_id,
+                ),
+            )
+            logger.info(
+                "POST_TOOL_USE diff pushed tool=%s file=%s +%d/-%d conversation=%s",
+                ctx.tool_name,
+                filename,
+                code_block.additions or 0,
+                code_block.deletions or 0,
+                ctx.conversation_id,
+            )
+        except Exception:
+            logger.exception(
+                "POST_TOOL_USE diff push failed tool=%s file=%s conversation=%s",
+                ctx.tool_name,
+                filename,
+                ctx.conversation_id,
+            )

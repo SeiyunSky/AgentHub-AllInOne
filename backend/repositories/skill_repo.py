@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, desc, or_
 
 from backend.models.agent_skill import AgentSkill
 from backend.models.skill import Skill
@@ -35,24 +35,30 @@ class SkillRepository(BaseRepository[Skill]):
         user_id: str,
         *,
         include_inactive: bool = False,
+        limit: int = 20,
+        offset: int = 0,
     ) -> list[Skill]:
-        """用户可见的 Skill：自己创建的 + 公开的。"""
+        """用户可见的 Skill：自己创建的 + 公开的，按 created_at 倒序。"""
         conds = [or_(Skill.author_id == user_id, Skill.is_public == 1)]
         if not include_inactive:
             conds.append(Skill.is_active == 1)
         return (
             self.session.query(Skill)
             .filter(and_(*conds))
-            .order_by(Skill.name.asc())
+            .order_by(desc(Skill.created_at))
+            .offset(offset)
+            .limit(limit)
             .all()
         )
 
-    def list_builtin(self) -> list[Skill]:
-        """内置 Skill（author_id='GUGA'）。"""
+    def list_builtin(self, *, limit: int = 20, offset: int = 0) -> list[Skill]:
+        """内置 Skill（author_id='GUGA'），按 created_at 倒序。"""
         return (
             self.session.query(Skill)
             .filter(Skill.author_id == "GUGA", Skill.is_active == 1)
-            .order_by(Skill.name.asc())
+            .order_by(desc(Skill.created_at))
+            .offset(offset)
+            .limit(limit)
             .all()
         )
 

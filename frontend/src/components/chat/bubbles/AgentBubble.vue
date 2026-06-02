@@ -1,6 +1,6 @@
 <template>
   <div class="flex gap-3 message-enter group">
-    <AgentAvatar :name="message.agentName" :color="avatarColor" />
+    <AgentAvatar :name="message.agentName" :color="avatarColor" :avatar="agentAvatar" />
 
     <div class="flex-1 min-w-0 relative pb-3">
       <!-- Header -->
@@ -11,6 +11,17 @@
           class="text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase"
           :class="roleBadgeClass"
         >{{ message.agentRole }}</span>
+
+        <!-- Streaming activity chip:streaming 中显示当前在干啥 -->
+        <span
+          v-if="streaming"
+          class="text-[10px] font-medium px-2 py-0.5 rounded-md inline-flex items-center gap-1"
+          :class="activityChipClass"
+        >
+          <span class="activity-dot" :class="activityDotClass"></span>
+          {{ activityLabel }}
+        </span>
+
         <span class="text-[10px] text-on-surface-variant">{{ timeAgo }}</span>
       </div>
 
@@ -20,6 +31,7 @@
         <div v-for="(block, i) in message.blocks" :key="i">
           <div v-if="block.type === 'text'" class="text-block">
             <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="block.content" />
+            <StreamingCursor v-if="streaming && i === message.blocks.length - 1" />
           </div>
 
           <!-- Thinking block -->
@@ -84,6 +96,13 @@
         </div>
       </div>
 
+      <!-- Streaming: blocks empty, show typing indicator -->
+      <div v-else-if="streaming" class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft inline-flex items-center gap-1.5">
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+        <span class="typing-dot"></span>
+      </div>
+
       <!-- Legacy mode: single content + optional codeBlock -->
       <template v-else>
         <div class="text-block">
@@ -111,6 +130,13 @@
         @react="(id, type) => $emit('react', id, type)"
         @more="$emit('more', $event)"
       />
+
+      <!-- Persistent reaction badge -->
+      <div
+        v-if="message.reaction"
+        class="absolute -bottom-2 left-1 text-[13px] leading-none select-none"
+        :title="message.reaction === 'like' ? '已点赞' : '已点踩'"
+      >{{ message.reaction === 'like' ? '😀' : '🙁' }}</div>
     </div>
   </div>
 </template>
@@ -118,8 +144,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AgentMessage } from '@/types/chat'
+import { useAgentsStore } from '@/stores/agents'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import AgentAvatar from './AgentAvatar.vue'
+import StreamingCursor from './StreamingCursor.vue'
 import CodeBlock from '../CodeBlock.vue'
 import MessageActions from '../MessageActions.vue'
 import ThinkingBlock from '../blocks/ThinkingBlock.vue'
@@ -132,6 +160,11 @@ import ApprovalBlock from '../blocks/ApprovalBlock.vue'
 
 const props = defineProps<{
   message: AgentMessage
+  streaming?: boolean
+  /** streaming 时当前活跃状态:thinking/typing/tool/idle */
+  activity?: 'thinking' | 'typing' | 'tool' | 'idle'
+  /** activity=tool 时正在调用的工具名 */
+  currentTool?: string
 }>()
 
 defineEmits<{
@@ -142,6 +175,11 @@ defineEmits<{
 }>()
 
 const avatarColor = computed(() => props.message.agentRoleColor ?? 'brand')
+
+const agentsStore = useAgentsStore()
+const agentAvatar = computed(() =>
+  agentsStore.agents.find(a => a.id === props.message.agentId)?.avatar ?? props.message.avatar
+)
 
 const messageContent = computed(() => {
   if (props.message.blocks && props.message.blocks.length > 0) {
@@ -162,6 +200,37 @@ const roleBadgeClass = computed(() => {
   }
 })
 
+const activityLabel = computed(() => {
+  switch (props.activity) {
+    case 'thinking': return '思考中'
+    case 'typing': return '回复中'
+    case 'tool':
+      return props.currentTool ? `调用 ${props.currentTool}` : '调用工具'
+    case 'idle': return '等待中'
+    default: return '回复中'
+  }
+})
+
+const activityChipClass = computed(() => {
+  switch (props.activity) {
+    case 'thinking': return 'bg-purple-50 text-purple-600'
+    case 'typing': return 'bg-brand-light text-brand'
+    case 'tool': return 'bg-amber-50 text-amber-700'
+    case 'idle': return 'bg-surface-container text-on-surface-variant'
+    default: return 'bg-brand-light text-brand'
+  }
+})
+
+const activityDotClass = computed(() => {
+  switch (props.activity) {
+    case 'thinking': return 'bg-purple-500'
+    case 'typing': return 'bg-brand'
+    case 'tool': return 'bg-amber-500'
+    case 'idle': return 'bg-on-surface-variant'
+    default: return 'bg-brand'
+  }
+})
+
 const timeAgo = computed(() => {
   const now = new Date()
   const diff = now.getTime() - props.message.timestamp.getTime()
@@ -171,3 +240,18 @@ const timeAgo = computed(() => {
   return `${Math.floor(minutes / 60)}h ago`
 })
 </script>
+
+<style scoped>
+.activity-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  animation: activity-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes activity-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.8); }
+  50%      { opacity: 1;   transform: scale(1.1); }
+}
+</style>

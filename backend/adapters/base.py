@@ -57,6 +57,7 @@ class StreamInput:
     thread_id: str
     message_id: str
     prompt: str
+    agent_name: str = ""
     history: list[MessageInHistory] = field(default_factory=list)
     system_prompt: Optional[str] = None
     skills: list[SkillWithContent] = field(default_factory=list)

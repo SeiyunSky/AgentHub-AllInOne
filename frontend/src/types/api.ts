@@ -119,6 +119,7 @@ export interface MessageResponse {
   parent_id?: string
   user_id?: string
   agent_id?: string
+  agent_avatar?: string
   role: MessageRole
   blocks: ContentBlock[]
   status: MessageStatus

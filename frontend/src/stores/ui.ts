@@ -5,14 +5,18 @@ import type { ActiveArtifact, ArtifactItem } from '@/types/artifact'
 export const useUIStore = defineStore('ui', () => {
   // Sidebar
   const sidebarCollapsed = ref(false)
-  const sidebarActiveTab = ref<'chat' | 'agents' | 'skills' | 'projects'>('chat')
+  const navRailCollapsed = ref(false)
+
+  function toggleNavRail() {
+    navRailCollapsed.value = !navRailCollapsed.value
+  }
 
   // Panel sizes (percentage for splitpanes)
   const chatPanePercent = ref(55)
 
   // Right panel
   const rightPanelActiveTab = ref<'workflow' | 'preview'>('workflow')
-  const rightPanelVisible = ref(true)
+  const rightPanelVisible = ref(false)
 
   // Artifact preview
   const activeArtifact = ref<ActiveArtifact | null>(null)
@@ -20,17 +24,13 @@ export const useUIStore = defineStore('ui', () => {
   // Legacy - no longer used for resizing, but kept for compatibility
   const isResizing = ref(false)
 
-  const sidebarWidth = computed(() => sidebarCollapsed.value ? 160 : 440)
+  const sidebarWidth = computed(() => {
+    if (navRailCollapsed.value) return 0
+    return sidebarCollapsed.value ? 160 : 440
+  })
 
   function toggleSidebar() {
     sidebarCollapsed.value = !sidebarCollapsed.value
-  }
-
-  function setSidebarTab(tab: typeof sidebarActiveTab.value) {
-    sidebarActiveTab.value = tab
-    if (sidebarCollapsed.value) {
-      sidebarCollapsed.value = false
-    }
   }
 
   function openArtifact(messageId: string, item: ArtifactItem, itemIndex: number) {
@@ -56,6 +56,9 @@ export const useUIStore = defineStore('ui', () => {
   }
 
   function toggleRightPanel() {
+    if (!rightPanelVisible.value) {
+      chatPanePercent.value = 70
+    }
     rightPanelVisible.value = !rightPanelVisible.value
   }
 
@@ -77,16 +80,16 @@ export const useUIStore = defineStore('ui', () => {
   }
 
   return {
+    navRailCollapsed,
     sidebarCollapsed,
-    sidebarActiveTab,
     chatPanePercent,
     rightPanelActiveTab,
     rightPanelVisible,
     activeArtifact,
     isResizing,
     sidebarWidth,
+    toggleNavRail,
     toggleSidebar,
-    setSidebarTab,
     openArtifact,
     closeArtifact,
     setPreviewMode,

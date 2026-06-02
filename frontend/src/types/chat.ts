@@ -73,6 +73,7 @@ export interface AgentMessage {
   agentName: string
   agentRole?: string
   agentRoleColor?: string
+  avatar?: string
   content: string
   timestamp: Date
   blocks?: UIBlock[]

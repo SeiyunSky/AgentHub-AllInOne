@@ -22,7 +22,7 @@ agents 相关 Pydantic DTO
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.domain.agent import AgentCapabilities, AgentType
 
@@ -77,14 +77,12 @@ class AgentUpdate(BaseModel):
     """
     PATCH /api/v1/agents/{id} 修改 Agent。
     所有字段 Optional 默认 None;service 用 model_dump(exclude_unset=True) 取被显式传的字段。
-
-    注意:type 字段不可修改(会改变 Adapter 路由,等于换了个 Agent)。
-    用户想换类型应删除原 Agent 后新建。
     """
 
     name: Optional[str] = None
     description: Optional[str] = None
     avatar: Optional[str] = None
+    type: Optional[AgentType] = None
     system_prompt: Optional[str] = None
     capabilities: Optional[AgentCapabilities] = None
     tags: Optional[list[str]] = None
@@ -124,6 +122,13 @@ class AgentResponse(BaseModel):
     )
     created_at: datetime
     updated_at: datetime
+
+    # ORM Agent.tags 列允许 NULL,旧数据 / seed 数据可能没写入 → 进 schema 时兜底成空 list,
+    # 否则 pydantic 会报 list_type 错(NoneType 不是合法 list)。
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _tags_none_to_empty(cls, v):
+        return [] if v is None else v
 
 
 # ============================================================

@@ -11,37 +11,54 @@ const router = createRouter({
     },
     {
       path: '/',
-      redirect: '/chat',
-    },
-    {
-      path: '/chat',
-      name: 'chat',
-      component: () => import('@/views/ChatView.vue'),
+      component: () => import('@/components/layout/AppLayout.vue'),
       meta: { requiresAuth: true },
-    },
-    {
-      path: '/chat/:conversationId',
-      name: 'chat-detail',
-      component: () => import('@/views/ChatView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/agents/new',
-      name: 'agent-create',
-      component: () => import('@/views/AgentBuilderView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/agents/:agentId',
-      name: 'agent-edit',
-      component: () => import('@/views/AgentBuilderView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/agents',
-      name: 'agents',
-      component: () => import('@/views/AgentsView.vue'),
-      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          redirect: '/chat',
+        },
+        {
+          path: 'chat',
+          name: 'chat',
+          component: () => import('@/views/ChatView.vue'),
+        },
+        {
+          path: 'chat/:conversationId',
+          name: 'chat-detail',
+          component: () => import('@/views/ChatView.vue'),
+        },
+        {
+          path: 'agents',
+          name: 'agents',
+          component: () => import('@/views/AgentsView.vue'),
+        },
+        {
+          path: 'agents/new',
+          name: 'agent-create',
+          component: () => import('@/views/AgentFormView.vue'),
+        },
+        {
+          path: 'agents/:agentId',
+          name: 'agent-edit',
+          component: () => import('@/views/AgentFormView.vue'),
+        },
+        {
+          path: 'skills',
+          name: 'skills',
+          component: () => import('@/views/SkillsView.vue'),
+        },
+        {
+          path: 'skills/new',
+          name: 'skill-create',
+          component: () => import('@/views/SkillFormView.vue'),
+        },
+        {
+          path: 'skills/:skillId',
+          name: 'skill-edit',
+          component: () => import('@/views/SkillFormView.vue'),
+        },
+      ],
     },
     {
       path: '/md-test',
@@ -53,7 +70,7 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.isLoggedIn) {
+  if (to.matched.some(r => r.meta.requiresAuth) && !auth.isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.name === 'login' && auth.isLoggedIn) {

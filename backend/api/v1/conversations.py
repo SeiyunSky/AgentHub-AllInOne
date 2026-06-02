@@ -110,15 +110,20 @@ async def list_conversations(
         Query(description="是否包含已归档会话"),
     ] = False,
     limit: Annotated[
-        Optional[int],
-        Query(ge=1, le=200, description="返回上限"),
-    ] = None,
+        int,
+        Query(ge=1, le=200, description="每页返回数量，默认 20"),
+    ] = 20,
+    offset: Annotated[
+        int,
+        Query(ge=0, le=10000, description="分页偏移量"),
+    ] = 0,
 ) -> list[ConversationListItem]:
     """列出当前 user 的所有会话。仅显示自己的(service 内置 user_id 过滤)。"""
     convs = await conversation_service.list_for_user(
         user_id,
         include_archived=include_archived,
         limit=limit,
+        offset=offset,
     )
     return [ConversationListItem.model_validate(c) for c in convs]
 
@@ -197,23 +202,212 @@ async def list_conversation_messages(
 ) -> list[MessageResponse]:
     await conversation_service.assert_owned_by(conversation_id, user_id)
 
-    messages = await message_service.list_recent(
-        conversation_id,
-        limit=limit,
-        before=before,
-    )
-    return [_message_orm_to_response(m) for m in messages]
+    try:
+        messages = await message_service.list_recent(
+            conversation_id,
+            limit=limit,
+            before=before,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    # 批量查 agent avatar，避免 N+1
+    from backend.core.database import SessionLocal
+    from backend.repositories.agent_repo import AgentRepository
+    agent_ids = list({m.agent_id for m in messages if m.agent_id})
+    avatar_map: dict[str, str | None] = {}
+    if agent_ids:
+        session = SessionLocal()
+        try:
+            agents = AgentRepository(session).list_by_ids(agent_ids, include_inactive=True)
+            avatar_map = {a.id: a.avatar for a in agents}
+        finally:
+            session.close()
+
+    return [_message_orm_to_response(m, avatar_map) for m in messages]
+
+
+# ============================================================
+# POST /api/v1/conversations/{id}/agents —— 群聊增加成员
+# DELETE /api/v1/conversations/{id}/agents/{agent_id} —— 移除成员
+# ============================================================
+
+class _AddAgentRequest(__import__("pydantic").BaseModel):
+    agent_id: str
+
+
+@router.post(
+    "/conversations/{conversation_id}/agents",
+    response_model=ConversationResponse,
+    summary="把 Agent 加入会话(群聊增加成员)",
+)
+async def add_conversation_agent(
+    conversation_id: Annotated[str, Path(description="会话 ID")],
+    body: _AddAgentRequest,
+    user_id: Annotated[str, Depends(get_current_user)],
+) -> ConversationResponse:
+    """把 Agent 挂载到会话。单聊会话不应支持加新成员(由前端拦截);后端不做 mode 限制。"""
+    await conversation_service.assert_owned_by(conversation_id, user_id)
+    try:
+        await conversation_service.add_agent(conversation_id, body.agent_id)
+    except Exception as exc:
+        # 可能 agent_id 不存在 / 已经在会话里 (UNIQUE 约束) → 友好报错
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    refreshed = await conversation_service.get(conversation_id)
+    return await _to_conversation_response(refreshed)
+
+
+@router.delete(
+    "/conversations/{conversation_id}/agents/{agent_id}",
+    response_model=ConversationResponse,
+    summary="把 Agent 从会话移除(群聊删除成员)",
+)
+async def remove_conversation_agent(
+    conversation_id: Annotated[str, Path(description="会话 ID")],
+    agent_id: Annotated[str, Path(description="Agent ID")],
+    user_id: Annotated[str, Depends(get_current_user)],
+) -> ConversationResponse:
+    """从会话踢掉某 Agent。已经产生的历史消息保留(agent_id 留在 messages 表里)。"""
+    await conversation_service.assert_owned_by(conversation_id, user_id)
+    try:
+        await conversation_service.remove_agent(conversation_id, agent_id)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    refreshed = await conversation_service.get(conversation_id)
+    return await _to_conversation_response(refreshed)
+
+
+# ============================================================
+# GET /api/v1/conversations/{id}/token_usage
+# 返回会话内每个 Agent 的 token 累计 + 全局总和。
+# 数据来自 messages 表的 tokens_input / tokens_output (子 Agent 写库)
+# 加上 threads.tokens_total (orchestrator 的 LLM 调用消耗)。
+# ============================================================
+
+@router.get(
+    "/conversations/{conversation_id}/token_usage",
+    summary="会话 token 用量统计(按 Agent 分 + 总和)",
+)
+async def get_conversation_token_usage(
+    conversation_id: Annotated[str, Path(description="会话 ID")],
+    user_id: Annotated[str, Depends(get_current_user)],
+) -> dict:
+    """
+    返回:
+    {
+      "conversation_id": ...,
+      "by_agent": [
+        {"agent_id": ..., "agent_name": ..., "tokens_input": ..., "tokens_output": ..., "messages_count": ...},
+        ...
+      ],
+      "total": {"tokens_input": ..., "tokens_output": ...}
+    }
+
+    实现:
+    - 子 Agent 的 token 写在 messages.tokens_input/output (thread_service._persist_assistant_message
+      里 update_tokens 写的)
+    - 主 Agent (orchestrator) 不直接落消息(只在 respond_to_user 工具时落 1 条文本消息),
+      它的真实 LLM 消耗累计在 threads.tokens_total 里。所以两边都要聚合。
+    - threads.tokens_total 没有区分 input/output,本接口里把它当成 input 统一计入(主要用于
+      展示规模,不是计费精度)。
+    """
+    from sqlalchemy import text as _sql_text
+
+    from backend.core.database import SessionLocal
+    from backend.repositories.agent_repo import AgentRepository
+
+    await conversation_service.assert_owned_by(conversation_id, user_id)
+
+    session = SessionLocal()
+    try:
+        # 1) 子 Agent token:聚合 messages.tokens_input/output
+        msg_rows = session.execute(_sql_text("""
+            SELECT
+                agent_id,
+                COALESCE(SUM(tokens_input), 0)  AS tokens_input,
+                COALESCE(SUM(tokens_output), 0) AS tokens_output,
+                COUNT(*) AS messages_count
+            FROM messages
+            WHERE conversation_id = :conv_id
+              AND role = 'assistant'
+              AND is_deleted = 0
+              AND agent_id IS NOT NULL
+            GROUP BY agent_id
+        """), {"conv_id": conversation_id}).fetchall()
+
+        # 2) 主 Agent + 子 Agent 的 LLM 消耗:聚合 threads.tokens_total
+        thread_rows = session.execute(_sql_text("""
+            SELECT
+                agent_id,
+                COALESCE(SUM(tokens_total), 0) AS tokens_total,
+                COUNT(*) AS threads_count
+            FROM threads
+            WHERE conversation_id = :conv_id
+              AND agent_id IS NOT NULL
+            GROUP BY agent_id
+        """), {"conv_id": conversation_id}).fetchall()
+
+        # 合并:agent_id → {tokens_input, tokens_output, messages_count}
+        # threads.tokens_total 不分 in/out,放在 tokens_input(规模展示用)
+        merged: dict[str, dict] = {}
+        for r in msg_rows:
+            merged[r.agent_id] = {
+                "tokens_input": int(r.tokens_input or 0),
+                "tokens_output": int(r.tokens_output or 0),
+                "messages_count": int(r.messages_count or 0),
+            }
+        for r in thread_rows:
+            entry = merged.setdefault(r.agent_id, {
+                "tokens_input": 0,
+                "tokens_output": 0,
+                "messages_count": 0,
+            })
+            # 累加到 input(threads.tokens_total 表示该 agent 在本 round 内的 LLM 总消耗)
+            entry["tokens_input"] += int(r.tokens_total or 0)
+
+        agent_repo = AgentRepository(session)
+        by_agent = []
+        total_in = 0
+        total_out = 0
+        for agent_id, vals in merged.items():
+            agent = agent_repo.get(agent_id)
+            agent_name = agent.name if agent else agent_id
+            tin = vals["tokens_input"]
+            tout = vals["tokens_output"]
+            total_in += tin
+            total_out += tout
+            by_agent.append({
+                "agent_id": agent_id,
+                "agent_name": agent_name,
+                "tokens_input": tin,
+                "tokens_output": tout,
+                "messages_count": vals["messages_count"],
+            })
+        # 按 token 用量降序
+        by_agent.sort(key=lambda x: x["tokens_input"] + x["tokens_output"], reverse=True)
+
+        return {
+            "conversation_id": conversation_id,
+            "by_agent": by_agent,
+            "total": {
+                "tokens_input": total_in,
+                "tokens_output": total_out,
+            },
+        }
+    finally:
+        session.close()
 
 
 # ============================================================
 # 内部辅助:Message ORM → MessageResponse
 # ============================================================
 
-def _message_orm_to_response(msg) -> MessageResponse:
+def _message_orm_to_response(msg, avatar_map: dict | None = None) -> MessageResponse:
     """
     把 ORM Message 转成 MessageResponse。
-    重点处理 content 字段:DB 存的是 list[dict](JSON),Pydantic 需要 list[ContentBlock]。
-    MessageResponse 的 blocks 字段会自动反序列化(ContentBlock 是 discriminated union)。
+    avatar_map: {agent_id: avatar_url}，调用方批量查好传入，避免 N+1。
     """
     return MessageResponse.model_validate({
         "id": msg.id,
@@ -222,6 +416,7 @@ def _message_orm_to_response(msg) -> MessageResponse:
         "parent_id": msg.parent_id,
         "user_id": msg.user_id,
         "agent_id": msg.agent_id,
+        "agent_avatar": (avatar_map or {}).get(msg.agent_id) if msg.agent_id else None,
         "role": msg.role,
         "blocks": msg.content or [],  # DB 字段叫 content,API 字段叫 blocks
         "status": msg.status,

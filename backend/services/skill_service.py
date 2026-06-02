@@ -22,12 +22,12 @@ frontmatter 字段（可选）：
 from __future__ import annotations
 
 import logging
-import re
 from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
+from backend.core.frontmatter import parse_frontmatter
 from backend.core.utils import gen_uuid
 from backend.models.skill import Skill
 from backend.repositories.skill_repo import SkillRepository
@@ -36,22 +36,11 @@ from backend.schemas.skill import SkillCreate, SkillSummary, SkillUpdate, SkillW
 logger = logging.getLogger(__name__)
 
 _SKILLS_DIR = Path(__file__).parent.parent / "skills"
-_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
-_FM_FIELD_RE = re.compile(r"^(\w+)\s*:\s*(.+)$", re.MULTILINE)
 
 
-def _parse_md(path: Path) -> tuple[dict[str, str], str]:
-    """解析 .md 文件，返回 (frontmatter_fields, body)。"""
-    text = path.read_text(encoding="utf-8")
-    fm: dict[str, str] = {}
-    m = _FRONTMATTER_RE.match(text)
-    if m:
-        for key, val in _FM_FIELD_RE.findall(m.group(1)):
-            fm[key.strip()] = val.strip().strip("'\"")
-        body = text[m.end():].strip()
-    else:
-        body = text.strip()
-    return fm, body
+def _parse_md(path: Path) -> tuple[dict, str]:
+    """解析 .md 文件，返回 (frontmatter_fields, body)。委托给 core/frontmatter.py。"""
+    return parse_frontmatter(path.read_text(encoding="utf-8"))
 
 
 class SkillService:
@@ -176,11 +165,15 @@ class SkillService:
 
     def update(self, skill_id: str, author_id: str, data: SkillUpdate) -> Optional[Skill]:
         skill = self._repo.get(skill_id)
-        if skill is None or skill.author_id != author_id:
+        if skill is None:
+            return None
+        # 内置 Skill（author_id='GUGA'）允许任何用户编辑；用户 Skill 只允许本人
+        owner = str(skill.author_id)
+        if owner != "GUGA" and owner != author_id:
             return None
 
         fields = data.model_dump(exclude_unset=True)
-        content = fields.pop("content", None)
+        fields.pop("content", None)  # content 不写文件，只存 DB（若 SkillUpdate 后续加 content 字段）
 
         for key, val in fields.items():
             if key in ("is_public", "is_active"):
@@ -188,19 +181,26 @@ class SkillService:
             else:
                 setattr(skill, key, val)
 
-        if content is not None:
-            abs_path = Path(__file__).parent.parent / skill.file_path
-            abs_path.parent.mkdir(parents=True, exist_ok=True)
-            abs_path.write_text(content, encoding="utf-8")
-
         self._db.flush()
         self._db.commit()
         return skill
 
     def delete(self, skill_id: str, author_id: str) -> bool:
         skill = self._repo.get(skill_id)
-        if skill is None or skill.author_id != author_id:
+        if skill is None:
             return False
+        owner = str(skill.author_id)
+        if owner != "GUGA" and owner != author_id:
+            return False
+
+        # 先删本地 .md 文件，再删 DB 行（顺序不可颠倒：DB 行是文件路径的来源）
+        if skill.file_path:
+            abs_path = Path(__file__).parent.parent / skill.file_path
+            try:
+                abs_path.unlink(missing_ok=True)
+            except OSError:
+                logger.warning("Skill file delete failed: %s", abs_path)
+
         self._db.delete(skill)
         self._db.commit()
         return True

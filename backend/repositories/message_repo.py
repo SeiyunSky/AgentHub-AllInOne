@@ -36,14 +36,14 @@ class MessageRepository(BaseRepository[Message]):
         before: Optional[str] = None,
     ) -> list[Message]:
         """
-        按会话取最近 N 条消息,不含已软删除。
+        按会话取最近 N 条消息，不含已软删除。
 
-        **返回结果按 created_at 倒序(从新到旧)**——调用方拿到后如果要按时间线展示,
-        需要自行反转(reversed() 或 [::-1])。倒序取最近 N 条是分页正确做法,不要改顺序。
+        **返回结果按 created_at ASC（从旧到新）**，与时间线展示顺序一致，调用方无需反转。
 
-        before:游标分页用,传消息 id 时只返回该消息**之前**(更早)的记录。
-        游标用 (created_at, id) 复合比较破平:同毫秒下按 id 字典序破平,
+        before：游标分页，传消息 id 时只返回该消息**之前**（更早）的记录。
+        游标用 (created_at, id) 复合比较破平：同毫秒下按 id 字典序破平，
         防止单纯 created_at < anchor 时遗漏同时刻消息。
+        游标 id 必须属于同一会话，否则抛 ValueError。
         """
         query = (
             self.session.query(Message)
@@ -53,25 +53,37 @@ class MessageRepository(BaseRepository[Message]):
             )
         )
         if before is not None:
-            anchor = self.get(before)
-            if anchor is not None:
-                # (created_at, id) 复合游标:严格小于 anchor 的元组
-                # 等价于 created_at < anchor.created_at
-                #     OR (created_at = anchor.created_at AND id < anchor.id)
-                query = query.filter(
-                    or_(
-                        Message.created_at < anchor.created_at,
-                        and_(
-                            Message.created_at == anchor.created_at,
-                            Message.id < anchor.id,
-                        ),
-                    )
+            # 验证 cursor 归属：必须来自同一会话，防止跨会话游标泄露
+            anchor = (
+                self.session.query(Message)
+                .filter(
+                    Message.id == before,
+                    Message.conversation_id == conversation_id,
+                    Message.is_deleted == 0,
                 )
-        return (
+                .first()
+            )
+            if anchor is None:
+                raise ValueError(f"无效的分页游标：消息 {before} 不属于会话 {conversation_id}")
+            query = query.filter(
+                or_(
+                    Message.created_at < anchor.created_at,
+                    and_(
+                        Message.created_at == anchor.created_at,
+                        Message.id < anchor.id,
+                    ),
+                )
+            )
+        # 先取最近 N 条（DESC），再用子查询翻转成 ASC 返回给调用方
+        # 等价于：SELECT * FROM (SELECT ... ORDER BY created_at DESC LIMIT N) t ORDER BY created_at ASC
+        # 用 Python 侧反转简化实现
+        rows = (
             query.order_by(desc(Message.created_at), desc(Message.id))
             .limit(limit)
             .all()
         )
+        rows.reverse()
+        return rows
 
     def list_by_thread(self, thread_id: str) -> list[Message]:
         """反查某 Thread 产出的所有消息(用于审计 / 复盘子 Thread 的完整产出)。"""

@@ -3,7 +3,7 @@
 Supports two modes:
   1. MCP server mode: Launch codex CLI as an MCP server (stdio transport).
      Calls the `codex` MCP tool with a prompt.
-  2. Subprocess mode (fallback): Run `codex --no-interactive <prompt>`,
+  2. Subprocess mode (fallback): Run `codex exec <prompt>`,
      stream stdout line-by-line, detect diffs and approval requests.
 
 Reference: https://github.com/openai/codex
@@ -70,7 +70,7 @@ class CodexAdapter(AgentAdapter):
             agent_id=inp.agent_id,
             thread_id=inp.thread_id,
             message_id=inp.message_id,
-            agent_name=inp.agent_id,
+            agent_name=inp.agent_name or inp.agent_id,
         )
 
         if self._mcp_client is not None:
@@ -130,7 +130,7 @@ class CodexAdapter(AgentAdapter):
         try:
             proc = await asyncio.create_subprocess_exec(
                 bin_path,
-                "--no-interactive",
+                "exec",
                 inp.prompt,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,

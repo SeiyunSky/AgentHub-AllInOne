@@ -17,11 +17,15 @@ FastAPI 应用入口
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend.adapters.registry import registry as adapter_registry
 from backend.api.exception_handlers import register_exception_handlers
@@ -51,6 +55,27 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         from backend.services.skill_service import SkillService
+
+        # 收尸:把上次进程崩溃 / 强杀 / reload 留下的 running/init/suspended thread
+        # 标成 error。这些 thread 的 asyncio.Task 早已随旧进程死了,DB 状态和内存
+        # 现实不一致会让 chat_service 误判"当前还有 round 在跑"→ 新消息被押进
+        # pending 队列等永远不会到来的 round_done。每次启动都收一次,代价是一条
+        # UPDATE,换来 DB 状态与现实强一致。
+        from sqlalchemy import text as _sql_text
+
+        result = db.execute(_sql_text("""
+            UPDATE threads
+               SET status = 'error',
+                   finished_at = NOW(),
+                   error_message = 'backend restart, presumed dead'
+             WHERE status IN ('init', 'running', 'suspended')
+        """))
+        db.commit()
+        if result.rowcount:
+            logger.warning(
+                "stale threads reaped on startup: %d rows (presumed dead from previous run)",
+                result.rowcount,
+            )
 
         n_agents = seed_agents(db)
         logger.info("seed_agents: %d rows affected", n_agents)
@@ -137,6 +162,8 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     from backend.api.v1 import ws as ws_router
     from backend.api.v1 import agents as agents_router
     from backend.api.v1 import skills as skills_router
+    from backend.api.v1 import files as files_router
+    from backend.api.v1 import artifacts as artifacts_router
 
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
     app.include_router(
@@ -146,6 +173,13 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app.include_router(ws_router.router, prefix="/api/v1", tags=["ws"])
     app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
     app.include_router(skills_router.router, prefix="/api/v1", tags=["skills"])
+    app.include_router(files_router.router, prefix="/api/v1", tags=["files"])
+    app.include_router(artifacts_router.router, prefix="/api/v1", tags=["artifacts"])
+
+    # 静态资源：头像等图片文件
+    _static_dir = Path(__file__).parent / "static"
+    _static_dir.mkdir(exist_ok=True)
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
     return app
 

@@ -31,4 +31,6 @@ export interface AgentDraft {
   capabilities: AgentCapabilities
   tags: string[]
   isPublic: boolean
+  isActive: boolean
+  skillIds: string[]
 }

@@ -1,15 +1,39 @@
 <template>
-  <AppLayout />
+  <template v-if="!hasConversation">
+    <div class="flex flex-col items-center justify-center h-full gap-4 text-on-surface-variant">
+      <el-icon :size="48" class="opacity-30"><ChatLineRound /></el-icon>
+      <p class="text-base">从左侧选择或新建聊天</p>
+    </div>
+  </template>
+
+  <Splitpanes v-else class="splitpanes-theme" @resized="onPaneResized">
+    <Pane :size="chatPaneSize" :min-size="chatPaneMinSize" :max-size="chatPaneMaxSize">
+      <ChatPanel />
+    </Pane>
+    <Pane v-if="uiStore.rightPanelVisible" :size="100 - chatPaneSize" :min-size="rightPaneMinSize">
+      <RightPanel />
+    </Pane>
+  </Splitpanes>
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useUIStore } from '@/stores/ui'
 import { useConversationsStore } from '@/stores/conversations'
-import AppLayout from '@/components/layout/AppLayout.vue'
+import { Splitpanes, Pane } from 'splitpanes'
+import 'splitpanes/dist/splitpanes.css'
+import { ChatLineRound } from '@element-plus/icons-vue'
+import ChatPanel from '@/components/layout/ChatPanel.vue'
+import RightPanel from '@/components/layout/RightPanel.vue'
 
 const route = useRoute()
+const uiStore = useUIStore()
 const conversationsStore = useConversationsStore()
+
+const hasConversation = computed(() => !!route.params.conversationId)
+
+// --- Conversation loading ---
 
 async function loadConversation(convId: string) {
   if (conversationsStore.currentId === convId) return
@@ -30,4 +54,17 @@ watch(() => route.params.conversationId, async (newId) => {
     await loadConversation(newId)
   }
 })
+
+// --- Splitpanes (moved from AppLayout) ---
+
+const chatPaneSize = computed(() => uiStore.chatPanePercent)
+const chatPaneMinSize = 35
+const chatPaneMaxSize = undefined
+const rightPaneMinSize = 25
+
+function onPaneResized(event: ({ min: number; max: number; size: number })[]) {
+  if (event.length > 0) {
+    uiStore.setChatPanePercent(event[0].size)
+  }
+}
 </script>

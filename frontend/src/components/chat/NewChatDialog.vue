@@ -48,8 +48,9 @@
             :key="agent.id"
             class="agent-chip group/chip"
           >
-            <div class="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold" :class="chipAvatarClass(agent.type)">
-              {{ agent.name.charAt(0) }}
+            <div class="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold overflow-hidden" :class="agent.avatar ? '' : chipAvatarClass(agent.type)">
+              <img v-if="agent.avatar" :src="agent.avatar" :alt="agent.name" class="w-full h-full object-cover" />
+              <span v-else>{{ agent.name.charAt(0) }}</span>
             </div>
             <span class="text-[12px] font-medium">{{ agent.name }}</span>
             <button
@@ -63,7 +64,6 @@
 
         <!-- Agent dropdown picker -->
         <el-popover
-          ref="popoverRef"
           trigger="click"
           placement="bottom-start"
           :width="300"
@@ -98,20 +98,19 @@
                 class="agent-option"
                 @click="addAgent(agent.id)"
               >
-                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0" :class="agentAvatarClass(agent.type)">
-                  {{ agent.name.charAt(0) }}
+                <div class="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden" :class="agent.avatar ? '' : agentAvatarClass(agent.type)">
+                  <img v-if="agent.avatar" :src="agent.avatar" :alt="agent.name" class="w-full h-full object-cover" />
+                  <span v-else>{{ agent.name.charAt(0) }}</span>
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-[13px] font-medium text-on-surface truncate">{{ agent.name }}</p>
                   <p v-if="agent.description" class="text-[10px] text-on-surface-variant truncate">{{ agent.description }}</p>
                 </div>
-                <span class="w-1.5 h-1.5 rounded-full shrink-0" :class="typeDotClass(agent.type)"></span>
+                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-md border shrink-0" :class="typeBadgeClass(agent.type)">{{ typeLabel(agent.type) }}</span>
               </div>
             </div>
           </div>
         </el-popover>
-
-        <p v-if="selectedAgents.length === 0" class="text-[11px] text-red-400 mt-1.5 pl-0.5">At least one agent is required</p>
       </section>
     </div>
 
@@ -155,16 +154,15 @@ const visible = computed({
   set: (v) => emit('update:modelValue', v),
 })
 
-const title = ref('New Chat')
+const title = ref('')
 const selectedAgents = ref<Agent[]>([])
 const creating = ref(false)
 const searchQuery = ref('')
 const titleInputRef = ref<HTMLInputElement>()
-const popoverRef = ref()
 
 const filteredAgents = computed(() => {
   const available = agentsStore.agents.filter(
-    (a) => !selectedAgents.value.some((s) => s.id === a.id)
+    (a) => a.id !== 'orchestrator' && !selectedAgents.value.some((s) => s.id === a.id)
   )
   if (!searchQuery.value) return available
   const q = searchQuery.value.toLowerCase()
@@ -174,17 +172,28 @@ const filteredAgents = computed(() => {
 })
 
 const canCreate = computed(() =>
-  title.value.trim().length > 0 && selectedAgents.value.length > 0
+  title.value.trim().length > 0
 )
 
-function typeDotClass(type: string) {
+
+function typeLabel(type: string) {
   const map: Record<string, string> = {
-    claude: 'bg-amber-400',
-    codex: 'bg-emerald-400',
-    opencode: 'bg-blue-400',
-    custom: 'bg-purple-400',
+    claude: 'Claude Code',
+    codex: 'Codex',
+    opencode: 'OpenCode',
+    custom: 'Custom',
   }
-  return map[type] || 'bg-gray-400'
+  return map[type] || type
+}
+
+function typeBadgeClass(type: string) {
+  const map: Record<string, string> = {
+    claude: 'bg-amber-50 text-amber-600 border-amber-200',
+    codex: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    opencode: 'bg-blue-50 text-blue-600 border-blue-200',
+    custom: 'bg-purple-50 text-purple-600 border-purple-200',
+  }
+  return map[type] || 'bg-gray-50 text-gray-600 border-gray-200'
 }
 
 function chipAvatarClass(type: string) {
@@ -234,9 +243,12 @@ async function createChat() {
   if (!canCreate.value) return
   creating.value = true
   try {
+    // 永远走 group 模式:主 Agent (orchestrator) 默认在场,
+    // 用户选的 Agent 作为"群成员"加入,后端会自动注入 orchestrator。
+    // single/group 是后端实现细节,前端不区分。
     const conv = await conversationsStore.create(
       title.value.trim(),
-      'single',
+      'group',
       selectedAgents.value.map((a) => a.id)
     )
     visible.value = false
@@ -252,14 +264,12 @@ async function loadAgents() {
 
 watch(visible, async (open) => {
   if (open) {
-    title.value = 'New Chat'
+    title.value = ''
     selectedAgents.value = []
     searchQuery.value = ''
     await loadAgents()
-    const orchestrator = agentsStore.agents.find((a) => a.id === 'orchestrator')
-    if (orchestrator) {
-      selectedAgents.value.push(orchestrator)
-    }
+    // 不要默认塞 orchestrator:它是群聊主 Agent,由后端在 group 模式自动挂,
+    // 用户手动勾上反而会让 single 模式被算成 2 个 Agent → 422。
   }
 })
 </script>

@@ -56,6 +56,10 @@ class Settings(BaseSettings):
         default="console",
         description="日志格式,console=开发彩色对齐 / json=生产单行 JSON",
     )
+    LOG_FILE: str = Field(
+        default="",
+        description="日志文件路径,非空时同时写入文件(文件用 JSON 格式),为空则仅输出到 stderr",
+    )
 
     # ---- 上下文压缩 ----
     ENABLE_COUNT_TOKENS_API: bool = Field(

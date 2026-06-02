@@ -1,10 +1,13 @@
 <template>
   <div
-    class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-    :class="avatarClass"
+    class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+    :class="avatar ? '' : avatarClass"
   >
-    <span v-if="initials" class="text-xs font-bold" :class="textClass">{{ initials }}</span>
-    <el-icon v-else :size="16" :class="textClass"><User /></el-icon>
+    <img v-if="avatar" :src="avatar" :alt="name" class="w-full h-full object-cover" />
+    <template v-else>
+      <span v-if="initials" class="text-xs font-bold" :class="textClass">{{ initials }}</span>
+      <el-icon v-else :size="16" :class="textClass"><User /></el-icon>
+    </template>
   </div>
 </template>
 
@@ -15,6 +18,7 @@ import { User } from '@element-plus/icons-vue'
 const props = defineProps<{
   name: string
   color?: 'brand' | 'warning' | 'success' | 'error' | 'neutral'
+  avatar?: string
 }>()
 
 const color = computed(() => props.color ?? 'brand')
