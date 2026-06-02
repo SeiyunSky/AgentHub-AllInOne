@@ -79,6 +79,7 @@ ORCHESTRATOR_AGENT_ID = "orchestrator"
 
 _locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 _pending: dict[str, list["_PendingItem"]] = defaultdict(list)
+_orchestrator_tasks: dict[str, asyncio.Task] = {}  # conversation_id → 当前主 Agent loop task
 
 
 @dataclass
@@ -146,6 +147,10 @@ class ChatService:
         """
         # 设 stream 中止标志
         stream_service.abort(conversation_id)
+        # cancel 主 Agent loop task(若有)
+        orch_task = _orchestrator_tasks.pop(conversation_id, None)
+        if orch_task and not orch_task.done():
+            orch_task.cancel()
         # 清空排队消息(用户的"停止"语义包括"丢掉后续待处理")
         _pending.pop(conversation_id, None)
         # 真正取消 Thread
@@ -302,14 +307,16 @@ class ChatService:
         # 必须 commit,否则 start_loop 起的独立 session 查不到这条 thread,
         # mark_running / mark_done 全部 no-op,thread 永远停在 init 状态
         self.session.commit()
-        # 启动主 Agent loop(orchestrator_service 内部跑 agent_loop +
-        # 通过 dispatch_to_agent 工具创建子 Thread)
-        await orchestrator_service.start_loop(  # type: ignore[union-attr]
-            thread_id=orchestrator_thread.id,
-            conversation_id=request.conversation_id,
-            user_message_id=self._msg_id(user_msg),
-            user_id=user_id,
+        # start_loop 改为后台 Task:让锁立即释放,stop 时可以 cancel
+        task = asyncio.create_task(
+            orchestrator_service.start_loop(  # type: ignore[union-attr]
+                thread_id=orchestrator_thread.id,
+                conversation_id=request.conversation_id,
+                user_message_id=self._msg_id(user_msg),
+                user_id=user_id,
+            )
         )
+        _orchestrator_tasks[request.conversation_id] = task
 
     async def _local_edit_flow(
         self,

@@ -463,14 +463,18 @@ class ThreadService:
         反查触发本 Thread 的主 Agent Thread ID。
         约定:同一 message_id 下 agent_id='orchestrator' 的 Thread 是主 Agent。
         本身就是主 Agent 时返回 None。
+
+        【session 策略】用短 session 自查,不依赖 self.repo(后者绑的可能是已关闭的旧 session)。
         """
         if thread.agent_id == "orchestrator":
             return None
-        siblings = self.repo.list_by_message(thread.message_id)
-        for s in siblings:
-            if s.agent_id == "orchestrator" and s.id != thread.id:
-                return s.id
-        return None
+        from backend.core.database import db_session
+        with db_session() as s:
+            siblings = ThreadRepository(s).list_by_message(thread.message_id)
+            for sib in siblings:
+                if sib.agent_id == "orchestrator" and sib.id != thread.id:
+                    return sib.id
+            return None
 
     # --------------------------------------------------------
     # 内部:启动 Thread(异步运行 Adapter.stream)
@@ -485,10 +489,15 @@ class ThreadService:
         """
         启动单个 Thread:mark_running → 调 Adapter.stream → 处理事件 → 落终态。
 
-        自起独立 SessionLocal，与调用方的 self.session 完全解耦，避免 asyncio.Task
-        并发场景下 Session 状态错乱（D7-blocker 已修）。
+        【session 策略 - 重要】绝不持有跨 await 的长 session。
+        adapter.stream() 跑期间(几十秒到几分钟)如果一直占着 SQLAlchemy session,
+        即使只是隐式 SELECT 也会让 MySQL 端有一个长 BEGIN 事务挂着,导致:
+          - 别的协程读这一行要排队
+          - 进程崩溃时事务不会自动回滚,要等 wait_timeout(默认 8 小时)
+          - asyncio cancel 时 session 状态不一致
+        本方法的所有写库都用 `with db_session()` 短事务,用一次开一次 close 一次。
         """
-        from backend.core.database import SessionLocal
+        from backend.core.database import db_session
         from backend.repositories.agent_repo import AgentRepository
         from backend.repositories.message_repo import MessageRepository
         from backend.repositories.thread_repo import ThreadRepository
@@ -498,13 +507,19 @@ class ThreadService:
                 "[TODO/D5] adapters/registry 未实装,无法启动 Thread。"
             )
 
-        own_session = SessionLocal()
-        own_repo = ThreadRepository(own_session)
-
+        # 短 session 写状态:每次开 / commit / close,绝不长持
+        # 返回的 ORM Thread 已用 expunge 从 session 解绑,外层访问字段不会触发 lazy load
+        # 关键:commit 后 SQLAlchemy 默认让所有 attr expire,直接 expunge 后访问
+        # thread.agent_id 等字段会触发 DetachedInstanceError(session 已关无法 refresh)。
+        # 所以 expunge 前要先 refresh,把当前所有列加载到 instance dict,断 session 也能用。
         def _mark(status: ThreadStatus, **kw) -> Optional[Thread]:
-            t = own_repo.mark_status(thread.id, status, **kw)
-            own_session.commit()
-            return t
+            with db_session() as s:
+                t = ThreadRepository(s).mark_status(thread.id, status, **kw)
+                s.commit()
+                if t is not None:
+                    s.refresh(t)   # 把所有字段从 DB 加载到 t 的属性 dict
+                    s.expunge(t)   # 然后再解绑,后续访问字段不再触发 lazy load
+                return t
 
         try:
             _mark(ThreadStatus.RUNNING)
@@ -516,32 +531,45 @@ class ThreadService:
                     await self._on_thread_terminal(t, f"Thread {thread.id} 失败: 未注册的 agent_id", success=False)
                 return
 
-            # 从 DB 读取 agent.system_prompt，注入到 StreamInput
-            agent_row = AgentRepository(own_session).get(thread.agent_id)
-            agent_system_prompt: Optional[str] = agent_row.system_prompt if agent_row else None
-            msg_repo = MessageRepository(own_session)
-            raw_history = msg_repo.list_recent(thread.conversation_id, limit=20)
-            # repo 返回倒序(最新在前),反转为正序送给 Adapter
-            # ORM Message 没有 .blocks 字段(只有 .content JSON 列),
-            # Adapter 期望的是 MessageInHistory schema,这里做转换
-            history = [
-                _orm_message_to_history(m)
-                for m in reversed(raw_history)
-            ]
+            # 一次性把 stream 期间需要的东西全读出来,session 立刻 close。
+            # adapter.stream() 跑期间不持有任何 session。
+            with db_session() as s:
+                agent_row = AgentRepository(s).get(thread.agent_id)
+                # 解耦 ORM:把后续要用的字段当场抠出来当纯数据
+                agent_name = agent_row.name if agent_row else thread.agent_id
+                agent_system_prompt: Optional[str] = agent_row.system_prompt if agent_row else None
 
-            try:
-                from backend.services.skill_service import SkillService
-                agent_skills = SkillService(own_session).list_with_content_for_agent(thread.agent_id)
-            except Exception:
-                logger.exception(
-                    "Thread %s 加载 agent_skills 失败，以空列表继续（Skill 功能不可用）",
-                    thread.id,
-                )
-                agent_skills = []
+                msg_repo = MessageRepository(s)
+                raw_history = msg_repo.list_recent(thread.conversation_id, limit=20)
+                # repo 返回倒序(最新在前),反转为正序送给 Adapter
+                # 立刻把 ORM Message 转成 MessageInHistory(纯数据 schema),session 关了不会失效
+                history = [
+                    _orm_message_to_history(m)
+                    for m in reversed(raw_history)
+                ]
+
+                try:
+                    from backend.services.skill_service import SkillService
+                    agent_skills = SkillService(s).list_with_content_for_agent(thread.agent_id)
+                except Exception:
+                    logger.exception(
+                        "Thread %s 加载 agent_skills 失败,以空列表继续",
+                        thread.id,
+                    )
+                    agent_skills = []
+                # 只读 session,db_session() finally 会兜底 rollback + close
+
+            # 把 agent_row 的关键字段拷到 dict,后续 _persist_assistant_message 不依赖 ORM
+            # (它原签名收 agent_row,内部读 agent_row.name / model 等;改后只用 dict 兼容)
+            agent_snapshot = {
+                "id": thread.agent_id,
+                "name": agent_name,
+                # model 字段未来可能加;目前 message_service 内部 model=None 兜底
+            }
 
             stream_input = StreamInput(
                 agent_id=thread.agent_id,
-                agent_name=agent_row.name if agent_row else thread.agent_id,
+                agent_name=agent_name,
                 thread_id=thread.id,
                 message_id=thread.message_id,
                 prompt=thread.dispatch_prompt or "",
@@ -552,11 +580,6 @@ class ThreadService:
             )
 
             summary_parts: list[str] = []
-            # block 累积状态:block_id -> 块字段 dict
-            # BlockStart 时初始化(用 block.model_dump() 拿到完整字段),
-            # BlockDelta 时按字段语义合并(content 累加 / 其他覆盖),
-            # BlockStop 时用 final_fields 覆盖,
-            # AgentDone 时按插入顺序反序列化成 ContentBlock 列表落 messages 表。
             block_states: dict[str, dict[str, Any]] = {}
             block_order: list[str] = []
 
@@ -586,47 +609,30 @@ class ThreadService:
                         )
                     return
                 if isinstance(event, AgentDoneEvent):
-                    # 子 Thread 单轮 LLM 完成:把 Adapter 上报的 usage 累加到 threads.tokens_total。
-                    # Adapter 未上报 usage 时(默认 0+0)跳过写库,避免无 delta 的事务。
-                    # update_tokens 是累加语义,主 Agent 也用同一个方法,语义一致。
-                    #
+                    # 子 Thread 单轮 LLM 完成,Adapter 上报 usage 累加到 threads.tokens_total。
                     # 失败处理:token 累加是审计 / 计费用,不影响 Thread 主链路。
-                    # 写库异常时只记日志 + rollback,**不**抛出,break 后正常走 mark_done。
-                    # 后续维护时请保留这段 try/except,不要简化掉(否则一次 token 写库失败会
-                    # 把整个 Thread 推到 ERROR 状态,与设计意图不符)。
                     delta = (event.tokens_input or 0) + (event.tokens_output or 0)
                     if delta > 0:
                         try:
-                            own_repo.update_tokens(thread.id, delta)
-                            own_session.commit()
+                            with db_session() as s:
+                                ThreadRepository(s).update_tokens(thread.id, delta)
+                                s.commit()
                         except Exception:
                             logger.exception(
                                 "Thread %s 累加 token 失败,delta=%d (不影响 Thread 状态)",
                                 thread.id,
                                 delta,
                             )
-                            own_session.rollback()
 
-                    # 把累积的 block_states 落成一条 assistant 消息(role=assistant,
-                    # thread_id=本 thread,agent_id=本 agent),让主 Agent 通过
-                    # read_thread_result 工具能读到子 Thread 的完整产出。
-                    # 失败兜底:落库失败不阻塞主链路,只丢摘要回注那条路(摘要在
-                    # _on_thread_terminal 里走,不受这里影响)。
                     logger.info(
                         "Thread %s AgentDone 收到,准备落 messages: block_count=%d, "
                         "block_order=%s, tokens=%d/%d",
                         thread.id, len(block_order), block_order,
                         event.tokens_input or 0, event.tokens_output or 0,
                     )
-                    # adapter.stream 跑期间 own_session 上累积了未提交的只读事务
-                    # (AgentRepository.get / list_recent / SkillService 等),
-                    # 在调 _persist_assistant_message(内部起独立 SessionLocal 写 messages
-                    # + conversations.last_message_at)之前必须先把这个长事务关掉,
-                    # 否则 MVCC 快照锁 / 行锁会和写入者抢同一行,造成 MySQL 端等锁挂死。
-                    own_session.rollback()
                     await self._persist_assistant_message(
                         thread=thread,
-                        agent_row=agent_row,
+                        agent_row=agent_snapshot,
                         block_order=block_order,
                         block_states=block_states,
                         tokens_input=event.tokens_input or 0,
@@ -640,7 +646,6 @@ class ThreadService:
                 await self._on_thread_terminal(t, summary, success=True)
 
         except asyncio.CancelledError:
-            own_session.rollback()
             t = _mark(ThreadStatus.CANCELLED)
             if t:
                 await self._on_thread_terminal(t, f"Thread {thread.id} 已取消", success=False)
@@ -648,14 +653,11 @@ class ThreadService:
         except Exception as exc:
             logger.exception("Thread %s 运行异常", thread.id)
             try:
-                own_session.rollback()
                 t = _mark(ThreadStatus.ERROR, error_message=str(exc))
                 if t:
                     await self._on_thread_terminal(t, f"Thread {thread.id} 失败: {exc}", success=False)
             except Exception:
                 logger.exception("Thread %s 落错误态失败", thread.id)
-        finally:
-            own_session.close()
 
     @staticmethod
     def _apply_block_delta(state: dict[str, Any], delta: dict[str, Any]) -> None:
@@ -725,7 +727,12 @@ class ThreadService:
             )
             return
 
-        sender = getattr(agent_row, "name", None) if agent_row else None
+        # agent_row 现在是 dict 快照(_run_thread 已 expunge ORM,改成纯数据传过来)
+        # 兼容老 ORM 路径:有 .name 属性时也走;两条路径都拿 sender 名字
+        if isinstance(agent_row, dict):
+            sender = agent_row.get("name")
+        else:
+            sender = getattr(agent_row, "name", None) if agent_row else None
         model = None  # TODO[F-msg-model]: agents 表加 model 字段后,这里取 agent_row.model 快照
 
         try:

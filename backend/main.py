@@ -20,6 +20,10 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+
+# Windows 上 SelectorEventLoop 不支持子进程,切换到 ProactorEventLoop
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 from contextlib import asynccontextmanager
 from pathlib import Path
 
