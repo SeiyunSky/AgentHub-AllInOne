@@ -59,6 +59,16 @@ export const useConversationsStore = defineStore('conversations', () => {
     return result
   }
 
+  async function remove(id: string) {
+    await conversationsApi.delete(id)
+    const idx = conversations.value.findIndex(c => c.id === id)
+    if (idx !== -1) conversations.value.splice(idx, 1)
+    if (currentId.value === id) {
+      currentId.value = null
+      currentConversation.value = null
+    }
+  }
+
   return {
     conversations,
     currentId,
@@ -68,5 +78,6 @@ export const useConversationsStore = defineStore('conversations', () => {
     create,
     select,
     update,
+    remove,
   }
 })

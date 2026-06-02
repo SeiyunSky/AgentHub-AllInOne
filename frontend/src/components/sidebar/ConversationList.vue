@@ -51,6 +51,33 @@
           <ConvItem :conv="conv" @rename="handleRename" @toggle-pin="handleTogglePin" @toggle-archive="handleToggleArchive" />
         </div>
       </template>
+
+      <!-- Archived section -->
+      <template v-if="archivedConversations.length">
+        <div
+          class="flex items-center gap-1.5 px-1 pt-1 cursor-pointer select-none"
+          @click="archivedExpanded = !archivedExpanded"
+        >
+          <el-icon :size="10" class="text-on-surface-variant/60 transition-transform duration-200" :class="archivedExpanded ? 'rotate-0' : '-rotate-90'">
+            <ArrowDown />
+          </el-icon>
+          <span class="text-[10px] uppercase font-semibold text-on-surface-variant/60 tracking-widest">Archived</span>
+          <span class="ml-auto text-[10px] text-on-surface-variant/40">{{ archivedConversations.length }}</span>
+        </div>
+        <template v-if="archivedExpanded">
+          <div
+            v-for="conv in archivedConversations"
+            :key="conv.id"
+            class="group p-3 rounded-xl bg-white border cursor-pointer transition-all duration-200 hover-lift opacity-70 hover:opacity-100"
+            :class="conversationsStore.currentId === conv.id
+              ? 'border-brand bg-brand-light/30 opacity-100'
+              : 'border-outline-variant hover:border-brand/40'"
+            @click="handleSelect(conv.id)"
+          >
+            <ConvItem :conv="conv" @rename="handleRename" @toggle-pin="handleTogglePin" @toggle-archive="handleToggleArchive" />
+          </div>
+        </template>
+      </template>
     </div>
   </div>
 </template>
@@ -59,7 +86,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { Plus, Promotion } from '@element-plus/icons-vue'
+import { Plus, Promotion, ArrowDown } from '@element-plus/icons-vue'
 import { useConversationsStore } from '@/stores/conversations'
 import type { ConversationListItem, ConversationResponse } from '@/types/conversation'
 import NewChatDialog from '@/components/chat/NewChatDialog.vue'
@@ -75,6 +102,11 @@ const pinnedConversations = computed(() =>
 const unpinnedConversations = computed(() =>
   conversationsStore.conversations.filter(c => !c.is_pinned && !c.is_archived),
 )
+const archivedConversations = computed(() =>
+  conversationsStore.conversations.filter(c => c.is_archived),
+)
+
+const archivedExpanded = ref(false)
 
 onMounted(() => {
   conversationsStore.loadList()

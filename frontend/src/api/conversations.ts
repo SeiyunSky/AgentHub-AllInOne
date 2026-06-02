@@ -45,6 +45,11 @@ export const conversationsApi = {
     return http.get(`/conversations/${id}/messages`, { params })
   },
 
+  /** 删除会话 */
+  delete(id: string): Promise<void> {
+    return http.delete(`/conversations/${id}`)
+  },
+
   /** 把 Agent 加入会话(群聊) */
   addAgent(conversationId: string, agentId: string): Promise<ConversationResponse> {
     return http.post(`/conversations/${conversationId}/agents`, { agent_id: agentId })
