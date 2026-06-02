@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     viteMockServe({
       mockPath: 'mock',
-      enable: false,
+      enable: true,
     }),
   ],
   resolve: {

@@ -49,7 +49,7 @@ export const useUIStore = defineStore('ui', () => {
     rightPanelActiveTab.value = 'workflow'
   }
 
-  function setPreviewMode(mode: 'preview' | 'code') {
+  function setPreviewMode(mode: 'preview' | 'edit') {
     if (activeArtifact.value) {
       activeArtifact.value.mode = mode
     }

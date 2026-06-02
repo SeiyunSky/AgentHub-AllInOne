@@ -5,11 +5,12 @@ export interface ArtifactItem {
   type: string
   preview?: string
   mimeType?: ArtifactKind
+  filePath?: string  // local file path; present = edit tab enabled
 }
 
 export interface ActiveArtifact {
   id: string
   messageId: string
   item: ArtifactItem
-  mode: 'preview' | 'code'
+  mode: 'preview' | 'edit'
 }

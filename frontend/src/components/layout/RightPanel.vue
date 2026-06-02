@@ -9,8 +9,8 @@
   >
     <ArtifactRouter :mode="previewMode" />
 
-    <template #toolbar>
-      <!-- Preview/Code toggle -->
+    <template #headerActions>
+      <!-- Preview/Edit toggle -->
       <div class="flex items-center gap-1 px-1 py-0.5 rounded-lg bg-surface-container">
         <button
           class="px-2 py-1 rounded text-[11px] font-medium transition-colors"
@@ -21,15 +21,15 @@
           Preview
         </button>
         <button
-          class="px-2 py-1 rounded text-[11px] font-medium transition-colors"
-          :class="previewMode === 'code' ? 'bg-brand text-white' : 'text-on-surface-variant hover:text-on-surface'"
-          @click="setMode('code')"
+          class="px-2 py-1 rounded text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          :class="previewMode === 'edit' ? 'bg-brand text-white' : 'text-on-surface-variant hover:text-on-surface'"
+          :disabled="!activeArtifact?.item.filePath"
+          @click="setMode('edit')"
         >
-          <el-icon :size="12" class="mr-1"><CopyDocument /></el-icon>
-          Code
+          <el-icon :size="12" class="mr-1"><Edit /></el-icon>
+          Edit
         </button>
       </div>
-      <div class="w-px h-4 bg-outline-variant"></div>
       <button
         class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
         @click="closeArtifact"
@@ -77,7 +77,7 @@ import { useConversationsStore } from '@/stores/conversations'
 import PanelContainer from './PanelContainer.vue'
 import WorkflowView from './WorkflowView.vue'
 import ArtifactRouter from '@/components/chat/artifacts/ArtifactRouter.vue'
-import { Share, Plus, ZoomIn, Aim, Operation, View, CopyDocument, Close } from '@element-plus/icons-vue'
+import { Share, Plus, ZoomIn, Aim, Operation, View, Edit, Close } from '@element-plus/icons-vue'
 
 const uiStore = useUIStore()
 const chatStore = useChatStore()
@@ -85,7 +85,6 @@ const conversationsStore = useConversationsStore()
 const { activeArtifact, closeArtifact, setMode } = useArtifactPreview()
 
 const previewMode = computed(() => uiStore.activeArtifact?.mode ?? 'preview')
-
 const convId = computed(() => conversationsStore.currentId ?? '')
 const workflowStatus = computed(() =>
   chatStore.isStreamingFor(convId.value) ? 'Running' : 'Idle'

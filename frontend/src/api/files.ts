@@ -10,4 +10,12 @@ export const filesApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+
+  getContent(filePath: string): Promise<{ content: string }> {
+    return http.get('/files/content', { params: { filePath } })
+  },
+
+  saveContent(filePath: string, content: string): Promise<{ success: boolean }> {
+    return http.put('/files/content', { filePath, content })
+  },
 }

@@ -286,9 +286,9 @@ const messages = [
         type: 'artifacts',
         title: 'Q4 Sales Report',
         items: [
-          { name: 'sales_dashboard.html', type: 'html', preview: '<!DOCTYPE html>\n<html><head><title>Dashboard</title></head>\n<body><h1>Q4 Revenue: $520K (+15%)</h1></body></html>' },
+          { name: 'sales_dashboard.html', type: 'html', preview: '<!DOCTYPE html>\n<html><head><title>Dashboard</title></head>\n<body><h1>Q4 Revenue: $520K (+15%)</h1></body></html>', filePath: '/workspace/src/index.html' },
           { name: 'report.pdf', type: 'pdf' },
-          { name: 'data_export.json', type: 'json' },
+          { name: 'data_export.json', type: 'json', filePath: '/workspace/src/data_export.json' },
         ],
       },
     ],
@@ -1002,8 +1002,9 @@ const sseMock: MockMethod = {
     sendSSE(res, 'block_start', {
       type: 'block_start', agent_id: agentId, thread_id: threadId,
       message_id: messageId, block: { block_id: 'sb-8', type: 'artifacts', title: 'Generated Files', items: [
-        { name: 'dashboard.html', type: 'html', preview: '<h1>Q4 Revenue: $520K</h1>' },
+        { name: 'dashboard.html', type: 'html', preview: '<h1>Q4 Revenue: $520K</h1>', filePath: '/workspace/src/index.html' },
         { name: 'report.pdf', type: 'pdf' },
+        { name: 'main.py', type: 'python', preview: 'import uvicorn\n\napp = None', filePath: '/workspace/src/main.py' },
       ] }, timestamp: now(),
     })
 
