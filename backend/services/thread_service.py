@@ -320,6 +320,10 @@ class ThreadService:
                 continue
             if thread.id in _running_tasks:
                 continue
+            # expunge 前先 refresh,确保所有字段加载到 instance dict,
+            # Task 启动时 session 已关闭也能安全访问字段
+            self.repo.session.refresh(thread)
+            self.repo.session.expunge(thread)
             self._launch_thread_task(thread)
             started.append(thread)
         return started
@@ -488,19 +492,13 @@ class ThreadService:
     async def _run_thread(self, thread: Thread) -> None:
         """
         启动单个 Thread:mark_running → 调 Adapter.stream → 处理事件 → 落终态。
-
-        【session 策略 - 重要】绝不持有跨 await 的长 session。
-        adapter.stream() 跑期间(几十秒到几分钟)如果一直占着 SQLAlchemy session,
-        即使只是隐式 SELECT 也会让 MySQL 端有一个长 BEGIN 事务挂着,导致:
-          - 别的协程读这一行要排队
-          - 进程崩溃时事务不会自动回滚,要等 wait_timeout(默认 8 小时)
-          - asyncio cancel 时 session 状态不一致
-        本方法的所有写库都用 `with db_session()` 短事务,用一次开一次 close 一次。
         """
         from backend.core.database import db_session
         from backend.repositories.agent_repo import AgentRepository
         from backend.repositories.message_repo import MessageRepository
         from backend.repositories.thread_repo import ThreadRepository
+
+        logger.info("_run_thread started thread=%s agent=%s", thread.id, thread.agent_id)
 
         if adapter_registry is None:
             raise NotImplementedError(

@@ -43,7 +43,7 @@ from backend.adapters.events import (
     BlockStopEvent,
 )
 from backend.core.utils import gen_uuid
-from backend.domain.message import TextBlock
+from backend.domain.message import ApprovalBlock, TextBlock
 from backend.hooks.base import HookContext, HookEvent
 from backend.hooks.manager import hook_manager
 from backend.schemas.orchestrator_tools import (
@@ -674,91 +674,81 @@ async def request_user_clarification(tool_input: dict[str, Any], *, ctx: ToolCon
 )
 async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
     """
-    向用户展示任务计划等审批。
-
-    顺序:落库 + fire APPROVAL_REQUESTED hook + mark_suspended **先于** SSE 推送。
-    若反过来:用户已看到计划,但 mark_suspended commit 失败 → 主 loop 没挂起,
-    下一轮可能再次决策造成重复。先把 DB / hook 状态钉死,SSE 失败前端可重连补。
-
-    实际"用户审批通过 / 拒绝"的回流路径走 WS(schemas/ws.py 的 ApprovalDecisionRequest),
-    本工具只负责发送审批请求,不等待结果。
+    向用户展示任务计划等审批。使用 ApprovalBlock + HTTP decide 机制，
+    前端展示 Approve/Reject 按钮，用户决策后通过 POST /api/v1/approvals/{block_id}/decide 回流。
     """
-    from backend.core.database import SessionLocal
-    from backend.services.thread_service import ThreadService
+    import asyncio
+    from backend.hooks.approval import _pending_approvals, _PendingApproval, _APPROVAL_TIMEOUT_SECONDS
 
     parsed = PresentTaskPlanForReviewInput.model_validate(tool_input)
 
-    # 1. 把计划序列化成可读文本
-    plan_text_lines = ["## 拟执行的任务计划\n"]
+    # 1. 把计划序列化成可读文本（detail 字段）
+    plan_text_lines = []
     if parsed.summary:
-        plan_text_lines.append(f"{parsed.summary}\n")
+        plan_text_lines.append(parsed.summary)
     for i, task in enumerate(parsed.plan.tasks, 1):
         deps = f" (依赖: {', '.join(task.blocked_by)})" if task.blocked_by else ""
         plan_text_lines.append(f"{i}. **{task.agent_id}**{deps}\n   {task.prompt}")
-    plan_text = "\n".join(plan_text_lines)
+    plan_detail = "\n".join(plan_text_lines)
 
-    # 2. 落消息
-    msg = await message_service.create_assistant_message(
-        conversation_id=ctx.conversation_id,
-        agent_id=_ORCHESTRATOR_AGENT_ID,
-        content_blocks=[TextBlock(block_id=gen_uuid(), content=plan_text)],
-        sender=_ORCHESTRATOR_AGENT_NAME,
-    )
-
-    # 3. fire APPROVAL_REQUESTED hook + mark_suspended(DB 状态钉死)
-    await hook_manager.fire(
-        HookEvent.APPROVAL_REQUESTED,
-        HookContext(
-            event=HookEvent.APPROVAL_REQUESTED,
-            trace_id=ctx.thread_id,
-            user_id=ctx.user_id,
-            conversation_id=ctx.conversation_id,
-            thread_id=ctx.thread_id,
-            message_id=msg.id,
-            agent_id=_ORCHESTRATOR_AGENT_ID,
-            extra={"plan": parsed.plan.model_dump(mode="json")},
-        ),
-    )
-
-    session = SessionLocal()
-    try:
-        ts = ThreadService(session)
-        await ts.mark_suspended(ctx.thread_id)
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-
-    # 4. DB / hook 都确定后再推 SSE
-    base = {
-        "agent_id": _ORCHESTRATOR_AGENT_ID,
-        "thread_id": ctx.thread_id,
-        "message_id": msg.id,
-    }
+    # 2. 生成 block_id，注册待审批
     block_id = gen_uuid()
-    await stream_service.push_event(
-        ctx.conversation_id,
-        AgentStartEvent(**base, agent_name=_ORCHESTRATOR_AGENT_NAME),
-    )
-    await stream_service.push_event(
-        ctx.conversation_id,
-        BlockStartEvent(
-            **base,
-            block=TextBlock(block_id=block_id, content=plan_text),
-        ),
-    )
-    await stream_service.push_event(
-        ctx.conversation_id,
-        BlockStopEvent(**base, block_id=block_id),
-    )
-    await stream_service.push_event(
-        ctx.conversation_id,
-        AgentDoneEvent(**base),
-    )
+    pending = _PendingApproval(block_id=block_id, event=asyncio.Event())
+    _pending_approvals[block_id] = pending
 
-    return {"message_id": msg.id, "suspended": True}
+    try:
+        # 3. 落 ApprovalBlock 消息
+        approval_block = ApprovalBlock(
+            block_id=block_id,
+            action="present_task_plan_for_review",
+            detail=plan_detail,
+        )
+        msg = await message_service.create_assistant_message(
+            conversation_id=ctx.conversation_id,
+            agent_id=_ORCHESTRATOR_AGENT_ID,
+            content_blocks=[approval_block],
+            sender=_ORCHESTRATOR_AGENT_NAME,
+        )
+
+        # 4. 推 SSE ApprovalBlock
+        base = {
+            "agent_id": _ORCHESTRATOR_AGENT_ID,
+            "thread_id": ctx.thread_id,
+            "message_id": msg.id,
+        }
+        await stream_service.push_event(
+            ctx.conversation_id,
+            BlockStartEvent(**base, block=approval_block),
+        )
+
+        logger.info(
+            "TASK_PLAN_REVIEW requested block_id=%s conversation=%s",
+            block_id, ctx.conversation_id,
+        )
+
+        # 5. 阻塞等待用户审批
+        try:
+            await asyncio.wait_for(
+                pending.event.wait(),
+                timeout=_APPROVAL_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            logger.warning("TASK_PLAN_REVIEW timeout block_id=%s, treated as reject", block_id)
+            return {"message_id": msg.id, "approved": False, "reason": "timeout"}
+
+        approved = pending.decision == "approve"
+        logger.info(
+            "TASK_PLAN_REVIEW decided block_id=%s decision=%s",
+            block_id, pending.decision,
+        )
+        return {
+            "message_id": msg.id,
+            "approved": approved,
+            "reason": pending.reject_reason if not approved else None,
+        }
+
+    finally:
+        _pending_approvals.pop(block_id, None)
 
 
 # ============================================================

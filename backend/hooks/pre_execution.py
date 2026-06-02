@@ -50,10 +50,6 @@ def _is_path_traversal(path: str) -> bool:
     if not isinstance(path, str):
         return False
     normalized = path.replace("\\", "/")
-    if normalized.startswith("/"):
-        return True
-    if len(normalized) >= 2 and normalized[1] == ":":
-        return True
     try:
         parts = PurePosixPath(normalized).parts
     except Exception:

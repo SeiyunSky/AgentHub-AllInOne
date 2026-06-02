@@ -66,7 +66,7 @@ class _PendingApproval:
 
 
 # 模块级全局状态：block_id → 待审批记录
-# WS handler 通过 block_id 索引到 event 来 set 决策
+# WS handler / HTTP handler 通过 block_id 索引到 event 来 set 决策
 _pending_approvals: dict[str, _PendingApproval] = {}
 
 
