@@ -36,20 +36,15 @@ class ConversationRepository(BaseRepository[Conversation]):
         self,
         user_id: str,
         *,
-        include_archived: bool = False,
         limit: int = 20,
         offset: int = 0,
     ) -> list[Conversation]:
         """
-        某用户的会话列表,按 last_message_at 倒序。
-        include_archived=False(默认)过滤掉归档会话。
+        某用户的会话列表，按置顶 + last_message_at 倒序，返回全部（含归档）。
         """
         query = self.session.query(Conversation).filter(
             Conversation.user_id == user_id,
         )
-        if not include_archived:
-            query = query.filter(Conversation.is_archived == 0)
-        # 置顶在前 + 最近活跃在前
         query = query.order_by(
             desc(Conversation.is_pinned),
             desc(Conversation.last_message_at),

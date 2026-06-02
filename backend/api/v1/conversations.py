@@ -1,11 +1,12 @@
 """
 api/v1/conversations.py —— 会话 CRUD HTTP 端点
 
-5 个端点:
+6 个端点:
 - POST   /api/v1/conversations             新建会话(挂载初始 Agent)
 - GET    /api/v1/conversations             我的会话列表(置顶 + 最近活跃排序)
 - GET    /api/v1/conversations/{id}        会话详情(含成员)
 - PATCH  /api/v1/conversations/{id}        重命名 / 置顶 / 归档
+- DELETE /api/v1/conversations/{id}        删除会话(连同消息、线程一并删除)
 - GET    /api/v1/conversations/{id}/messages   会话历史消息(分页)
 
 鉴权(MVP):全部走 X-User-Id header,见 api/deps.py:get_current_user。
@@ -105,10 +106,6 @@ async def create_conversation(
 )
 async def list_conversations(
     user_id: Annotated[str, Depends(get_current_user)],
-    include_archived: Annotated[
-        bool,
-        Query(description="是否包含已归档会话"),
-    ] = False,
     limit: Annotated[
         int,
         Query(ge=1, le=200, description="每页返回数量，默认 20"),
@@ -121,7 +118,6 @@ async def list_conversations(
     """列出当前 user 的所有会话。仅显示自己的(service 内置 user_id 过滤)。"""
     convs = await conversation_service.list_for_user(
         user_id,
-        include_archived=include_archived,
         limit=limit,
         offset=offset,
     )
@@ -225,6 +221,19 @@ async def list_conversation_messages(
             session.close()
 
     return [_message_orm_to_response(m, avatar_map) for m in messages]
+
+
+@router.delete(
+    "/conversations/{conversation_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="删除会话(连同消息、线程一并删除)",
+)
+async def delete_conversation(
+    conversation_id: Annotated[str, Path(description="会话 ID")],
+    user_id: Annotated[str, Depends(get_current_user)],
+) -> None:
+    await conversation_service.assert_owned_by(conversation_id, user_id)
+    await conversation_service.delete(conversation_id)
 
 
 # ============================================================

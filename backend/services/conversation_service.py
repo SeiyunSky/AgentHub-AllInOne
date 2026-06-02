@@ -98,7 +98,6 @@ class ConversationService:
         self,
         user_id: str,
         *,
-        include_archived: bool = False,
         limit: int = 20,
         offset: int = 0,
     ) -> list[Conversation]:
@@ -107,7 +106,6 @@ class ConversationService:
         try:
             return ConversationRepository(session).list_for_user(
                 user_id,
-                include_archived=include_archived,
                 limit=limit,
                 offset=offset,
             )
@@ -244,6 +242,42 @@ class ConversationService:
                 detail="无权访问该会话",
             )
         return conv
+
+    # --------------------------------------------------------
+    # 删除
+    # --------------------------------------------------------
+
+    async def delete(self, conversation_id: str) -> None:
+        """
+        硬删除会话及其全部关联数据。
+        因为 DB 没有 FK 级联，需手动按顺序清：
+        messages → threads → conversation_agents → conversation
+        """
+        from sqlalchemy import text
+
+        session = SessionLocal()
+        try:
+            session.execute(
+                text("DELETE FROM messages WHERE conversation_id = :id"),
+                {"id": conversation_id},
+            )
+            session.execute(
+                text("DELETE FROM threads WHERE conversation_id = :id"),
+                {"id": conversation_id},
+            )
+            session.execute(
+                text("DELETE FROM conversation_agents WHERE conversation_id = :id"),
+                {"id": conversation_id},
+            )
+            conv = session.get(Conversation, conversation_id)
+            if conv is not None:
+                session.delete(conv)
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
 
     # --------------------------------------------------------
     # 成员管理
