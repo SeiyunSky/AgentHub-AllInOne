@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { chatApi } from '@/api/chat'
 import { useChatStore } from '@/stores/chat'
+import { useConversationsStore } from '@/stores/conversations'
 import { useWorkflowStore } from '@/stores/workflow'
 import type { SSEEvent } from '@/types/api'
 
@@ -55,7 +56,17 @@ function handleEvent(convId: string, event: SSEEvent) {
 
     case 'round_done':
       chatStore.clearRound(convId)
-      // Keep workflow threads visible after round ends (don't clear)
+      // sync last agent message to conversation list preview
+      {
+        const conversationsStore = useConversationsStore()
+        const msgs = chatStore.getMessages(convId)
+        const last = [...msgs].reverse().find(m => m.type === 'agent')
+        if (last) {
+          const text = last.blocks?.find(b => b.type === 'text')
+          const preview = text ? (text as { content: string }).content : last.content
+          conversationsStore.updatePreview(convId, preview.slice(0, 100))
+        }
+      }
       break
 
     case 'queue_drained':

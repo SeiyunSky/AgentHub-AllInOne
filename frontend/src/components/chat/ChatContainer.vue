@@ -19,9 +19,18 @@
       @more="onMore"
     />
 
+    <!-- Archived notice (replaces input for archived conversations) -->
+    <div
+      v-if="isArchived"
+      class="flex items-center justify-center gap-2 px-4 py-3 bg-surface border-t border-outline-variant text-on-surface-variant text-[13px]"
+    >
+      <el-icon :size="14"><FolderOpened /></el-icon>
+      <span>该会话已归档，无法继续发送消息</span>
+    </div>
+
     <!-- Approval Overlay (replaces input when pending) -->
     <ApprovalOverlay
-      v-if="currentApproval"
+      v-else-if="currentApproval"
       :approval="currentApproval"
       @approve="handleApprove"
       @reject="handleReject"
@@ -55,7 +64,7 @@ import ChatHeader from '@/components/layout/ChatHeader.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
 import ApprovalOverlay from '@/components/chat/ApprovalOverlay.vue'
-import { ChatLineRound } from '@element-plus/icons-vue'
+import { ChatLineRound, FolderOpened } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   title: string
@@ -81,6 +90,7 @@ onMounted(() => {
 })
 
 const convId = computed(() => conversationsStore.currentId)
+const isArchived = computed(() => conversationsStore.currentConversation?.is_archived ?? false)
 const isStreaming = computed(() => !!convId.value && chatStore.isStreamingFor(convId.value))
 const currentApproval = computed(() => convId.value ? chatStore.getPendingApproval(convId.value) : null)
 const streamingMessageId = computed(() => convId.value ? chatStore.getStreamingMessage(convId.value)?.id : undefined)

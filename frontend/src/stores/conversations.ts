@@ -12,12 +12,17 @@ export const useConversationsStore = defineStore('conversations', () => {
 
   let loadPromise: Promise<void> | null = null
 
-  async function loadList() {
+  async function loadList(params?: { limit?: number; offset?: number; include_archived?: boolean }) {
     if (loadPromise) return loadPromise
     loadPromise = (async () => {
       isLoading.value = true
       try {
-        conversations.value = await conversationsApi.list()
+        const result = await conversationsApi.list(params)
+        if (params?.offset && params.offset > 0) {
+          conversations.value.push(...result)
+        } else {
+          conversations.value = result
+        }
       } finally {
         isLoading.value = false
         loadPromise = null
@@ -69,6 +74,23 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  function updatePreview(id: string, preview: string, at?: string) {
+    const idx = conversations.value.findIndex(c => c.id === id)
+    if (idx === -1) return
+    const now = at ?? new Date().toISOString()
+    conversations.value[idx] = {
+      ...conversations.value[idx],
+      last_message_preview: preview,
+      last_message_at: now,
+    }
+    // 置顶到 unpinned 列表最前（非 pinned 时按时间排序）
+    if (!conversations.value[idx].is_pinned) {
+      const [item] = conversations.value.splice(idx, 1)
+      const firstUnpinned = conversations.value.findIndex(c => !c.is_pinned)
+      conversations.value.splice(firstUnpinned === -1 ? 0 : firstUnpinned, 0, item)
+    }
+  }
+
   return {
     conversations,
     currentId,
@@ -79,5 +101,6 @@ export const useConversationsStore = defineStore('conversations', () => {
     select,
     update,
     remove,
+    updatePreview,
   }
 })

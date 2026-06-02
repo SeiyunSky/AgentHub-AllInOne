@@ -36,20 +36,29 @@
 
       <!-- Recent section -->
       <template v-if="unpinnedConversations.length">
-        <div class="flex items-center gap-1.5 px-1 pt-1">
-          <span class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest">Recent</span>
-        </div>
         <div
-          v-for="conv in unpinnedConversations"
-          :key="conv.id"
-          class="group p-3 rounded-xl bg-white border cursor-pointer transition-all duration-200 hover-lift"
-          :class="conversationsStore.currentId === conv.id
-            ? 'border-brand bg-brand-light/30'
-            : 'border-outline-variant hover:border-brand/40'"
-          @click="handleSelect(conv.id)"
+          class="flex items-center gap-1.5 px-1 pt-1 cursor-pointer select-none"
+          @click="recentExpanded = !recentExpanded"
         >
-          <ConvItem :conv="conv" @rename="handleRename" @toggle-pin="handleTogglePin" @toggle-archive="handleToggleArchive" />
+          <el-icon :size="10" class="text-on-surface-variant transition-transform duration-200" :class="recentExpanded ? 'rotate-0' : '-rotate-90'">
+            <ArrowDown />
+          </el-icon>
+          <span class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest">Recent</span>
+          <span class="ml-auto text-[10px] text-on-surface-variant/40">{{ unpinnedConversations.length }}</span>
         </div>
+        <template v-if="recentExpanded">
+          <div
+            v-for="conv in unpinnedConversations"
+            :key="conv.id"
+            class="group p-3 rounded-xl bg-white border cursor-pointer transition-all duration-200 hover-lift"
+            :class="conversationsStore.currentId === conv.id
+              ? 'border-brand bg-brand-light/30'
+              : 'border-outline-variant hover:border-brand/40'"
+            @click="handleSelect(conv.id)"
+          >
+            <ConvItem :conv="conv" @rename="handleRename" @toggle-pin="handleTogglePin" @toggle-archive="handleToggleArchive" />
+          </div>
+        </template>
       </template>
 
       <!-- Archived section -->
@@ -106,10 +115,11 @@ const archivedConversations = computed(() =>
   conversationsStore.conversations.filter(c => c.is_archived),
 )
 
+const recentExpanded = ref(true)
 const archivedExpanded = ref(false)
 
 onMounted(() => {
-  conversationsStore.loadList()
+  conversationsStore.loadList({limit: 200})
 })
 
 function handleNewChat() {

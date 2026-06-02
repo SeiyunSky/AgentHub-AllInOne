@@ -22,6 +22,7 @@ export function useChat() {
     if (!id) return
 
     chatStore.addUserMessage(id, content)
+    conversationsStore.updatePreview(id, content)
 
     // 关键顺序:必须先连 SSE 再发 POST。
     // 后端 group 路径 await orchestrator_service.start_loop(...) 阻塞 HTTP 响应,

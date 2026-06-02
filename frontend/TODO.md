@@ -2,6 +2,7 @@
 ## Chat
 
 - [ ] 会话列表：`include_archived` 参数支持查看已归档会话
+  - 方案  B：Recent 加"加载更多"Pinned 全量拿（一般很少Recent 第一屏 limit=20，底部加"Load more"按钮，offset 递增. Archived 同方案 A，展开时懒加载. 缺点：需要后端支持按 pinned/archived 过滤分类请求
 - [ ] conversation 排序/PIN
 - [ ] 聊天总体宽度限制，居中展示
 - [ ] 丰富聊天展示信息：头像、参与的 agent 列表，更像 IM
