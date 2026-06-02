@@ -95,7 +95,7 @@ def _create_token(
     """
     通用 token 签发。返回 (token, jti, expire_at)。
 
-    expire_at 是 datetime(UTC, naive),给调用方落库 / 算 expires_in 用。
+    expire_at 是 timezone-aware datetime(UTC),给调用方落库 / 算 expires_in 用。
     """
     now = _now_utc()
     expire_at = now + expires_delta
