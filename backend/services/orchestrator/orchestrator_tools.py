@@ -590,7 +590,7 @@ async def respond_to_user(tool_input: dict[str, Any], *, ctx: ToolContext) -> di
     )
     await stream_service.push_event(
         ctx.conversation_id,
-        AgentDoneEvent(**base),
+        AgentDoneEvent(**base, tokens_input=ctx.tokens_input, tokens_output=ctx.tokens_output),
     )
 
     return {"message_id": msg.id}
