@@ -101,10 +101,7 @@ class ConversationUpdate(BaseModel):
 # ============================================================
 
 class ConversationListItem(BaseModel):
-    """
-    GET /api/v1/conversations 列表项。
-    省略 agents 详细列表(列表场景前端按需要再 GET 详情),只给最近活跃和置顶状态。
-    """
+    """GET /api/v1/conversations 列表项，含挂载的 Agent 成员（用于前端拼接头像）。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -117,6 +114,10 @@ class ConversationListItem(BaseModel):
     last_message_at: Optional[datetime] = None
     message_count: int = 0
     unread_count: int = 0
+    agents: list[AgentMember] = Field(
+        default_factory=list,
+        description="当前 is_active=1 的成员 Agent 列表，按 joined_at 升序",
+    )
     created_at: datetime
     updated_at: datetime
 

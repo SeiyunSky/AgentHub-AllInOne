@@ -59,7 +59,7 @@ async def _to_conversation_response(conv) -> ConversationResponse:
     """
     agents = await conversation_service.get_active_agents(conv.id)
     members = [AgentMember.model_validate(a) for a in agents]
-    base = ConversationListItem.model_validate(conv).model_dump()
+    base = ConversationListItem.model_validate(conv).model_dump(exclude={"agents"})
     return ConversationResponse(
         **base,
         user_id=conv.user_id,
@@ -121,7 +121,18 @@ async def list_conversations(
         limit=limit,
         offset=offset,
     )
-    return [ConversationListItem.model_validate(c) for c in convs]
+    if not convs:
+        return []
+    # 批量查各会话的活跃 Agent，避免 N+1
+    agents_map = await conversation_service.get_active_agents_batch(
+        [c.id for c in convs]
+    )
+    result = []
+    for c in convs:
+        item = ConversationListItem.model_validate(c)
+        item.agents = [AgentMember.model_validate(a) for a in agents_map.get(c.id, [])]
+        result.append(item)
+    return result
 
 
 # ============================================================

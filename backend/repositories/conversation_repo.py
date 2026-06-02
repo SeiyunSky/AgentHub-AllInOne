@@ -18,6 +18,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import desc
+from sqlalchemy.sql import func
 
 from backend.models.agent import Agent
 from backend.models.conversation import Conversation
@@ -47,8 +48,7 @@ class ConversationRepository(BaseRepository[Conversation]):
         )
         query = query.order_by(
             desc(Conversation.is_pinned),
-            desc(Conversation.last_message_at),
-            desc(Conversation.updated_at),
+            desc(func.coalesce(Conversation.last_message_at, Conversation.created_at)),
         )
         query = query.offset(offset).limit(limit)
         return query.all()
