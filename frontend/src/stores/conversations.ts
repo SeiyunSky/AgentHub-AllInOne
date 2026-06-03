@@ -52,6 +52,21 @@ export const useConversationsStore = defineStore('conversations', () => {
     }
   }
 
+  /** 加载更多历史消息 */
+  async function loadMoreMessages(convId: string, before: string): Promise<boolean> {
+    try {
+      const messages = await conversationsApi.messages(convId, { before, limit: 20 })
+      if (messages.length === 0) return false
+
+      const chatStore = useChatStore()
+      chatStore.prependMessages(convId, messages)
+      return messages.length === 20 // 是否还有更多
+    } catch (e) {
+      console.error('Failed to load more messages:', e)
+      return false
+    }
+  }
+
   async function update(id: string, data: { title?: string; is_pinned?: boolean; is_archived?: boolean }) {
     const result = await conversationsApi.update(id, data)
     const idx = conversations.value.findIndex(c => c.id === id)
@@ -99,6 +114,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     loadList,
     create,
     select,
+    loadMoreMessages,
     update,
     remove,
     updatePreview,

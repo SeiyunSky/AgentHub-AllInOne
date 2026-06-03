@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     viteMockServe({
       mockPath: 'mock',
-      enable: false,
+      enable: true,
     }),
   ],
   resolve: {
@@ -22,15 +22,15 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:18888',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/static': {
-        target: 'http://localhost:18888',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://localhost:18888',
+        target: 'ws://localhost:8000',
         ws: true,
       },
     },

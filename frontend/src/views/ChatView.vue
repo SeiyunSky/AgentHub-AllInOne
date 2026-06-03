@@ -40,12 +40,22 @@ async function loadConversation(convId: string) {
   await conversationsStore.select(convId)
 }
 
+// 路由离开时清除激活状态
+watch(() => route.path, (newPath, oldPath) => {
+  if (newPath === '/chat') {
+    conversationsStore.currentId = null
+    conversationsStore.currentConversation = null
+  }
+})
+
 onMounted(async () => {
   const convId = route.params.conversationId as string | undefined
   if (convId) {
     await loadConversation(convId)
-  } else if (conversationsStore.conversations.length === 0) {
-    await conversationsStore.loadList()
+  } else {
+    if (conversationsStore.conversations.length === 0) {
+      await conversationsStore.loadList({limit: 200})
+    }
   }
 })
 
