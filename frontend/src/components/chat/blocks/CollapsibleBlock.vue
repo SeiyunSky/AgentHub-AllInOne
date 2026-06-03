@@ -1,10 +1,15 @@
 <template>
   <div class="rounded-xl border overflow-hidden transition-colors" :class="containerClass">
-    <!-- Header -->
-    <button
-      class="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors cursor-pointer"
+    <!-- Header (用 div 替代 button:外层 button 会和 slot 里的内层 button 嵌套，
+         浏览器解析时会拆 DOM，导致内部按钮 click 失效) -->
+    <div
+      class="w-full flex items-center gap-2 px-3 py-2 text-left transition-colors cursor-pointer select-none"
       :class="[headerClass, headerHoverClass]"
+      role="button"
+      tabindex="0"
       @click="toggle"
+      @keydown.enter.prevent="toggle"
+      @keydown.space.prevent="toggle"
     >
       <el-icon :size="14" class="transition-transform duration-200 shrink-0" :class="{ 'rotate-90': expanded }">
         <ArrowRight />
@@ -17,7 +22,7 @@
       <div class="flex-1" />
       <slot name="actions" />
       <span v-if="meta" class="text-[10px] text-on-surface-variant shrink-0">{{ meta }}</span>
-    </button>
+    </div>
 
     <!-- Content -->
     <div v-show="expanded" class="border-t" :class="borderClass">

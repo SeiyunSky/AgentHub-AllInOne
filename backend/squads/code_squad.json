@@ -1,0 +1,11 @@
+{
+  "id": "code_squad",
+  "name": "代码小队",
+  "description": "调研 + 编码 + 审查三位一体，适合功能开发、Bug 修复、技术方案落地",
+  "icon": "code",
+  "agent_ids": [
+    "agent-research-builtin",
+    "agent-coder-builtin",
+    "agent-reviewer-builtin"
+  ]
+}

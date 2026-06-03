@@ -99,26 +99,17 @@ def _resolve_sandbox_path(ctx: ToolContext, raw_path: str) -> Path:
 
     沙箱根复用 memory_service 的目录约定 —— 文件工具和长期记忆共享同一目录,
     LLM 写入的文件能被记忆工具看到,反之亦然。
+
+    实现下沉到 `memory_service.resolve_sandbox_path`,本函数只做参数适配。
     """
-    base = ensure_memory_dir(ctx.user_id, ctx.conversation_id).resolve()
-    candidate = (base / raw_path).resolve()
-    # 必须是 base 的后代(等于 base 自身也算合法,虽然语义上没意义)
-    try:
-        candidate.relative_to(base)
-    except ValueError:
-        raise ValueError(
-            f"路径 {raw_path!r} 越出沙箱,只允许操作当前会话目录下的文件"
-        )
-    return candidate
+    from backend.services.memory_service import resolve_sandbox_path
+    return resolve_sandbox_path(ctx.user_id, ctx.conversation_id, raw_path)
 
 
 def _relative_to_sandbox(ctx: ToolContext, abs_path: Path) -> str:
     """把绝对路径转回相对沙箱的字符串(给 LLM 看)。"""
-    base = ensure_memory_dir(ctx.user_id, ctx.conversation_id).resolve()
-    try:
-        return str(abs_path.relative_to(base)).replace("\\", "/")
-    except ValueError:
-        return str(abs_path)
+    from backend.services.memory_service import relative_to_sandbox
+    return relative_to_sandbox(ctx.user_id, ctx.conversation_id, abs_path)
 
 
 # ============================================================
@@ -157,6 +148,50 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
 
     session = SessionLocal()
     try:
+        # 查用户原始消息文本
+        from backend.repositories.message_repo import MessageRepository
+        from backend.repositories.conversation_repo import ConversationRepository
+        from backend.repositories.agent_repo import AgentRepository as _AgentRepo
+
+        user_msg_text = ""
+        user_msg = MessageRepository(session).get(ctx.user_message_id)
+        if user_msg and user_msg.content:
+            for block in user_msg.content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    user_msg_text = block.get("content", "")
+                    break
+
+        # 查群聊成员列表
+        conv = ConversationRepository(session).get(ctx.conversation_id)
+        member_lines: list[str] = []
+        self_agent_name = parsed.agent_id
+        if conv and conv.mode == "group":
+            agent_ids = ConversationRepository(session).list_active_agent_ids(ctx.conversation_id)
+            for aid in agent_ids:
+                agent = _AgentRepo(session).get(aid)
+                if agent is None:
+                    continue
+                if aid == parsed.agent_id:
+                    self_agent_name = agent.name
+                # 取 system_prompt 第一行作简介，截断到 60 字符
+                brief = ""
+                if agent.system_prompt:
+                    first_line = agent.system_prompt.strip().splitlines()[0]
+                    brief = first_line[:60] + ("…" if len(first_line) > 60 else "")
+                member_lines.append(f"- {agent.name}（{brief}）" if brief else f"- {agent.name}")
+
+        # 仅群聊且能拿到有效信息时注入 context header
+        if conv and conv.mode == "group" and (user_msg_text or member_lines):
+            header_parts = ["=== 群聊上下文 ==="]
+            if user_msg_text:
+                header_parts.append(f"用户原始请求：{user_msg_text}")
+            if member_lines:
+                header_parts.append("当前群聊成员：")
+                header_parts.extend(member_lines)
+            header_parts.append(f"你的角色：{self_agent_name}")
+            header_parts.append("==================")
+            final_prompt = "\n".join(header_parts) + "\n\n" + final_prompt
+
         ts = ThreadService(session)
         thread = ts.create_thread(
             conversation_id=ctx.conversation_id,

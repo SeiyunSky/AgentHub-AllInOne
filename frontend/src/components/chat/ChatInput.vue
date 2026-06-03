@@ -81,9 +81,10 @@
               <el-icon :size="18"><Plus /></el-icon>
             </button>
             <button
-              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer"
+              class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
               :class="attachedFiles.length > 0 ? 'text-brand bg-brand-light/40 hover:bg-brand-light' : 'text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container'"
-              :title="attachedFiles.length > 0 ? `${attachedFiles.length} file(s) attached` : 'Attach files'"
+              :title="!hasConversation ? '请先打开或创建一个会话' : (attachedFiles.length > 0 ? `${attachedFiles.length} file(s) attached` : 'Attach files (uploads to conversation sandbox)')"
+              :disabled="!hasConversation"
               @click="fileInputRef?.click()"
             >
               <el-icon :size="18"><Paperclip /></el-icon>
@@ -127,11 +128,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { Plus, Paperclip, Promotion, Close, Document, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MentionPicker from './MentionPicker.vue'
-import { filesApi } from '@/api/files'
+import { sandboxApi } from '@/api/sandbox'
+import { useConversationsStore } from '@/stores/conversations'
+import { useSandboxFilesStore } from '@/stores/sandboxFiles'
 import type { ChatAgent, ReplyPreview } from '@/types/chat'
 
 const props = withDefaults(defineProps<{
@@ -165,14 +168,27 @@ const hasContent = ref(false)
 // ── Attached files ──
 interface AttachedFile {
   name: string
-  path: string       // server-side path after upload
+  path: string       // 上传后落到沙箱的相对路径
   uploading: boolean
 }
 const attachedFiles = ref<AttachedFile[]>([])
 
+const conversationsStore = useConversationsStore()
+const sandboxFilesStore = useSandboxFilesStore()
+
+// 上传必须有当前会话(沙箱按 conv 隔离)
+const hasConversation = computed(() => !!conversationsStore.currentId)
+
 async function onFilesSelected(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files || input.files.length === 0) return
+
+  const convId = conversationsStore.currentId
+  if (!convId) {
+    ElMessage({ message: '请先打开或创建一个会话', type: 'warning', duration: 1500, plain: true })
+    input.value = ''
+    return
+  }
 
   const selected = Array.from(input.files)
   input.value = ''
@@ -187,11 +203,17 @@ async function onFilesSelected(e: Event) {
   attachedFiles.value.push(...placeholders)
 
   try {
-    const { paths } = await filesApi.upload(selected)
-    paths.forEach((p, i) => {
-      attachedFiles.value[startIdx + i].path = p
-      attachedFiles.value[startIdx + i].uploading = false
+    const { files } = await sandboxApi.upload(convId, selected)
+    files.forEach((f, i) => {
+      const entry = attachedFiles.value[startIdx + i]
+      if (entry) {
+        entry.name = f.name        // 后端清洗后的最终文件名
+        entry.path = f.path        // 沙箱相对路径
+        entry.uploading = false
+      }
     })
+    // Files Tab 立即看到新上传的文件
+    void sandboxFilesStore.loadFiles(convId)
   } catch {
     // Remove the failed placeholders
     attachedFiles.value.splice(startIdx, selected.length)

@@ -1,0 +1,7 @@
+{
+  "id": "chat_squad",
+  "name": "闲聊小队",
+  "description": "轻松对话、问答、头脑风暴，暂无预设成员，请手动添加 Agent",
+  "icon": "chat",
+  "agent_ids": []
+}

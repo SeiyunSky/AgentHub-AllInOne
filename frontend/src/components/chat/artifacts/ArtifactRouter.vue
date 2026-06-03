@@ -11,22 +11,23 @@
       </div>
     </div>
 
-    <!-- Edit mode: Monaco editor -->
-    <div v-else-if="mode === 'edit'" class="flex-1 flex flex-col min-h-0">
-      <div v-if="isLoadingContent" class="flex-1 flex items-center justify-center text-on-surface-variant">
-        <el-icon class="animate-spin mr-2"><Loading /></el-icon>
-        <span class="text-[12px]">Loading...</span>
-      </div>
+    <!-- Loading: file content not yet fetched -->
+    <div v-else-if="isLoadingContent" class="flex-1 flex items-center justify-center text-on-surface-variant">
+      <el-icon class="animate-spin mr-2"><Loading /></el-icon>
+      <span class="text-[12px]">Loading...</span>
+    </div>
+
+    <!-- Code (preview = readOnly Monaco; edit = writable Monaco) -->
+    <div v-else-if="rendererType === 'code'" class="flex-1 flex flex-col min-h-0">
       <VueMonacoEditor
-        v-else
         :value="editContent ?? ''"
         :language="monacoLanguage"
         :theme="monacoTheme"
         class="flex-1"
-        :options="monacoOptions"
+        :options="monacoOptionsFor(mode)"
         @change="setEditContent"
       />
-      <div class="flex items-center justify-end gap-2 px-3 py-2 border-t border-outline-variant bg-surface-container">
+      <div v-if="mode === 'edit'" class="flex items-center justify-end gap-2 px-3 py-2 border-t border-outline-variant bg-surface-container">
         <span v-if="isSaving" class="text-[11px] text-on-surface-variant flex items-center gap-1">
           <el-icon class="animate-spin"><Loading /></el-icon>
           Saving...
@@ -41,28 +42,80 @@
       </div>
     </div>
 
-    <!-- Preview mode: renderer dispatch -->
-    <template v-else>
-      <!-- HTML iframe -->
+    <!-- Markdown (preview = MarkdownRenderer; edit = Monaco markdown) -->
+    <div v-else-if="rendererType === 'markdown'" class="flex-1 flex flex-col min-h-0">
+      <div v-if="mode === 'edit'" class="flex-1 flex flex-col min-h-0">
+        <VueMonacoEditor
+          :value="editContent ?? ''"
+          language="markdown"
+          :theme="monacoTheme"
+          class="flex-1"
+          :options="monacoOptionsFor('edit')"
+          @change="setEditContent"
+        />
+        <div class="flex items-center justify-end gap-2 px-3 py-2 border-t border-outline-variant bg-surface-container">
+          <span v-if="isSaving" class="text-[11px] text-on-surface-variant flex items-center gap-1">
+            <el-icon class="animate-spin"><Loading /></el-icon>
+            Saving...
+          </span>
+          <button
+            class="px-3 py-1 rounded-md text-[12px] font-medium bg-brand text-white hover:bg-brand/90 transition-colors disabled:opacity-50"
+            :disabled="isSaving"
+            @click="saveFileContent"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+      <div v-else class="flex-1 overflow-auto px-6 py-4 bg-white">
+        <MarkdownRenderer :content="liveContent" />
+      </div>
+    </div>
+
+    <!-- HTML (preview = iframe; edit = Monaco html) -->
+    <div v-else-if="rendererType === 'iframe'" class="flex-1 flex flex-col min-h-0">
+      <div v-if="mode === 'edit'" class="flex-1 flex flex-col min-h-0">
+        <VueMonacoEditor
+          :value="editContent ?? ''"
+          language="html"
+          :theme="monacoTheme"
+          class="flex-1"
+          :options="monacoOptionsFor('edit')"
+          @change="setEditContent"
+        />
+        <div class="flex items-center justify-end gap-2 px-3 py-2 border-t border-outline-variant bg-surface-container">
+          <span v-if="isSaving" class="text-[11px] text-on-surface-variant flex items-center gap-1">
+            <el-icon class="animate-spin"><Loading /></el-icon>
+            Saving...
+          </span>
+          <button
+            class="px-3 py-1 rounded-md text-[12px] font-medium bg-brand text-white hover:bg-brand/90 transition-colors disabled:opacity-50"
+            :disabled="isSaving"
+            @click="saveFileContent"
+          >
+            Save
+          </button>
+        </div>
+      </div>
       <iframe
-        v-if="rendererType === 'iframe'"
+        v-else
         :srcdoc="iframeSrcdoc"
         sandbox="allow-scripts"
         class="flex-1 w-full h-full border-0 bg-white"
       />
+    </div>
+
+    <!-- Preview-only modes -->
+    <template v-else>
       <!-- SVG -->
       <div
-        v-else-if="rendererType === 'svg'"
+        v-if="rendererType === 'svg'"
         class="flex-1 flex items-center justify-center p-6 bg-surface-container-low"
         v-html="sanitizedSvg"
       />
       <!-- Image -->
       <div v-else-if="rendererType === 'image'" class="flex-1 flex items-center justify-center p-6 bg-surface-container-low">
         <img :src="activeArtifact?.item.preview" :alt="activeArtifact?.item.name" class="max-w-full max-h-full object-contain" />
-      </div>
-      <!-- Code fallback -->
-      <div v-else-if="rendererType === 'code'" class="flex-1 overflow-auto p-4 bg-surface-container-low">
-        <pre class="text-[12px] leading-relaxed font-mono text-on-surface" style="white-space: pre-wrap; word-wrap: break-word; margin: 0">{{ liveContent }}</pre>
       </div>
       <!-- Unknown -->
       <div v-else class="flex-1 flex items-center justify-center text-on-surface-variant">
@@ -73,10 +126,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { VueMonacoEditor } from '@guolao/vue-monaco-editor'
 import { View, Loading } from '@element-plus/icons-vue'
 import { useArtifactPreview } from '@/composables/useArtifactPreview'
+import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 
 withDefaults(defineProps<{
   mode?: 'preview' | 'edit'
@@ -87,6 +141,7 @@ withDefaults(defineProps<{
 const {
   activeArtifact,
   rendererType,
+  monacoLanguage,
   sanitizedSvg,
   iframeSrcdoc,
   liveContent,
@@ -97,17 +152,6 @@ const {
   setEditContent,
 } = useArtifactPreview()
 
-const monacoLanguage = computed(() => {
-  const t = (activeArtifact.value?.item.mimeType ?? activeArtifact.value?.item.type ?? '').toLowerCase()
-  if (t === 'text/html' || t === 'html') return 'html'
-  if (t === 'image/svg+xml' || t === 'svg') return 'xml'
-  if (t === 'application/json' || t === 'json') return 'json'
-  if (t === 'python') return 'python'
-  if (t === 'typescript') return 'typescript'
-  if (t === 'javascript') return 'javascript'
-  return 'plaintext'
-})
-
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)')
 const monacoTheme = ref(prefersDark.matches ? 'vs-dark' : 'vs')
 
@@ -117,12 +161,20 @@ function onSchemeChange(e: MediaQueryListEvent) {
 onMounted(() => prefersDark.addEventListener('change', onSchemeChange))
 onUnmounted(() => prefersDark.removeEventListener('change', onSchemeChange))
 
-const monacoOptions = {
+const baseMonacoOptions = {
   minimap: { enabled: false },
   fontSize: 13,
   lineHeight: 20,
   scrollBeyondLastLine: false,
   wordWrap: 'on' as const,
   tabSize: 2,
+}
+
+function monacoOptionsFor(m: 'preview' | 'edit') {
+  return {
+    ...baseMonacoOptions,
+    readOnly: m !== 'edit',
+    domReadOnly: m !== 'edit',
+  }
 }
 </script>

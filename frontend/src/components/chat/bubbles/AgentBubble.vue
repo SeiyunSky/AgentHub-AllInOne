@@ -61,6 +61,7 @@
             :filename="block.filename"
             :language="block.language"
             :old-code="block.oldCode"
+            :message-id="message.id"
           />
 
           <!-- Deployment block -->

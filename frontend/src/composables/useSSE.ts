@@ -3,6 +3,7 @@ import { chatApi } from '@/api/chat'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
 import { useWorkflowStore } from '@/stores/workflow'
+import { useSandboxFilesStore } from '@/stores/sandboxFiles'
 import type { SSEEvent } from '@/types/api'
 
 const controllers = ref<Map<string, AbortController>>(new Map())
@@ -35,6 +36,11 @@ function handleEvent(convId: string, event: SSEEvent) {
         code: event.block.type === 'code' ? (event.block as any).code : undefined,
         filename: event.block.type === 'code' ? (event.block as any).filename : undefined,
       })
+      // PostExecutionHook 在 create_file/edit_file 成功后会推 CodeBlock,带 filename
+      // → 当前会话沙箱有新文件,触发 Files Tab 自动刷新(debounce 防止连续多文件刷太多次)
+      if (event.block.type === 'code' && (event.block as any).filename) {
+        useSandboxFilesStore().loadFilesDebounced(convId)
+      }
       break
 
     case 'block_delta':
@@ -74,6 +80,8 @@ function handleEvent(convId: string, event: SSEEvent) {
           conversationsStore.updatePreview(convId, preview.slice(0, 100))
         }
       }
+      // 关闭连接，让下一轮发消息时重新建立 SSE
+      disconnect(convId)
       break
 
     case 'queue_drained':

@@ -44,6 +44,40 @@
       <NavRailItem :icon="DArrowLeft" label="Collapse" @click="uiStore.toggleNavRail" />
     </div>
 
+    <!-- User card: 头像 + display_name + username + 退出按钮 -->
+    <div
+      v-if="auth.isLoggedIn"
+      class="mx-2 mt-2 mb-1 px-2 py-2 rounded-xl flex items-center gap-2 group transition-all duration-200 hover:bg-white/8"
+      style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);"
+    >
+      <!-- Avatar bubble -->
+      <div
+        class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-[13px] shrink-0 shadow-sm"
+        :style="{ background: avatarGradient }"
+      >
+        {{ avatarInitial }}
+      </div>
+
+      <!-- Name + username -->
+      <div class="flex-1 min-w-0">
+        <div class="text-white text-[12px] font-semibold truncate leading-tight">
+          {{ auth.displayName }}
+        </div>
+        <div class="text-white/40 text-[10px] truncate leading-tight mt-0.5">
+          @{{ auth.username }}
+        </div>
+      </div>
+
+      <!-- Logout icon button (only visible on hover for cleanliness) -->
+      <button
+        class="w-7 h-7 rounded-md flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100 shrink-0"
+        title="退出登录"
+        @click="handleLogout"
+      >
+        <el-icon :size="15"><SwitchButton /></el-icon>
+      </button>
+    </div>
+
     <!-- ── Contributors Dialog ── -->
     <Teleport to="body">
       <Transition name="overlay-fade">
@@ -67,10 +101,16 @@
               <div class="p-8 pt-12 flex flex-col h-full overflow-y-auto custom-scrollbar">
                 <!-- Avatar large -->
                 <div
-                  class="w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-black mb-4 shadow-xl"
+                  class="w-20 h-20 rounded-3xl flex items-center justify-center text-white text-3xl font-black mb-4 shadow-xl overflow-hidden"
                   :style="{ background: activeContributor.avatarGradient }"
                 >
-                  {{ activeContributor.initials }}
+                  <img
+                    v-if="activeContributor.avatarImage"
+                    :src="activeContributor.avatarImage"
+                    :alt="activeContributor.name"
+                    class="w-full h-full object-cover"
+                  />
+                  <template v-else>{{ activeContributor.initials }}</template>
                 </div>
                 <div class="text-white text-xl font-bold mb-0.5">{{ activeContributor.name }}</div>
                 <div class="text-white/50 text-[12px] mb-1">{{ activeContributor.alias }}</div>
@@ -83,16 +123,34 @@
                   class="text-[12px] text-white/60 hover:text-white/90 mb-6 transition-colors"
                 >{{ activeContributor.email }}</a>
                 <div class="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-3">工作内容</div>
-                <ul class="space-y-2">
-                  <li
-                    v-for="(item, i) in activeContributor.workItems"
-                    :key="i"
-                    class="flex gap-2 text-[13px] text-white/80 leading-relaxed"
+
+                <!-- 分组渲染:前端 / 后端 / 测试,空组隐藏 -->
+                <div class="space-y-5">
+                  <div
+                    v-for="group in workGroupsOf(activeContributor)"
+                    :key="group.key"
+                    class="space-y-2"
                   >
-                    <span class="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full" :style="{ background: activeContributor.dotColor }"></span>
-                    {{ item }}
-                  </li>
-                </ul>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="text-[10px] font-bold px-2 py-0.5 rounded-md tracking-wider"
+                        :style="{ background: group.bg, color: group.color }"
+                      >{{ group.label }}</span>
+                      <span class="flex-1 h-px bg-white/10"></span>
+                      <span class="text-[10px] text-white/30">{{ group.items.length }}</span>
+                    </div>
+                    <ul class="space-y-2 pl-1">
+                      <li
+                        v-for="(item, i) in group.items"
+                        :key="i"
+                        class="flex gap-2 text-[13px] text-white/80 leading-relaxed"
+                      >
+                        <span class="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full" :style="{ background: activeContributor.dotColor }"></span>
+                        <span>{{ item }}</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           </Transition>
@@ -127,9 +185,17 @@
                   style="background: rgba(255,255,255,0.06); backdrop-filter: blur(12px);"
                 >
                   <div
-                    class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg"
+                    class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg overflow-hidden"
                     :style="{ background: person.avatarGradient }"
-                  >{{ person.initials }}</div>
+                  >
+                    <img
+                      v-if="person.avatarImage"
+                      :src="person.avatarImage"
+                      :alt="person.name"
+                      class="w-full h-full object-cover"
+                    />
+                    <template v-else>{{ person.initials }}</template>
+                  </div>
                   <div>
                     <div class="text-white font-bold text-[13px] leading-tight">{{ person.name }}</div>
                     <div class="text-white/40 text-[11px] mt-0.5">{{ person.alias }}</div>
@@ -152,16 +218,45 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
+import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/api/auth'
 import NavRailItem from './NavRailItem.vue'
-import { ChatDotRound, User, MagicStick, QuestionFilled, Setting, Search, DArrowLeft } from '@element-plus/icons-vue'
+import { ChatDotRound, User, MagicStick, QuestionFilled, Setting, Search, DArrowLeft, SwitchButton } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
+const auth = useAuthStore()
+
+// 头像首字母:优先 display_name 第一个字符,回退到 username
+const avatarInitial = computed(() => {
+  const src = auth.displayName || auth.username || '?'
+  return src.charAt(0).toUpperCase()
+})
+
+// 根据 username 稳定哈希生成渐变色,每个用户固定一种配色
+const AVATAR_PALETTES = [
+  'linear-gradient(135deg, #6366f1, #8b5cf6)',  // indigo -> violet
+  'linear-gradient(135deg, #3b82f6, #06b6d4)',  // blue -> cyan
+  'linear-gradient(135deg, #10b981, #0d9488)',  // green -> teal
+  'linear-gradient(135deg, #f59e0b, #ef4444)',  // amber -> red
+  'linear-gradient(135deg, #ec4899, #8b5cf6)',  // pink -> violet
+  'linear-gradient(135deg, #06b6d4, #0ea5e9)',  // cyan -> sky
+  'linear-gradient(135deg, #f97316, #ec4899)',  // orange -> pink
+] as const
+
+const avatarGradient = computed(() => {
+  const key = auth.username || auth.user?.id || 'default'
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0
+  }
+  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length]
+})
 
 const supportVisible = ref(false)
 const activeContributor = ref<(typeof contributors)[number] | null>(null)
@@ -191,6 +286,7 @@ const contributors = [
     name: '沫路',
     alias: 'Adam Zhang',
     initials: 'AZ',
+    avatarImage: '/contributors/adam.png',
     avatarGradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
     glowColor: 'rgba(99,102,241,0.6)',
     detailBg: 'linear-gradient(160deg, #1a1040 0%, #312e81 100%)',
@@ -198,20 +294,37 @@ const contributors = [
     tagBg: 'rgba(139,92,246,0.25)',
     tagColor: '#c4b5fd',
     dotColor: '#8b5cf6',
-    tagline: '系统最重的几块都在这里',
+    tagline: '后端架构 + 前端工具链 + 救火队长',
     email: 'adam.zhang03@sap.com',
-    workItems: [
-      '数据库与基建：数据结构设计、ORM 落地、Alembic 迁移、UTC 时区对齐',
-      '通信协议层：AgentEvent 统一事件模型、AgentAdapter 抽象接口、块级流式 SSE 协议、19 个 Orchestrator 工具 input schema',
-      '主 Agent (Orchestrator) 全栈：八步 agent loop、上下文压缩、错误恢复、prompt_builder 六层管道、tool_registry $ref 展开 / 截断、子 Thread 唤醒机制',
-      'Hook 体系：HookManager 调度中心、PreExecutionHook（黑名单+路径校验）、ApprovalHook（审批闭环）、PostExecutionHook（异步审计）',
-      '服务层接通：Chat / Conversation / Message / Prompt 各 Service、HTTP 端点',
-      '结构化日志：structlog + stdlib 桥接，contextvars 绑定 trace_id',
-      '端到端联调：Windows 子进程兼容、SSE 时序修复、群聊 MVP 跑通、DB 僵尸 thread 收尸、连接池调优',
-      'Prompt 工程：主 Agent 提示词调优、19 工具描述瘦身、占位符防御与自检清单',
-      '会话管理 API：成员增删、token 用量聚合（messages + threads 两表）',
-      '群聊体验：建会话流程拉直、主 Agent 默认注入与"群主"角色固化',
-    ],
+    work: {
+      backend: [
+        '架构与基建：项目调研、整体架构设计、前后端框架搭建、数据结构设计、ORM 落地、Alembic 迁移、UTC 时区对齐、连接池调优',
+        '通信协议：AgentEvent 统一事件模型、AgentAdapter 抽象接口、ContentBlock 数组化、块级流式 SSE 协议',
+        '主 Agent (Orchestrator) 全栈：核心设计、八步 agent loop、上下文压缩、错误恢复、六层 prompt 管道、tool_registry $ref 展开 / 截断、19 个工具 input schema 与具体实装、子 Thread 唤醒机制',
+        'Hook 体系：HookManager 调度中心 + 同步串行链 / 异步深拷贝投递、PreExecution（黑名单 + 路径穿越校验）、Approval（审批闭环 + 守卫）、PostExecution（异步审计）',
+        '服务层与 HTTP 端点：Chat / Conversation / Message / Prompt 全套 Service、统一响应 envelope、agent_id 体系修复',
+        '群聊与并行调度：群聊 MVP、conversation 成员增删、token 用量聚合（messages + threads 两表）、会话设置弹窗、主 Agent 默认注入 + 群主角色固化、子 Thread 排队 / 抢占 / 紧急中止',
+        '会话沙箱：runtime/memory 沙箱端点（列文件 / 读 / 写 / 下载 / 上传）+ 越界路径校验',
+        '审批工作流：审批工具实装 + 前后端协议对齐',
+        '结构化日志：structlog + stdlib 桥接、console / JSON 双格式、contextvars 绑定 trace_id',
+        'Auth 全栈：基于刘盘 JWT 基础进一步落地与端到端联调',
+        'Prompt 工程：主 Agent 提示词调优、19 工具描述瘦身、占位符防御与派活前自检清单',
+        '稳定性与救火：Windows cmd.exe 子进程兼容、SSE 时序、僵尸 thread 收尸、/chat/stop 锁释放、CancelledError 路径、count_tokens 404 降级、@ 子 Agent 上下文累积',
+      ],
+      frontend: [
+        '前端 UI 整体打磨：Workflow 视图、Files 模块初版',
+        '多 Agent 并行 streaming 气泡 + activity chip 实时反馈',
+        '右侧面板重构：Workflow / Files / Preview 三 Tab 同级切换',
+        '会话沙箱文件浏览闭环：文件列表 + sandboxFiles store + SSE 自刷新 + 下载 / 编辑 / 预览',
+        '预览体验升级：Monaco readOnly 代码语法高亮、Markdown 双 Tab（渲染 / 源码）、扩展名→语言完整映射',
+        '上传走沙箱：ChatInput 改造，Agent 立即能 read_file 读到附件',
+        'Bug 修复：嵌套 button 导致 Approval 点击失效、@ 子 Agent 身份混乱锚定、SSE 连接未更新、停止按钮线程异常、feedback 端点改 POST + Vite 代理端口对齐',
+      ],
+      testing: [
+        'Orchestrator loop 集成测试（CI 友好的 mock 实现 + 真 LLM 状态压缩本地脚本）',
+        '集成测试补全与 5.27 开发进度总览文档',
+      ],
+    },
   },
   {
     name: '玛叔叔',
@@ -224,17 +337,25 @@ const contributors = [
     tagBg: 'rgba(6,182,212,0.2)',
     tagColor: '#67e8f9',
     dotColor: '#06b6d4',
-    tagline: '整套 IM 界面全是他写的',
+    tagline: 'IM 主界面 + 一整套消息块 UI 都是他写的',
     email: 'chenhui.wang@sap.com',
-    workItems: [
-      '聊天界面：三栏布局、侧栏折叠、splitpane、contenteditable 输入框 + @mentions + 回复引用、消息气泡、自动滚动',
-      '消息块组件：thinking / tool use / code / artifact / image / approval 块、CodeBlock（diff + 行号）、shiki 代码高亮、markdown 渲染',
-      'Agent / Skill 管理：Agent Builder 双栏页面、CRUD UI、Agent 表单 + 嵌入式聊天',
-      '路由与布局：router-driven 布局、LeftPanel + RouterView 改造、侧栏驱动统一',
-      '审批与状态：ApprovalBlock UI、SSE 流式渲染、消息点赞踩反馈、停止生成、置顶会话 + 未读徽章',
-      'Artifact 预览：sandboxed iframe、SVG、代码渲染',
-      'API 层对接：前端 API 与后端 schema 对齐、ApiResponse envelope 解包、HTTP 拦截器',
-    ],
+    work: {
+      frontend: [
+        '前端脚手架搭建 + 整体布局：Chat Layout、三栏布局、侧栏折叠、splitpane、PanelContainer 抽象、统一 splitter / 滚动条样式',
+        '聊天输入：contenteditable 输入框 + @mentions + 回复引用 + 代码复制 + 输入框聊天切换',
+        '消息块体系：thinking / tool use / code / artifact / image / approval / deployment 七类块、ApprovalBlock UI 与 SSE 流式修复、CollapsibleBlock 头部统一、Copy 按钮抽离',
+        '代码与渲染：CodeBlock（diff + 行号）、shiki 代码高亮、Markdown 渲染、SSE 代码块渲染修复',
+        'Artifact 预览：sandboxed iframe / SVG / 代码三种渲染、Artifact Edit 模式（Monaco 编辑器 + 文件同步）',
+        'Agent / Skill 管理：Agent Builder 双栏 + 嵌入式聊天、Agent CRUD UI、Skill CRUD 前端、Agent 表单 splitpane、Agent 页面整体优化',
+        '会话列表：archived 分类 / 时间戳 / 删除 / 归档限制、ConversationListItem 携带 agents 信息与排序、置顶会话 + 未读徽章、空状态卡片风格统一',
+        '路由与布局：router-driven 布局、LeftPanel + RouterView 改造、sidebar nav 切主面板不切路由、Agent CRUD 路由化',
+        '消息互动：MessageActions 绝对定位、点赞踩反应 UI 更新、自动滚动到底部、停止生成（含 mock SSE abort）',
+        'API 层：前端 API 与后端 schema 对齐、ApiResponse envelope 拦截器解包',
+      ],
+      testing: [
+        'Init mock 测试体系 + 简单冒烟测试',
+      ],
+    },
   },
   {
     name: '令姐姐',
@@ -243,21 +364,35 @@ const contributors = [
     avatarGradient: 'linear-gradient(135deg, #10b981, #0d9488)',
     glowColor: 'rgba(16,185,129,0.6)',
     detailBg: 'linear-gradient(160deg, #052e16 0%, #064e3b 100%)',
-    role: 'Adapter 层 + 子系统',
+    role: 'Adapter 层 + Agent / Skill 子系统',
     tagBg: 'rgba(16,185,129,0.2)',
     tagColor: '#6ee7b7',
     dotColor: '#10b981',
     tagline: '子 Agent 接入这一整套都是她',
     email: 'lvsheng.wu@sap.com',
-    workItems: [
-      'Adapter 层：块级流式协议对齐、ClaudeAdapter（CLI subprocess 模式）、子 Agent system_prompt 注入、内置 Agent 提示词与身份解耦',
-      'Codex Adapter：适配新版 CLI（exec 子命令 + 移除 --no-interactive）',
-      'MCP 服务 + Agent 模板：MCP 客户端层、三类内置 Agent 人格（coder / research / reviewer）',
-      '模块四 + 五全栈：Agent CRUD、Skill CRUD、LLM 辅助 Agent 创建、Skill 注入主 Agent',
-      'API 优化：移除硬编码 user_id 改从 X-User-Id 注入、limit/offset 分页、消息列表游标校验防跨会话泄露、N+1 查询消除',
-      'D7-blocker 修复：seed_from_db 改同步 Session、_run_thread 自起独立 SessionLocal',
-      '集成测试响应解包、Code Review 问题修复',
-    ],
+    work: {
+      backend: [
+        'Adapter 层：接口对齐 master 块级流式协议、AgentEvent 事件完善',
+        'ClaudeAdapter：从 Anthropic SDK 切到 CLI subprocess 模式 + readline 64KB 限制绕过 + StreamInput 传 agent_name 修 agent_start',
+        'Codex Adapter：适配新版 CLI（exec 子命令 + 移除 --no-interactive）+ 用户身份注入',
+        'MCP 客户端层 + 三类内置 Agent 人格（coder / research / reviewer）',
+        '子 Agent system_prompt 注入 + 内置 Agent 提示词与身份数据解耦',
+        'Agent 管理全栈：CRUD API + LLM 辅助 Agent 创建 + 支持修改 type',
+        'Skill 子系统全栈：CRUD API + Skill 注入主 Agent + 修改不写本地文件',
+        'Agent 头像功能：后端静态服务 + 消息携带头像快照',
+        'Diff 模块后端基础（未完全实现）',
+        'D7-blocker 修复：seed_from_db 改同步 Session、_run_thread 自起独立 SessionLocal',
+        'API 优化：移除硬编码 user_id 改 X-User-Id 注入、limit/offset 分页、消息列表游标校验防跨会话泄露、N+1 查询消除',
+        '稳定性：CancelledError 分支漏 rollback 导致锁等待超时',
+      ],
+      frontend: [
+        'Agent / Skill CRUD 改进配合（与玛叔叔联合）',
+      ],
+      testing: [
+        '测试基础设施补全 + events 修订 + 数据结构文档同步',
+        'Code Review 问题修复 + 集成测试响应解包',
+      ],
+    },
   },
   {
     name: '冯瑜轩',
@@ -266,16 +401,18 @@ const contributors = [
     avatarGradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
     glowColor: 'rgba(245,158,11,0.6)',
     detailBg: 'linear-gradient(160deg, #2d1500 0%, #451a03 100%)',
-    role: '模块六 + 八',
+    role: '消息操作 + WebSocket',
     tagBg: 'rgba(245,158,11,0.2)',
     tagColor: '#fcd34d',
     dotColor: '#f59e0b',
-    tagline: '关键路径上的功能实装',
+    tagline: '消息互动 + 审批 WS 闭环',
     email: 'yuxuan.feng@sap.com',
-    workItems: [
-      '模块六：消息操作（点赞 / 踩 / 软删除 / 清除反馈）、会话补全、归属校验',
-      '模块八：WebSocket 端点、审批决策协议、approval_decision 处理、Hook 与 WS 闭环',
-    ],
+    work: {
+      backend: [
+        '消息操作：点赞 / 踩 / 软删除 / 清除反馈、会话补全、归属校验',
+        'WebSocket 端点 + 审批决策协议：approval_decision 处理、Hook ↔ WS 闭环',
+      ],
+    },
   },
   {
     name: '刘盘',
@@ -284,19 +421,60 @@ const contributors = [
     avatarGradient: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
     glowColor: 'rgba(236,72,153,0.6)',
     detailBg: 'linear-gradient(160deg, #2d0a1a 0%, #3b0764 100%)',
-    role: 'OpenCode 适配',
+    role: 'Auth 全栈 + 单元测试 + OpenCode',
     tagBg: 'rgba(236,72,153,0.2)',
     tagColor: '#f9a8d4',
     dotColor: '#ec4899',
-    tagline: '提示词工程 + OpenCode 适配',
+    tagline: '基建 + 测试 + OpenCode 适配',
     email: 'yf2685@nyu.edu',
-    workItems: [
-      'OpenCode Adapter 初步适配 + 测试通过',
-      '主 Agent 提示词注入策略调试',
-      '脚本提示词去格式化处理',
-    ],
+    work: {
+      backend: [
+        'Auth 体系：hash + JWT + 非明文密码、auth 前后端打通',
+        'OpenCode Adapter 初步适配 + 测试通过',
+        '主 Agent 提示词注入策略（成功路径）+ 脚本提示词去格式化',
+        'Token 计数透出 API',
+      ],
+      frontend: [
+        '登录元素优化',
+      ],
+      testing: [
+        '基础设施 + 业务层全部 unit 级通过 + 接通真 DB 验证',
+        '单元测试体系搭建',
+      ],
+    },
   },
 ]
+
+// 把 contributor 的 work 对象拆成有序 / 非空的分组,模板按这个渲染。
+// 兼容 workItems(老格式)和 work(新格式),避免一次性必须改全部数据。
+const WORK_GROUP_META = {
+  backend:  { label: '后端',     bg: 'rgba(139,92,246,0.18)', color: '#c4b5fd' },
+  frontend: { label: '前端',     bg: 'rgba(59,130,246,0.18)', color: '#93c5fd' },
+  testing:  { label: '测试',     bg: 'rgba(16,185,129,0.18)', color: '#6ee7b7' },
+  other:    { label: '其它',     bg: 'rgba(148,163,184,0.18)', color: '#cbd5e1' },
+} as const
+
+type WorkGroupKey = keyof typeof WORK_GROUP_META
+
+interface ContribWithWork {
+  work?: Partial<Record<WorkGroupKey, string[]>>
+  workItems?: string[]
+}
+
+function workGroupsOf(c: ContribWithWork) {
+  // 新格式:work 对象
+  if (c.work) {
+    const order: WorkGroupKey[] = ['backend', 'frontend', 'testing', 'other']
+    return order
+      .filter(k => Array.isArray(c.work?.[k]) && c.work![k]!.length > 0)
+      .map(k => ({ key: k, items: c.work![k]!, ...WORK_GROUP_META[k] }))
+  }
+  // 老格式:workItems 平铺,作为"其它"一组渲染
+  if (c.workItems?.length) {
+    return [{ key: 'other' as const, items: c.workItems, ...WORK_GROUP_META.other }]
+  }
+  return []
+}
 
 const navItems = [
   { id: 'chat', icon: ChatDotRound, label: 'Chat', routeName: 'chat' as const },
@@ -328,6 +506,27 @@ function showSearchDialog() {
 function showSupportDialog() {
   activeContributor.value = null
   supportVisible.value = true
+}
+
+async function handleLogout() {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗?', '退出登录', {
+      confirmButtonText: '退出',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return  // 用户取消
+  }
+
+  // 调后端把 token 加入黑名单(失败也无所谓,只要本地清干净)
+  try {
+    await authApi.logout()
+  } catch {
+    // ignore: token 已经无效或网络错误,不影响后续清状态
+  }
+  auth.clear()
+  router.push({ name: 'login' })
 }
 </script>
 

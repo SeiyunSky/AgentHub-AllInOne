@@ -87,6 +87,38 @@ def ensure_memory_dir(user_id: str, conversation_id: str) -> Path:
     return dir_path
 
 
+def resolve_sandbox_path(user_id: str, conversation_id: str, rel_path: str) -> Path:
+    """
+    把"相对沙箱根的路径"解析为绝对路径,并校验未越出沙箱。
+
+    沙箱根 = `runtime/memory/{user_id}/{conversation_id}/`
+    任何尝试逃出沙箱的路径(`../foo`、绝对路径、symlink 跳出等)都抛 InvalidMemoryPathError。
+
+    rel_path 为空字符串时返回沙箱根本身(语义上没意义,但合法)。
+
+    与 `orchestrator_tools._resolve_sandbox_path` 等价,但参数解耦——给 HTTP 端点也能用。
+    """
+    base = ensure_memory_dir(user_id, conversation_id).resolve()
+    candidate = (base / rel_path).resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError as exc:
+        raise InvalidMemoryPathError(
+            f"路径 {rel_path!r} 越出沙箱,只允许操作当前会话目录下的文件"
+        ) from exc
+    return candidate
+
+
+def relative_to_sandbox(user_id: str, conversation_id: str, abs_path: Path) -> str:
+    """绝对路径转回 POSIX 风格的"相对沙箱根的路径"(给 LLM / 前端用)。"""
+    base = get_memory_dir(user_id, conversation_id).resolve()
+    try:
+        return str(abs_path.relative_to(base)).replace("\\", "/")
+    except ValueError:
+        # 不在沙箱内时回退原路径(理论上不应发生,_resolve_sandbox_path 已校过)
+        return str(abs_path).replace("\\", "/")
+
+
 def get_memory_file_path(user_id: str, conversation_id: str, name: str) -> Path:
     """根据 name 计算单条记忆文件路径。"""
     if not NAME_PATTERN.match(name):

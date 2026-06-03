@@ -160,6 +160,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     # ---- 路由挂载 ----
     # 已实装路由按 /api/v1 前缀挂载;未实装的 stub 路由(单 # TODO 占位)不挂
     # 路由模块按需 import,避免还没实装的 stub 模块在 import 阶段就炸
+    from backend.api.v1 import auth as auth_router
     from backend.api.v1 import chat as chat_router
     from backend.api.v1 import conversations as conversations_router
     from backend.api.v1 import messages as messages_router
@@ -169,7 +170,10 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     from backend.api.v1 import files as files_router
     from backend.api.v1 import artifacts as artifacts_router
     from backend.api.v1 import approvals as approvals_router
+    from backend.api.v1 import squads as squads_router
+    from backend.api.v1 import sandbox as sandbox_router
 
+    app.include_router(auth_router.router, prefix="/api/v1", tags=["auth"])
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
     app.include_router(
         conversations_router.router, prefix="/api/v1", tags=["conversations"]
@@ -181,6 +185,8 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app.include_router(files_router.router, prefix="/api/v1", tags=["files"])
     app.include_router(artifacts_router.router, prefix="/api/v1", tags=["artifacts"])
     app.include_router(approvals_router.router, prefix="/api/v1", tags=["approvals"])
+    app.include_router(squads_router.router, prefix="/api/v1", tags=["squads"])
+    app.include_router(sandbox_router.router, prefix="/api/v1", tags=["sandbox"])
 
     # 静态资源：头像等图片文件
     _static_dir = Path(__file__).parent / "static"

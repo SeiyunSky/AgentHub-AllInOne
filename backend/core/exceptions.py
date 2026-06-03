@@ -37,3 +37,25 @@ class ApprovalRequiredError(AgentHubError):
 class PermissionDeniedError(AgentHubError):
     """Raised when the current user lacks permission for an operation."""
 
+
+# ----------------------------------------------------------------
+# auth (登录 / token) 相关
+# ----------------------------------------------------------------
+
+
+class AuthenticationError(AgentHubError):
+    """登录凭据错误(用户名不存在 / 密码错)。统一一种异常,避免给攻击者枚举用户名的机会。"""
+
+
+class TokenInvalidError(AgentHubError):
+    """JWT 解码失败、签名错误、过期、被吊销(在黑名单里)等情况统一抛这个。"""
+
+
+class UserAlreadyExistsError(AgentHubError):
+    """注册时 username 或 email 已被占用。"""
+
+    def __init__(self, field: str, value: str) -> None:
+        super().__init__(f"{field}={value!r} 已被占用")
+        self.field = field
+        self.value = value
+

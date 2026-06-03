@@ -635,3 +635,142 @@ def test_build_prompt_adds_opener_when_persona_is_structured():
     )
     out = _build_prompt(inp)
     assert _OPENER_MARKER in out
+
+
+# ---------------------------------------------------------------------------
+# Token accounting — accumulate step_finish.part.tokens into AgentDoneEvent
+# ---------------------------------------------------------------------------
+
+async def test_stream_accumulates_tokens_from_step_finish_events():
+    """Each opencode `step_finish` event carries part.tokens.{input, output};
+    OpencodeAdapter should sum them across the whole run and surface the total
+    on AgentDoneEvent.tokens_input / tokens_output.
+    """
+    adapter = _make_adapter()
+    proc = _FakeProcess([
+        # First LLM round
+        _line({"type": "step_start", "part": {}}),
+        _line({"type": "text", "part": {"text": "hello"}}),
+        _line({
+            "type": "step_finish",
+            "part": {
+                "reason": "tool-calls",
+                "tokens": {"input": 100, "output": 50, "reasoning": 0,
+                           "cache": {"read": 0, "write": 100}},
+                "cost": 0.001,
+            },
+        }),
+        # Tool round
+        _line({
+            "type": "tool_use",
+            "part": {
+                "tool": "read",
+                "callID": "tool_x",
+                "state": {"status": "completed", "input": {}, "output": "ok"},
+            },
+        }),
+        # Second LLM round (answer after tool)
+        _line({"type": "step_start", "part": {}}),
+        _line({"type": "text", "part": {"text": " world"}}),
+        _line({
+            "type": "step_finish",
+            "part": {
+                "reason": "stop",
+                "tokens": {"input": 200, "output": 30},
+                "cost": 0.0005,
+            },
+        }),
+    ])
+
+    with patch("backend.adapters.opencode.asyncio.create_subprocess_exec", return_value=proc), \
+         patch("backend.adapters.opencode.shutil.which", return_value="opencode"):
+        events = await collect_stream(adapter.stream(_make_inp(prompt="x")))
+
+    done = [e for e in events if isinstance(e, AgentDoneEvent)]
+    assert len(done) == 1
+    assert done[0].tokens_input == 300   # 100 + 200
+    assert done[0].tokens_output == 80   # 50 + 30
+
+
+async def test_stream_done_event_has_zero_tokens_when_no_step_finish():
+    """If opencode reports nothing (or no step_finish), tokens default to 0,
+    matching AgentDoneEvent's schema default. We must not crash.
+    """
+    adapter = _make_adapter()
+    proc = _FakeProcess([_line({"type": "text", "part": {"text": "hi"}})])
+
+    with patch("backend.adapters.opencode.asyncio.create_subprocess_exec", return_value=proc), \
+         patch("backend.adapters.opencode.shutil.which", return_value="opencode"):
+        events = await collect_stream(adapter.stream(_make_inp(prompt="x")))
+
+    done = [e for e in events if isinstance(e, AgentDoneEvent)]
+    assert len(done) == 1
+    assert done[0].tokens_input == 0
+    assert done[0].tokens_output == 0
+
+
+async def test_stream_tolerates_malformed_token_payload():
+    """Defensive: a step_finish with non-numeric tokens shouldn't sink the
+    stream. We log + skip its contribution.
+    """
+    adapter = _make_adapter()
+    proc = _FakeProcess([
+        _line({
+            "type": "step_finish",
+            "part": {"tokens": {"input": "not-a-number", "output": None}},
+        }),
+        _line({
+            "type": "step_finish",
+            "part": {"tokens": {"input": 10, "output": 5}},
+        }),
+    ])
+
+    with patch("backend.adapters.opencode.asyncio.create_subprocess_exec", return_value=proc), \
+         patch("backend.adapters.opencode.shutil.which", return_value="opencode"):
+        events = await collect_stream(adapter.stream(_make_inp(prompt="x")))
+
+    done = [e for e in events if isinstance(e, AgentDoneEvent)]
+    assert len(done) == 1
+    # Malformed event skipped; well-formed event counted
+    assert done[0].tokens_input == 10
+    assert done[0].tokens_output == 5
+
+
+# ---------------------------------------------------------------------------
+# History tolerance — accept ORM Message rows alongside Pydantic schemas
+# ---------------------------------------------------------------------------
+
+class _FakeOrmMessage:
+    """Minimal stand-in for backend.models.message.Message (ORM row).
+
+    The real ORM model exposes `.content` (JSON list) and `.role` (string),
+    *not* `.blocks` like the Pydantic MessageInHistory schema does. The
+    adapter has to handle both because thread_service.list_recent currently
+    returns ORM rows directly.
+    """
+    def __init__(self, content, role="user", sender=None):
+        self.content = content
+        self.role = role
+        self.sender = sender
+
+
+def test_build_prompt_accepts_orm_message_rows_in_history():
+    """If history items expose .content (ORM) instead of .blocks (Pydantic),
+    _build_prompt should still extract their text without crashing.
+    """
+    orm_user = _FakeOrmMessage(
+        content=[{"block_id": "b1", "type": "text", "content": "hi there"}],
+        role="user",
+    )
+    orm_asst = _FakeOrmMessage(
+        content=[{"block_id": "b2", "type": "text", "content": "hello back"}],
+        role="assistant",
+        sender="bot",
+    )
+    inp = _make_inp(prompt="follow up", history=[orm_user, orm_asst])
+    out = _build_prompt(inp)
+    # Both messages' text should appear
+    assert "hi there" in out
+    assert "hello back" in out
+    # And the user's follow-up
+    assert "follow up" in out
