@@ -262,6 +262,13 @@ export const useChatStore = defineStore('chat', () => {
     setMessages(convId, apiMessages.map(toUIMessage))
   }
 
+  /** 在现有消息前插入历史消息（用于加载更多） */
+  function prependMessages(convId: string, olderMessages: MessageResponse[]) {
+    const existing = getMessages(convId)
+    const older = olderMessages.map(toUIMessage)
+    setMessages(convId, [...older, ...existing])
+  }
+
   function addUserMessage(convId: string, content: string): string {
     const tempId = `local-${Date.now()}`
     const msgs = [...getMessages(convId)]
@@ -691,6 +698,7 @@ export const useChatStore = defineStore('chat', () => {
 
     // Actions
     loadFromAPI,
+    prependMessages,
     addUserMessage,
     confirmUserMessage,
     appendPersistedMessage,
