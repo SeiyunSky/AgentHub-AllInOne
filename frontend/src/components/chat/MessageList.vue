@@ -96,17 +96,24 @@ const pendingScrollToBottom = ref(true)
 const isLoadingMore = ref(false)
 const hasMoreMessages = ref(true)
 
+// 使用 requestAnimationFrame 节流 scroll 处理函数
+// 避免拖动滚动条时高频触发 reflow 导致卡顿
+let rafHandle: number | null = null
 function onScroll() {
-  const el = listRef.value
-  if (!el) return
-  isNearBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 50
+  if (rafHandle) return
+  rafHandle = requestAnimationFrame(() => {
+    rafHandle = null
+    const el = listRef.value
+    if (!el) return
+    isNearBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 50
 
-  // 向上滚动到顶部时加载更多
-  // 只有当内容超出容器高度（有滚动条）时才触发加载
-  const hasScrollbar = el.scrollHeight > el.clientHeight
-  if (hasScrollbar && el.scrollTop < 100 && !isLoadingMore.value && hasMoreMessages.value && props.messages.length > 0) {
-    loadMoreMessages()
-  }
+    // 向上滚动到顶部时加载更多
+    // 只有当内容超出容器高度（有滚动条）时才触发加载
+    const hasScrollbar = el.scrollHeight > el.clientHeight
+    if (hasScrollbar && el.scrollTop < 100 && !isLoadingMore.value && hasMoreMessages.value && props.messages.length > 0) {
+      loadMoreMessages()
+    }
+  })
 }
 
 async function loadMoreMessages() {
@@ -147,6 +154,7 @@ watch(() => props.conversationId, () => {
 }, { immediate: false })
 
 onUnmounted(() => {
+  if (rafHandle !== null) cancelAnimationFrame(rafHandle)
   conversationsStore.currentConversation = null
   conversationsStore.currentId = null
 })
@@ -159,8 +167,8 @@ watch(
       pendingScrollToBottom.value = false
       // 使用 nextTick 确保 DOM 更新完成
       setTimeout(() => {
-        nextTick(() => scrollToBottom())
-      }, 100)
+        nextTick(() => scrollToBottom()) // so weird
+      }, 200)
       
       return
     }
@@ -173,6 +181,6 @@ watch(
       scrollToBottom()
     }
   },
-  { immediate:true, deep: true, flush: 'post' },
+  { immediate:true, flush: 'post' },
 )
 </script>
