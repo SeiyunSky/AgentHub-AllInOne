@@ -32,6 +32,7 @@ export interface ConversationListItem {
   last_message_at?: string
   message_count: number
   unread_count: number
+  agents: AgentMember[]
   created_at: string
   updated_at: string
 }

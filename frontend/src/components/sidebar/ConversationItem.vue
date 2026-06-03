@@ -1,13 +1,29 @@
 <template>
   <div class="relative flex items-center gap-3">
-    <!-- Avatar with unread badge -->
-    <div class="relative shrink-0">
-      <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-light to-brand-subtle flex items-center justify-center border border-brand/20">
-        <el-icon class="text-brand" :size="16"><ChatDotRound /></el-icon>
+    <!-- Agent avatars container (fixed size, flex-wrap layout like WeChat) -->
+    <div class="relative shrink-0 w-10 h-10 rounded-lg overflow-hidden">
+      <div
+        class="w-full h-full p-[3%] flex flex-wrap justify-center content-center items-center gap-[3%]"
+      >
+        <div
+          v-for="(agent, idx) in displayAgents"
+          :key="agent.id"
+          class="flex items-center justify-center overflow-hidden rounded-[20%]"
+          :class="avatarClass"
+          :style="avatarStyle(idx)"
+        >
+          <img
+            v-if="agent.avatar"
+            :src="agent.avatar"
+            :alt="agent.name"
+            class="w-full h-full object-cover"
+          />
+          <span v-else class="text-[10px] font-bold" :class="textClass(idx)">{{ getInitials(agent.name) }}</span>
+        </div>
       </div>
       <span
         v-if="conv.unread_count"
-        class="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm ring-2 ring-white"
+        class="absolute -top-1 -right-1 min-w-[16px] h-4 bg-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm ring-2 ring-white"
       >{{ conv.unread_count > 99 ? '99+' : conv.unread_count }}</span>
     </div>
 
@@ -63,7 +79,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { ChatDotRound, MoreFilled, Edit, Aim, Promotion, Folder, FolderOpened, Delete } from '@element-plus/icons-vue'
+import { MoreFilled, Edit, Aim, Promotion, Folder, FolderOpened, Delete } from '@element-plus/icons-vue'
 import { useConversationsStore } from '@/stores/conversations'
 import { useRouter } from 'vue-router'
 import type { ConversationListItem } from '@/types/conversation'
@@ -77,6 +93,54 @@ const emit = defineEmits<{
 
 const conversationsStore = useConversationsStore()
 const router = useRouter()
+
+// 最多展示9个agent头像
+const displayAgents = computed(() => props.conv.agents?.slice(0, 9) ?? [])
+
+// 头像颜色循环
+const avatarColors = ['brand', 'warning', 'success', 'error'] as const
+
+// 根据头像数量动态计算尺寸类名
+const avatarClass = computed(() => {
+  const count = displayAgents.value.length
+  if (count === 1) {
+    return 'w-full h-full'
+  } else if (count >= 2 && count <= 4) {
+    return 'w-[47%] h-[47%]'
+  } else {
+    return 'w-[31%] h-[31%]'
+  }
+})
+
+// 头像背景色
+function avatarStyle(idx: number) {
+  const color = avatarColors[idx % 4]
+  const bgMap: Record<string, string> = {
+    brand: 'linear-gradient(to bottom right, var(--color-brand-light), var(--color-brand-subtle))',
+    warning: 'linear-gradient(to bottom right, var(--color-warning-light), #fde68a)',
+    success: 'linear-gradient(to bottom right, var(--color-success-light), #d1fae5)',
+    error: 'linear-gradient(to bottom right, var(--color-error-light), #fecaca)',
+  }
+  return { background: bgMap[color] }
+}
+
+// 头像文字色
+function textClass(idx: number) {
+  const color = avatarColors[idx % 4]
+  return {
+    'text-brand': color === 'brand',
+    'text-amber-600': color === 'warning',
+    'text-success': color === 'success',
+    'text-error': color === 'error',
+  }
+}
+
+// 获取首字母
+function getInitials(name: string) {
+  const words = name.trim().split(/\s+/)
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
+  return name[0]?.toUpperCase() ?? ''
+}
 
 async function handleDelete() {
   try {
