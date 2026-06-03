@@ -10,6 +10,11 @@ const router = createRouter({
       component: () => import('@/views/LoginView.vue'),
     },
     {
+      path: '/register',
+      name: 'register',
+      component: () => import('@/views/RegisterView.vue'),
+    },
+    {
       path: '/',
       component: () => import('@/components/layout/AppLayout.vue'),
       meta: { requiresAuth: true },
@@ -73,7 +78,8 @@ router.beforeEach((to) => {
   if (to.matched.some(r => r.meta.requiresAuth) && !auth.isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
   }
-  if (to.name === 'login' && auth.isLoggedIn) {
+  // 已登录用户访问登录/注册页 → 直接进 chat
+  if ((to.name === 'login' || to.name === 'register') && auth.isLoggedIn) {
     return { name: 'chat' }
   }
 })

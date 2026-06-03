@@ -69,5 +69,38 @@ class Settings(BaseSettings):
         "避免每轮 404 噪音。设 true 时仍会自动降级(首次失败后本进程不再重试)。",
     )
 
+    # ---- 鉴权 (JWT) ----
+    JWT_SECRET: str = Field(
+        default="dev-only-secret-change-me-in-production-min-32-chars",
+        description="JWT 签名密钥。生产必须改成 32+ 字节强随机串(用 secrets.token_urlsafe(32))。"
+        "默认值仅用于开发环境兜底,生产环境必须从 .env 注入。",
+    )
+    JWT_ALGORITHM: str = Field(
+        default="HS256",
+        description="JWT 签名算法。HS256 对称(本地开发够用),生产可考虑 RS256 非对称。",
+    )
+    JWT_ACCESS_EXPIRE_MINUTES: int = Field(
+        default=1440,
+        description="access token 有效期(分钟)。默认 1440 分钟(1 天),可按团队策略调整。",
+    )
+    JWT_REFRESH_EXPIRE_DAYS: int = Field(
+        default=30,
+        description="refresh token 有效期(天)。默认 30 天,过期后必须重新登录。",
+    )
+    AUTH_DEV_HEADER_FALLBACK: bool = Field(
+        default=True,
+        description="是否允许通过 X-User-Id header 兜底鉴权(开发后门)。"
+        "true: 解 JWT 失败时回退读 header(集成测试 / 前端联调阶段使用);"
+        "false: 强制走 JWT(生产环境必须设 false)。",
+    )
+
+    # ---- Redis (可选) ----
+    REDIS_URL: str | None = Field(
+        default=None,
+        description="Redis 连接串,例 redis://default:password@localhost:6379/0。"
+        "未设置时 logout JWT 黑名单功能降级为 no-op(仍允许 logout 但 token 不在服务端失效),"
+        "其他依赖 Redis 的子系统(分布式锁 / 断点恢复)同样降级。",
+    )
+
 
 settings = Settings()

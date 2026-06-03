@@ -44,6 +44,40 @@
       <NavRailItem :icon="DArrowLeft" label="Collapse" @click="uiStore.toggleNavRail" />
     </div>
 
+    <!-- User card: 头像 + display_name + username + 退出按钮 -->
+    <div
+      v-if="auth.isLoggedIn"
+      class="mx-2 mt-2 mb-1 px-2 py-2 rounded-xl flex items-center gap-2 group transition-all duration-200 hover:bg-white/8"
+      style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);"
+    >
+      <!-- Avatar bubble -->
+      <div
+        class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-[13px] shrink-0 shadow-sm"
+        :style="{ background: avatarGradient }"
+      >
+        {{ avatarInitial }}
+      </div>
+
+      <!-- Name + username -->
+      <div class="flex-1 min-w-0">
+        <div class="text-white text-[12px] font-semibold truncate leading-tight">
+          {{ auth.displayName }}
+        </div>
+        <div class="text-white/40 text-[10px] truncate leading-tight mt-0.5">
+          @{{ auth.username }}
+        </div>
+      </div>
+
+      <!-- Logout icon button (only visible on hover for cleanliness) -->
+      <button
+        class="w-7 h-7 rounded-md flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100 shrink-0"
+        title="退出登录"
+        @click="handleLogout"
+      >
+        <el-icon :size="15"><SwitchButton /></el-icon>
+      </button>
+    </div>
+
     <!-- ── Contributors Dialog ── -->
     <Teleport to="body">
       <Transition name="overlay-fade">
@@ -152,16 +186,45 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
+import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/api/auth'
 import NavRailItem from './NavRailItem.vue'
-import { ChatDotRound, User, MagicStick, QuestionFilled, Setting, Search, DArrowLeft } from '@element-plus/icons-vue'
+import { ChatDotRound, User, MagicStick, QuestionFilled, Setting, Search, DArrowLeft, SwitchButton } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
+const auth = useAuthStore()
+
+// 头像首字母:优先 display_name 第一个字符,回退到 username
+const avatarInitial = computed(() => {
+  const src = auth.displayName || auth.username || '?'
+  return src.charAt(0).toUpperCase()
+})
+
+// 根据 username 稳定哈希生成渐变色,每个用户固定一种配色
+const AVATAR_PALETTES = [
+  'linear-gradient(135deg, #6366f1, #8b5cf6)',  // indigo -> violet
+  'linear-gradient(135deg, #3b82f6, #06b6d4)',  // blue -> cyan
+  'linear-gradient(135deg, #10b981, #0d9488)',  // green -> teal
+  'linear-gradient(135deg, #f59e0b, #ef4444)',  // amber -> red
+  'linear-gradient(135deg, #ec4899, #8b5cf6)',  // pink -> violet
+  'linear-gradient(135deg, #06b6d4, #0ea5e9)',  // cyan -> sky
+  'linear-gradient(135deg, #f97316, #ec4899)',  // orange -> pink
+] as const
+
+const avatarGradient = computed(() => {
+  const key = auth.username || auth.user?.id || 'default'
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0
+  }
+  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length]
+})
 
 const supportVisible = ref(false)
 const activeContributor = ref<(typeof contributors)[number] | null>(null)
@@ -328,6 +391,27 @@ function showSearchDialog() {
 function showSupportDialog() {
   activeContributor.value = null
   supportVisible.value = true
+}
+
+async function handleLogout() {
+  try {
+    await ElMessageBox.confirm('确定要退出登录吗?', '退出登录', {
+      confirmButtonText: '退出',
+      cancelButtonText: '取消',
+      type: 'warning',
+    })
+  } catch {
+    return  // 用户取消
+  }
+
+  // 调后端把 token 加入黑名单(失败也无所谓,只要本地清干净)
+  try {
+    await authApi.logout()
+  } catch {
+    // ignore: token 已经无效或网络错误,不影响后续清状态
+  }
+  auth.clear()
+  router.push({ name: 'login' })
 }
 </script>
 

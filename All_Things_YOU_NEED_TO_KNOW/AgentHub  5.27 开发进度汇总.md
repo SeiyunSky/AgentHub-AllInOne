@@ -1,6 +1,6 @@
 # AgentHub 剩余工作全貌
 
-> 更新：2026-05-28（Adam Zhang）
+> 更新：2026-05-29（lp 分支：OpencodeAdapter 全链路 + token 透出）
 > 优先级：P0=上线必需 / P1=核心功能 / P2=增强 / P3=横向能力
 
 ---
@@ -38,6 +38,44 @@
 - [x] **时区 UTC vs CST 错位修复**（engine connect_args 设 `init_command="SET time_zone='+00:00'"`，MySQL CURRENT_TIMESTAMP 与 Python UTC 对齐）
 
 **5/28 测试统计**：50 passed / 3 skipped（真 LLM 测试需环境变量）
+
+---
+
+## 已完成（5/29 完成 · lp 分支）
+
+> 围绕 OpenCode Adapter 端到端 + token 透出做的一系列工作。所有改动在 `backend/adapters/opencode.py` + 对应单元测试 + 端到端 demo 脚本。
+
+- [x] **OpencodeAdapter 完整实装**（`backend/adapters/opencode.py` ~530 行）
+   - CLI 子进程模式（`opencode run --format json`）
+   - 完整解析 opencode JSON-stream 协议：`text` → TextBlock，`tool_use` → ToolUseBlock，`step_finish` → token 累加
+   - 并落到 AgentHub 块级流式协议（BlockStart / BlockDelta / BlockStop）
+- [x] **opencode token 透出**（模块七 P1 项收尾）
+   - `step_finish.part.tokens.{input,output}` 多轮累加
+   - 通过 `AgentDoneEvent.tokens_input` / `tokens_output` 透出
+   - 上游 `thread_service._run_thread` 自动写到 `threads.tokens_total` + `messages.tokens_input/output`
+   - 前端已就绪（`stores/chat.ts` 行 83-84 + `types/api.ts` 行 128-129），无需前端改动即可显示
+- [x] **opencode 注入 persona 难题攻克**（关键设计经验沉淀）
+   - 验证否定：AGENTS.md 注入 / 元层 prompt 标签 / 两步对话 / 自然语言开场白前置 / LLM rewriter—— **opencode alignment 都识破并拒绝**
+   - 最终成立方案：**条件性中文开场白** + 主 Agent 派活原文透传
+     - `_looks_structured(text)` 检测 markdown ATX header / banner / role-section labels
+     - 仅在结构化时加开场白"你是一个子 agent，现在我给你一个任务，任务描述如下"
+     - 纯散文 prompt 原样透传，零 LLM 调用开销
+- [x] **Windows 工程坑修复**
+   - `_flatten_for_cli`：把 prompt 中换行压成空格（绕过 Windows CreateProcess 的 multiline argv 截断）
+   - `_resolve_opencode_binary`：解析 `opencode.cmd` shim 找出真正的 `opencode.exe`，绕过 cmd.exe 对 `>` `<` `|` 等元字符的 shell 解析
+   - 子进程沙箱 cwd（`tempfile.mkdtemp` 临时空目录）：避免 opencode 加载项目级 AGENTS.md / `.opencode/` 让它误认为"继续项目工作"
+- [x] **ORM Message vs Pydantic MessageInHistory 兼容**
+   - `_blocks_to_text` + `_msg_field` helper：`thread_service.list_recent` 返回 ORM Message 时（字段是 `.content` 而非 `.blocks`），adapter 仍能正确解析
+   - 这是上游 master 的接口缝隙；OpencodeAdapter 防御性兼容，不影响其他 adapter
+- [x] **adapter_registry 修复 opencode 类型分支**：原来错误复用 `CodexAdapter`，改为正确路由到 `OpencodeAdapter`
+- [x] **端到端 demo 脚本**（`backend/scripts/run_orchestrator_opencode_demo.py`）
+   - 镜像 `run_orchestrator_demo.py`（Claude 版）的结构
+   - 验证完整调度链：用户消息 → 主 Agent dispatch_to_agent → 子 thread 起 OpencodeAdapter → opencode CLI 真跑 → BlockEvent 流回 → token 累加 → messages 落库 → 主 Agent read_thread_result → respond_to_user
+   - 跑 5/29 实测：21 秒端到端完成，子 thread `tokens_total=594`，`messages.tokens_input=4 / tokens_output=590`，主 Agent 完整转交代码给用户
+- [x] **OpencodeAdapter 32 个单元测试**（`tests/unit/test_opencode_adapter.py`）
+   - text/tool_use 块累加、cancel_event、binary 缺失、空输出、多轮 token 累加、ORM 兼容、`_looks_structured` 三类触发、`_flatten_for_cli` 多行压缩
+
+**5/29 测试统计**：32/32 通过（OpencodeAdapter 单元测试）+ 端到端 demo 跑通（含真实 opencode CLI）
 
 ---
 
@@ -123,7 +161,7 @@
 - [ ] `claude.py` 解析 stream-json `result` 行的 `usage`（input_tokens / output_tokens / cache_*）填到 `AgentDoneEvent`
 - [ ] `codex.py` 同上
 - [ ] `custom.py` 解析 OpenAI 兼容 API response.usage 填值
-- [ ] `opencode.py` 实装
+- [x] **`opencode.py` 实装**（5/29 完成 · lp 分支）：累加 `step_finish.part.tokens.{input,output}` → AgentDoneEvent，端到端验证 `tokens_total=594` 落到 threads / messages 表
 
 ---
 
@@ -193,7 +231,7 @@
 - [ ] `core/circuit_breaker.py`：熔断器三态（CLOSED / OPEN / HALF_OPEN）
 - [ ] `core/lock.py`：Redis 分布式锁
 - [ ] `repositories/stream_buffer_repo.py`：断点恢复
-- [ ] OpenCode Adapter
+- [x] **OpenCode Adapter**（5/29 完成 · lp 分支）：详见上方 5/29 章节
 - [ ] 整体部署一条龙（后端 + 前端 + DB + Redis）
 
 ---
@@ -206,8 +244,10 @@
 | 2 | `created_at` UTC vs `finished_at` CST 时区不一致 | duration 计算结果异常 | ✅ 5/28 已修（engine UTC） |
 | 3 | Kimi `/messages/count_tokens` 返回 404 | 日志噪音 + 浪费 RPM 配额 | ✅ 5/28 已修（降级 + 配置开关） |
 | 4 | ClaudeAdapter `-p` 参数长度上限（命令行参数限制） | 长 dispatch_prompt 可能截断 | P2 待处理（建议改 stdin 传 prompt） |
-| 5 | `_persist_assistant_message` 只用 mock 单 TextBlock 验证过 | 多 block / ToolUseBlock / ApprovalBlock 反序列化未实测 | P2 待处理 |
+| 5 | `_persist_assistant_message` 只用 mock 单 TextBlock 验证过 | 多 block / ToolUseBlock / ApprovalBlock 反序列化未实测 | ✅ 5/29 OpencodeAdapter 跑出 [tool_use,text] 双 block 真实场景，落库正确 |
 | 6 | `_persist_assistant_message` 落库时 `model` 字段为 None | messages.model 快照缺失（agents 表无 model 字段） | P2 待 agents 表加 model 字段 |
+| 7 | `thread_service.list_recent` 返回 ORM `Message` 但 `StreamInput.history` 类型注解是 `MessageInHistory` | adapter 调 `msg.blocks` 抛 AttributeError | 🟡 OpencodeAdapter 已防御性兼容（`_msg_field` helper），但其他 adapter（Claude / Codex / Custom）也调 `msg.blocks`——一旦 history 不为空就会炸。建议 thread_service 侧 `MessageInHistory.from_orm` 包装一层 |
+| 8 | opencode CLI 在 Windows 通过 `.cmd` shim 运行时，prompt 中 `>` `<` `|` 等被 cmd.exe 误判为 redirection | 错误 `> was unexpected at this time.`，子进程直接挂 | ✅ 5/29 已修（`_resolve_opencode_binary` 找出真 .exe 直调，绕过 cmd shim）|
 
 ---
 
