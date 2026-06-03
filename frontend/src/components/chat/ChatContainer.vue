@@ -9,7 +9,7 @@
 
     <!-- Messages -->
     <MessageList
-      class="flex-1 overflow-y-auto custom-scrollbar"
+      class="flex-1 custom-scrollbar"
       :messages="messages"
       :streaming-message-id="streamingMessageId"
       :conversation-id="convId ?? undefined"
