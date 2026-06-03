@@ -8,9 +8,10 @@
     <template v-for="msg in messages" :key="msg.id">
       <AgentBubble v-if="msg.type === 'agent'" :message="msg" :streaming="isStreamingMessage(msg)"
         :activity="streamingActivityFor(msg)" :current-tool="streamingToolFor(msg)" @reply="$emit('reply', $event)"
-        @copy="$emit('copy', $event)" @react="(id, type) => $emit('react', id, type)" />
+        @copy="$emit('copy', $event)" @react="(id, type) => $emit('react', id, type)" @more="$emit('more', $event)" />
       <template v-else-if="msg.type === 'user'">
-        <UserBubble :message="msg" @reply="$emit('reply', $event)" @copy="$emit('copy', $event)" />
+        <UserBubble :message="msg" @reply="$emit('reply', $event)" @copy="$emit('copy', $event)"
+          @react="(id, type) => $emit('react', id, type)" @more="$emit('more', $event)" />
         <!-- broadcast 已读回执 -->
         <div v-if="chatStore.getReadReceipts(msg.id).length > 0" class="flex justify-end items-center gap-2 mt-2 pr-1">
           <span class="text-[12px] text-on-surface-variant/70">已读</span>
@@ -73,6 +74,7 @@ defineEmits<{
   reply: [messageId: string]
   copy: [messageId: string]
   react: [messageId: string, type: 'like' | 'dislike']
+  more: [messageId: string]
 }>()
 
 const chatStore = useChatStore()
@@ -110,7 +112,7 @@ function getInitials(name: string) {
 
 const listRef = ref<HTMLElement>()
 const isNearBottom = ref(false)
-const pendingScrollToBottom = ref(true)
+const pendingScrollToBottom = ref(false)
 const isLoadingMore = ref(false)
 const hasMoreMessages = ref(true)
 
@@ -157,10 +159,12 @@ function scrollToBottom() {
   const el = listRef.value
   if (!el) return
 
-  el.scrollTo({
-    top: el.scrollHeight,
-    behavior: 'auto'
-  });
+  setTimeout(() => {
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: 'auto'
+    });
+  }, 50)
 }
 
 // Reset when conversation changes, then scroll to bottom after messages load
@@ -184,10 +188,7 @@ watch(
     if (pendingScrollToBottom.value && props.messages.length > 0) {
       pendingScrollToBottom.value = false
       // 使用 nextTick 确保 DOM 更新完成
-      setTimeout(() => {
-        nextTick(() => scrollToBottom()) // so weird
-      }, 200)
-      
+      nextTick(() => scrollToBottom())
       return
     }
 
