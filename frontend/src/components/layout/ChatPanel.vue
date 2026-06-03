@@ -99,6 +99,8 @@ function onStop() {
 
 async function onReact(messageId: string, type: 'like' | 'dislike') {
   if (!convId.value) return
+  // 本地临时消息（streaming 中或用户消息落库前）没有真实 message_id，跳过
+  if (messageId.startsWith('local-')) return
   const msgs = chatStore.getMessages(convId.value)
   const current = msgs.find(m => m.id === messageId)?.reaction
   const newReaction = current === type ? undefined : type
