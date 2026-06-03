@@ -182,3 +182,23 @@ class QueueDrainedEvent(BaseModel):
 
     type: Literal["queue_drained"] = "queue_drained"
     timestamp: datetime = Field(default_factory=now_utc)
+
+
+class MessageAppendedEvent(BaseModel):
+    """
+    一条已落库的完整消息追加到会话。
+
+    与 streaming 事件序列(agent_start/block_*/agent_done)解耦,用于:
+    - 工具执行后由 hook 推送的 diff CodeBlock 消息
+    - 任何"非 streaming 直接落库"的消息
+
+    前端收到后直接把 message 加进 messageMap,不创建 streaming 状态,
+    避免与同 agent_id 的 orchestrator 主气泡 streaming 互相覆盖。
+    """
+
+    type: Literal["message_appended"] = "message_appended"
+    conversation_id: str
+    message: dict[str, Any] = Field(
+        description="完整消息 dict,字段对齐 MessageResponse",
+    )
+    timestamp: datetime = Field(default_factory=now_utc)

@@ -204,6 +204,13 @@ export interface QueueDrainedEvent {
   timestamp: string
 }
 
+export interface MessageAppendedEvent {
+  type: 'message_appended'
+  conversation_id: string
+  message: MessageResponse
+  timestamp: string
+}
+
 export type AgentEvent =
   | AgentStartEvent
   | BlockStartEvent
@@ -212,4 +219,4 @@ export type AgentEvent =
   | AgentDoneEvent
   | AgentErrorEvent
 
-export type SSEEvent = AgentEvent | RoundDoneEvent | QueueDrainedEvent
+export type SSEEvent = AgentEvent | RoundDoneEvent | QueueDrainedEvent | MessageAppendedEvent

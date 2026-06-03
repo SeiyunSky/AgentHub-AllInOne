@@ -84,6 +84,10 @@ function handleEvent(convId: string, event: SSEEvent) {
       disconnect(convId)
       break
 
+    case 'message_appended':
+      chatStore.appendPersistedMessage(convId, event.message)
+      break
+
     case 'queue_drained':
       disconnect(convId)
       break

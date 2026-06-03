@@ -26,6 +26,7 @@ from typing import Union
 
 from backend.adapters.events import (
     AgentEvent,
+    MessageAppendedEvent,
     QueueDrainedEvent,
     RoundDoneEvent,
 )
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 # stream_service 推到队列里的事件类型(Adapter 块流 + 全局信号)
-StreamEvent = Union[AgentEvent, RoundDoneEvent, QueueDrainedEvent]
+StreamEvent = Union[AgentEvent, RoundDoneEvent, QueueDrainedEvent, MessageAppendedEvent]
 
 
 # 内部 sentinel:close 时往 queue 推这个,通知消费端正常退出循环
