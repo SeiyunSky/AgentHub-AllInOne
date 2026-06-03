@@ -195,6 +195,9 @@ class OrchestratorService:
                 user_id=user_id,
                 wake_event=wake_event,
             )
+        except asyncio.CancelledError as exc:
+            loop_error = exc
+            logger.warning("orchestrator loop %s cancelled", thread_id)
         except Exception as exc:
             loop_error = exc
             logger.exception(
