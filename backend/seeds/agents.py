@@ -81,7 +81,7 @@ PRESET_AGENTS: list[dict] = [
         "user_id": "GUGA",
         "name": "代码 Agent",
         "description": "代码生成、Bug 修复、重构，输出精准 Diff，适合编码类任务",
-        "type": "codex",
+        "type": "claude",
         "prompt_key": "coder",
         "capabilities": {},
         "avatar": "/static/avatars/avatar-3.jpg",

@@ -262,15 +262,36 @@ export const useChatStore = defineStore('chat', () => {
     setMessages(convId, apiMessages.map(toUIMessage))
   }
 
-  function addUserMessage(convId: string, content: string) {
+  function addUserMessage(convId: string, content: string): string {
+    const tempId = `local-${Date.now()}`
     const msgs = [...getMessages(convId)]
     msgs.push({
-      id: `local-${Date.now()}`,
+      id: tempId,
       type: 'user',
       content,
       timestamp: new Date(),
     })
     setMessages(convId, msgs)
+    return tempId
+  }
+
+  /** 后端返回真实 message_id 后，用它替换本地临时 ID */
+  function confirmUserMessage(convId: string, tempId: string, realId: string) {
+    const msgs = getMessages(convId)
+    const msg = msgs.find(m => m.id === tempId)
+    if (msg) {
+      msg.id = realId
+      setMessages(convId, [...msgs])
+    }
+  }
+
+  /** SSE message_appended：把已落库的完整消息直接 append 进列表，不走 streaming */
+  function appendPersistedMessage(convId: string, msg: MessageResponse) {
+    const msgs = getMessages(convId)
+    // 防止重复（streaming commit 后又收到 message_appended，或重连重复推）
+    if (msgs.some(m => m.id === msg.id)) return
+    const ui = toUIMessage(msg)
+    setMessages(convId, [...msgs, ui])
   }
 
   /** SSE agent_start:为该 agent 起一条新的 streaming 气泡(若已存在则刷新) */
@@ -671,6 +692,8 @@ export const useChatStore = defineStore('chat', () => {
     // Actions
     loadFromAPI,
     addUserMessage,
+    confirmUserMessage,
+    appendPersistedMessage,
     startStreaming,
     appendBlock,
     updateBlock,

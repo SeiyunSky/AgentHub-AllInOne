@@ -21,7 +21,7 @@ export function useChat() {
     const id = conversationsStore.currentId
     if (!id) return
 
-    chatStore.addUserMessage(id, content)
+    const tempId = chatStore.addUserMessage(id, content)
     conversationsStore.updatePreview(id, content)
 
     // 关键顺序:必须先连 SSE 再发 POST。
@@ -36,6 +36,11 @@ export function useChat() {
       mention_ids: mentions.length ? mentions : undefined,
       selected_range: selectedRange,
     })
+
+    // 后端返回真实 user_message_id 后，替换本地临时 ID，使反馈等操作能正常工作
+    if (response && 'user_message_id' in response && response.user_message_id) {
+      chatStore.confirmUserMessage(id, tempId, response.user_message_id)
+    }
 
     return response
   }

@@ -27,7 +27,7 @@ from backend.models import Base  # noqa: E402,F401  Base.metadata 自动收集�
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DB_URL)
 
-if config.config_file_name is not None:
+if config.config_file_name is not None and config.attributes.get("configure_logger", True):
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata

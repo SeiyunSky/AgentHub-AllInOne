@@ -91,7 +91,7 @@ class PostExecutionHook(AsyncHook):
             from backend.services.diff_service import diff_service
             from backend.services.message_service import message_service
             from backend.services.stream_service import stream_service
-            from backend.adapters.events import BlockStartEvent, BlockStopEvent
+            from backend.adapters.events import MessageAppendedEvent
 
             code_block = diff_service.build_code_block(filename, old_content, new_content)
 
@@ -100,24 +100,27 @@ class PostExecutionHook(AsyncHook):
                 agent_id=ctx.agent_id,
                 content_blocks=[code_block],
                 thread_id=ctx.thread_id,
+                sender="主 Agent" if ctx.agent_id == "orchestrator" else None,
             )
 
+            # 推 message_appended 事件：前端直接把这条已落库的消息追加到列表，
+            # 不走 streaming 流程，避免与 orchestrator 主气泡的 streaming 状态互相覆盖。
+            message_dict = {
+                "id": msg.id,
+                "conversation_id": msg.conversation_id,
+                "thread_id": msg.thread_id,
+                "agent_id": msg.agent_id,
+                "role": msg.role,
+                "blocks": msg.content or [],
+                "status": msg.status,
+                "sender": msg.sender,
+                "created_at": msg.created_at.isoformat() if msg.created_at else None,
+            }
             await stream_service.push_event(
                 ctx.conversation_id,
-                BlockStartEvent(
-                    agent_id=ctx.agent_id,
-                    thread_id=ctx.thread_id or "",
-                    message_id=msg.id,
-                    block=code_block,
-                ),
-            )
-            await stream_service.push_event(
-                ctx.conversation_id,
-                BlockStopEvent(
-                    agent_id=ctx.agent_id,
-                    thread_id=ctx.thread_id or "",
-                    message_id=msg.id,
-                    block_id=code_block.block_id,
+                MessageAppendedEvent(
+                    conversation_id=ctx.conversation_id,
+                    message=message_dict,
                 ),
             )
             logger.info(

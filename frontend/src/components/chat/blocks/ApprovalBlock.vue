@@ -77,6 +77,7 @@ import { Warning, CircleCheck, CircleClose, Lock } from '@element-plus/icons-vue
 import CollapsibleBlock from './CollapsibleBlock.vue'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
+import { http } from '@/api/http'
 
 const props = defineProps<{
   messageId: string
@@ -98,23 +99,15 @@ const reasonInput = ref<HTMLInputElement | null>(null)
 async function postDecision(decision: 'approve' | 'reject', reason?: string) {
   const convId = conversationsStore.currentId
   try {
-    const res = await fetch(`/api/v1/approvals/${props.blockId}/decide`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ decision, reason: reason ?? null }),
-    })
-    if (res.ok) {
-      chatStore.resolveApproval(
-        convId ?? '',
-        props.messageId,
-        props.blockId,
-        decision === 'approve' ? 'approved' : 'rejected',
-      )
-    } else {
-      console.warn('[Approval] POST failed', res.status, await res.text())
-    }
+    await http.post(`/approvals/${props.blockId}/decide`, { decision, reason: reason ?? null })
+    chatStore.resolveApproval(
+      convId ?? '',
+      props.messageId,
+      props.blockId,
+      decision === 'approve' ? 'approved' : 'rejected',
+    )
   } catch (e) {
-    console.error('[Approval] fetch error', e)
+    console.error('[Approval] post decision failed', e)
   }
 }
 
@@ -152,6 +145,13 @@ function confirmReject() {
 function onKeydown(e: KeyboardEvent) {
   if (props.status !== 'pending') return
   if (showRejectInput.value) return
+  // 焦点在输入类元素时不拦截（用户正在打字，不应触发审批快捷键）
+  const active = document.activeElement as HTMLElement | null
+  const tag = active?.tagName?.toLowerCase()
+  if (tag === 'input' || tag === 'textarea') return
+  if (active?.isContentEditable) return
+  // Monaco / CodeMirror 等代码编辑器：焦点在内部 textarea 或带特定 class 的容器
+  if (active?.closest('.monaco-editor, .cm-editor, [contenteditable="true"]')) return
   if (e.key === 'y' || e.key === 'Y') {
     e.preventDefault()
     handleApprove()

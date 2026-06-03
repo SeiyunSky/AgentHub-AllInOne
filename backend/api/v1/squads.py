@@ -83,7 +83,7 @@ def _enrich(squad: dict, db: Session) -> SquadResponse:
                 name=row.name,
                 description=row.description,
                 type=row.type,
-                avatar_url=row.avatar_url,
+                avatar_url=row.avatar,
             ))
     return SquadResponse(**squad, agents=agents)
 

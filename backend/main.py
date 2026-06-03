@@ -49,11 +49,31 @@ from backend.seeds.agents import seed_agents
 logger = logging.getLogger(__name__)
 
 
+def _run_migrations() -> None:
+    """启动时自动执行 alembic upgrade head，保持数据库结构与代码同步。"""
+    from alembic import command
+    from alembic.config import Config
+
+    alembic_cfg = Config(str(Path(__file__).parent / "alembic.ini"))
+    # 阻止 alembic 用 ini 里的 [loggers] 覆盖已配置好的 structlog handler
+    alembic_cfg.attributes["configure_logger"] = False
+    # 覆盖 ini 里的占位 URL，使用运行时真实配置
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.DB_URL)
+    command.upgrade(alembic_cfg, "head")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """FastAPI 生命周期:启动加载资源,关闭释放资源。"""
     configure_logging()
     logger.info("AgentHub backend starting up...")
+
+    # ---- 自动迁移 ----
+    try:
+        _run_migrations()
+        logger.info("alembic upgrade head: OK")
+    except Exception:
+        logger.exception("alembic upgrade head failed (non-fatal, continuing startup)")
 
     # ---- Agent seed + Skill scan + Adapter registry ----
     db = SessionLocal()
