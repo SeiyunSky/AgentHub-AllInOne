@@ -39,7 +39,11 @@ async def apply_diff(
     user_id: Annotated[str, Depends(get_current_user)],
 ) -> DiffApplyResponse:
     try:
-        result = await diff_apply_service.apply(body.message_id, edited_code=body.edited_code)
+        result = await diff_apply_service.apply(
+            body.message_id,
+            user_id=user_id,
+            edited_code=body.edited_code,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     return DiffApplyResponse(**result)
