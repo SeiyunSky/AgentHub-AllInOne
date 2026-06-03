@@ -58,8 +58,18 @@
           </el-button>
         </el-form-item>
 
-        <div class="text-center text-[11px] text-on-surface-variant">
-          Demo mode — enter any username/password
+        <div v-if="errorMsg" class="text-center text-[12px] text-error mb-2">
+          {{ errorMsg }}
+        </div>
+
+        <div class="text-center text-[13px] text-on-surface-variant">
+          New here?
+          <router-link
+            :to="{ name: 'register', query: route.query }"
+            class="text-brand font-semibold hover:underline ml-1"
+          >
+            Create an account
+          </router-link>
         </div>
       </el-form>
     </div>
@@ -70,6 +80,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/api/auth'
 import { User, Lock } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules } from 'element-plus'
 
@@ -79,6 +90,7 @@ const auth = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
+const errorMsg = ref<string>('')
 
 const form = reactive({
   username: '',
@@ -95,15 +107,21 @@ async function handleLogin() {
   if (!valid) return
 
   loading.value = true
+  errorMsg.value = ''
 
-  // Mock login - no backend yet
-  setTimeout(() => {
-    auth.setToken('mock-token-' + Date.now(), form.username)
-    loading.value = false
+  try {
+    const tokens = await authApi.login({
+      username: form.username,
+      password: form.password,
+    })
+    auth.setSession(tokens)
 
-    // Redirect to chat or the original destination
-    const redirect = route.query.redirect as string || '/chat'
+    const redirect = (route.query.redirect as string) || '/chat'
     router.push(redirect)
-  }, 500)
+  } catch (err) {
+    errorMsg.value = err instanceof Error ? err.message : '登录失败,请稍后重试'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
