@@ -27,8 +27,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
+import bcrypt as _bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from backend.config import settings
@@ -49,13 +49,9 @@ logger = logging.getLogger(__name__)
 # 密码哈希
 # ============================================================
 
-# bcrypt 的 work factor;默认 12 轮(对应 ~250ms 哈希一次,够防暴力破解)
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 def hash_password(password: str) -> str:
     """生成 bcrypt 哈希。"""
-    return _pwd_context.hash(password)
+    return _bcrypt.hashpw(password.encode(), _bcrypt.gensalt(rounds=12)).decode()
 
 
 def verify_password(password: str, password_hash: str) -> bool:
@@ -63,9 +59,8 @@ def verify_password(password: str, password_hash: str) -> bool:
     if not password_hash:
         return False
     try:
-        return _pwd_context.verify(password, password_hash)
+        return _bcrypt.checkpw(password.encode(), password_hash.encode())
     except (ValueError, TypeError):
-        # 哈希字符串格式坏 → 直接判否,不抛
         return False
 
 
