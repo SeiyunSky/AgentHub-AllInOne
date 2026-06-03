@@ -74,6 +74,8 @@ function handleEvent(convId: string, event: SSEEvent) {
           conversationsStore.updatePreview(convId, preview.slice(0, 100))
         }
       }
+      // 关闭连接，让下一轮发消息时重新建立 SSE
+      disconnect(convId)
       break
 
     case 'queue_drained':
