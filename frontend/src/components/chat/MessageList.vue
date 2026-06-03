@@ -22,7 +22,9 @@
       />
       <!-- Typing indicator -->
       <div v-else-if="msg.type === 'typing'" class="flex gap-3 message-enter">
-        <AgentAvatar :name="msg.agentName" color="brand" />
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-gradient-to-br from-brand-light to-brand-subtle border border-brand/20">
+          <span class="text-xs font-bold text-brand">{{ getInitials(msg.agentName) }}</span>
+        </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1.5">
             <span class="text-[12px] font-semibold text-on-surface">{{ msg.agentName }}</span>
@@ -45,7 +47,6 @@ import type { Message, AgentMessage } from '@/types/chat'
 import { useChatStore } from '@/stores/chat'
 import AgentBubble from './bubbles/AgentBubble.vue'
 import UserBubble from './bubbles/UserBubble.vue'
-import AgentAvatar from './bubbles/AgentAvatar.vue'
 
 const props = defineProps<{
   messages: Message[]
@@ -84,6 +85,13 @@ function streamingToolFor(msg: AgentMessage): string | undefined {
   const streaming = chatStore.getAgentStreaming(props.conversationId, msg.agentId)
   if (streaming && streaming.messageId === msg.id) return streaming.currentTool
   return undefined
+}
+
+// 获取首字母
+function getInitials(name: string) {
+  const words = name.trim().split(/\s+/)
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
+  return name[0]?.toUpperCase() ?? ''
 }
 
 const listRef = ref<HTMLElement>()
