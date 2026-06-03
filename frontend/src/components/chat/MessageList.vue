@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onUnmounted } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import type { Message, AgentMessage } from '@/types/chat'
 import { useChatStore } from '@/stores/chat'
@@ -92,7 +92,7 @@ function getInitials(name: string) {
 
 const listRef = ref<HTMLElement>()
 const isNearBottom = ref(false)
-const pendingScrollToBottom = ref(false)
+const pendingScrollToBottom = ref(true)
 const isLoadingMore = ref(false)
 const hasMoreMessages = ref(true)
 
@@ -132,12 +132,10 @@ function scrollToBottom() {
   const el = listRef.value
   if (!el) return
 
-  setTimeout(() => {
-    el.scrollTo({
-      top: el.scrollHeight,
-      behavior: 'auto'
-    });
-  }, 50)
+  el.scrollTo({
+    top: el.scrollHeight,
+    behavior: 'auto'
+  });
 }
 
 // Reset when conversation changes, then scroll to bottom after messages load
@@ -148,6 +146,11 @@ watch(() => props.conversationId, () => {
   isLoadingMore.value = false
 }, { immediate: false })
 
+onUnmounted(() => {
+  conversationsStore.currentConversation = null
+  conversationsStore.currentId = null
+})
+
 watch(
   () => props.messages,
   (newMessages, oldMessages) => {
@@ -155,7 +158,10 @@ watch(
     if (pendingScrollToBottom.value && props.messages.length > 0) {
       pendingScrollToBottom.value = false
       // 使用 nextTick 确保 DOM 更新完成
-      nextTick(() => scrollToBottom())
+      setTimeout(() => {
+        nextTick(() => scrollToBottom())
+      }, 100)
+      
       return
     }
 
@@ -167,6 +173,6 @@ watch(
       scrollToBottom()
     }
   },
-  { deep: true, flush: 'post' },
+  { immediate:true, deep: true, flush: 'post' },
 )
 </script>
