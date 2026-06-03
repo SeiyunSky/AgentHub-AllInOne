@@ -115,13 +115,11 @@ class OrchestratorService:
         生命周期管理:无论 _agent_loop 正常 break / 抛异常,
         都保证 unregister listener + mark_done + chat_service.on_round_done。
 
-        session 由本方法自起(不依赖 self.session 注入):
-        模块级单例 orchestrator_service 的 self.session 默认 None,
-        统一用 SessionLocal() 起独立 session 贯穿整个 loop 生命周期,
-        避免 session=None 时静默跳过写库 / 查库。
+        【session 策略】不持有跨 await 的长 session。
+        所有需要写库的地方(mark_running / mark_done / update_tokens)都用
+        `with db_session()` 短事务,用一次开一次 close 一次。
+        adapter / LLM 调用期间 MySQL 端没有挂着的事务,杜绝长事务泄漏。
         """
-        from backend.core.database import SessionLocal
-
         wake_event = asyncio.Event()
 
         # listener:子 Thread 进入终态时被 thread_service 调,只负责唤醒主 loop
@@ -157,7 +155,6 @@ class OrchestratorService:
             HookContext(event=HookEvent.PRE_ORCHESTRATE, **base_hook_ctx_kwargs),
         )
 
-        loop_session = SessionLocal()
         loop_error: Optional[Exception] = None
         # _agent_loop 跑完会返回累计 token,即使中途异常也尽量返回已累计的部分
         # (异常时返回 (0, 0) 兜底,避免拿到 None)
@@ -165,8 +162,11 @@ class OrchestratorService:
         total_tokens_out = 0
         try:
             # 主 Agent thread 从 init 推进到 running,写 started_at(便于监控 loop 起跑时间)
-            await ThreadService(loop_session).mark_running(thread_id)
-            loop_session.commit()
+            # 短 session:用完立刻关,不持有跨 await 的长 session
+            from backend.core.database import db_session
+            with db_session() as s:
+                await ThreadService(s).mark_running(thread_id)
+                s.commit()
 
             # 立刻推 SSE agent_start,让前端 UI 立即出现"主 Agent 正在思考"的气泡。
             # 否则前端要等到主 Agent 最后调 respond_to_user 才看到反馈,期间几十秒内
@@ -194,7 +194,6 @@ class OrchestratorService:
                 user_message_id=user_message_id,
                 user_id=user_id,
                 wake_event=wake_event,
-                session=loop_session,
             )
         except Exception as exc:
             loop_error = exc
@@ -218,26 +217,27 @@ class OrchestratorService:
             # 同时累加 token 到 threads.tokens_total —— 主 Agent 自己的 LLM 调用消耗
             # (含 chat_completion + context_compactor.global_summarize)。
             # 子 Agent 的 token 写库不在这里,见 thread_service._run_thread 收 AgentDoneEvent 后单独写。
+            #
+            # 短 session:每次开 / commit / close,绝不长持
+            from backend.core.database import db_session as _db_session
             try:
-                ts = ThreadService(loop_session)
-                if total_tokens_in or total_tokens_out:
-                    ts.repo.update_tokens(
-                        thread_id,
-                        total_tokens_in + total_tokens_out,
-                    )
-                if loop_error is None:
-                    await ts.mark_done(thread_id, "(orchestrator round complete)")
-                else:
-                    await ts.mark_error(thread_id, str(loop_error))
-                loop_session.commit()
+                with _db_session() as s:
+                    ts = ThreadService(s)
+                    if total_tokens_in or total_tokens_out:
+                        ts.repo.update_tokens(
+                            thread_id,
+                            total_tokens_in + total_tokens_out,
+                        )
+                    if loop_error is None:
+                        await ts.mark_done(thread_id, "(orchestrator round complete)")
+                    else:
+                        await ts.mark_error(thread_id, str(loop_error))
+                    s.commit()
             except Exception:
                 logger.exception(
                     "orchestrator %s mark final status failed",
                     thread_id,
                 )
-                loop_session.rollback()
-            finally:
-                loop_session.close()
 
             # 触发 chat_service 推 round_done + drain pending 消息
             # lazy import 防循环依赖(chat_service 也 import orchestrator)
@@ -256,7 +256,6 @@ class OrchestratorService:
         user_message_id: str,
         user_id: str,
         wake_event: asyncio.Event,
-        session: Session,
     ) -> tuple[int, int]:
         """
         八步循环主体。
@@ -266,20 +265,17 @@ class OrchestratorService:
 
         正常 break 路径返回真实累计值;异常路径(LLM 致命错误 / 其他 bug)直接抛出,
         start_loop 兜底但拿不到累计值——这部分 token 在数据库里会丢失记账。
-        MVP 接受这个权衡:异常路径下用户看到的是 mark_error 状态,token 审计精度
-        次要;真要精确审计可改成 self._token_buf 挂到实例外让 finally 读。
 
         messages 是主 Agent 的内部 messages_history,只在本函数生命周期内有效。
         MVP 阶段不持久化到 thread.checkpoint(单进程内 conversation 锁保证不会被打断)。
 
-        session 由 start_loop 注入,本函数不负责 commit/close(那是 start_loop finally 块的事),
-        只在需要查 thread 时通过 ThreadService(session) 用。
+        【session 策略】本函数不持有 session。需要查库时由具体子方法
+        (_has_unfinished_children 等)自起短 session,用完立刻关。
         """
         messages: list[dict[str, Any]] = []
         total_tokens_in = 0
         total_tokens_out = 0
         round_count = 0
-        _MAX_ROUNDS = 30  # 防止 LLM 陷入无限工具调用循环
 
         # 第一轮必须有一条 user 消息作为 messages[0],否则 Anthropic API 报
         # 400 "messages array cannot be empty"。把当前轮触发的用户消息原文取出注入。
@@ -331,17 +327,6 @@ class OrchestratorService:
 
         while True:
             round_count += 1
-
-            if round_count > _MAX_ROUNDS:
-                logger.error(
-                    "orchestrator %s hit round limit (%d), force-exiting loop",
-                    thread_id,
-                    _MAX_ROUNDS,
-                )
-                raise RuntimeError(
-                    f"orchestrator {thread_id}: 超过最大轮次限制 {_MAX_ROUNDS}，"
-                    "可能陷入工具调用死循环，已强制退出"
-                )
 
             # ---- 步 1:消费 pending_events ----
             pending_summaries = ThreadService.pop_pending_events(thread_id)
@@ -419,6 +404,8 @@ class OrchestratorService:
 
             total_tokens_in += response.tokens_input
             total_tokens_out += response.tokens_output
+            tool_ctx.tokens_input = total_tokens_in
+            tool_ctx.tokens_output = total_tokens_out
 
             logger.debug(
                 "orchestrator %s round=%d stop_reason=%s tokens=%d/%d",
@@ -466,7 +453,7 @@ class OrchestratorService:
 
             # ---- 步 4:end_turn 收敛判断 ----
             if is_terminal_stop_reason(response):
-                if self._has_unfinished_children(session, conversation_id, thread_id):
+                if self._has_unfinished_children(conversation_id, thread_id):
                     # 还有子 Thread 没回报,挂起等唤醒
                     logger.debug(
                         "orchestrator %s suspended waiting for children",
@@ -487,6 +474,8 @@ class OrchestratorService:
                         conversation_id=conversation_id,
                         thread_id=thread_id,
                         text=response.content_text,
+                        tokens_input=total_tokens_in,
+                        tokens_output=total_tokens_out,
                     )
                 break
 
@@ -605,6 +594,8 @@ class OrchestratorService:
         conversation_id: str,
         thread_id: str,
         text: str,
+        tokens_input: int = 0,
+        tokens_output: int = 0,
     ) -> None:
         """
         主 Agent end_turn 时直接说话(没调 respond_to_user)的兜底:
@@ -657,12 +648,11 @@ class OrchestratorService:
         )
         await stream_service.push_event(
             conversation_id,
-            AgentDoneEvent(**base),
+            AgentDoneEvent(**base, tokens_input=tokens_input, tokens_output=tokens_output),
         )
 
     def _has_unfinished_children(
         self,
-        session: Session,
         conversation_id: str,
         orchestrator_thread_id: str,
     ) -> bool:
@@ -670,26 +660,24 @@ class OrchestratorService:
         判断该 conversation 下是否还有未完成的子 Thread(排除 orchestrator 自己)。
         未完成 = init / running / suspended。
 
-        session 由 _agent_loop 注入 —— 不依赖 self.session(模块级单例 self.session=None)。
-
-        关键:每次查询前 expire_all(),让 SQLAlchemy 抛弃 identity map 缓存重新读库。
-        子 Thread 状态变更发生在后台 asyncio.Task 里(用别的 session 写),
-        loop session 如果不主动 expire,可能拿到陈旧的 init/running 视图,
-        导致主 loop 误判"还有 Thread 没完成"陷入死等到超时。
+        【session 策略】自起短 session,用完立刻关,绝不持有跨 await 的长 session。
+        每次调用都是新 session,天然无 identity map 陈旧问题(原代码 expire_all 是
+        因为长 session 才需要,改短 session 后不需要了)。
         """
-        session.expire_all()
-        ts = ThreadService(session)
-        active = ts.repo.list_active_in_conversation(conversation_id)
-        for t in active:
-            if t.id == orchestrator_thread_id:
-                continue
-            if t.status in {
-                ThreadStatus.INIT.value,
-                ThreadStatus.RUNNING.value,
-                ThreadStatus.SUSPENDED.value,
-            }:
-                return True
-        return False
+        from backend.core.database import db_session
+        with db_session() as s:
+            ts = ThreadService(s)
+            active = ts.repo.list_active_in_conversation(conversation_id)
+            for t in active:
+                if t.id == orchestrator_thread_id:
+                    continue
+                if t.status in {
+                    ThreadStatus.INIT.value,
+                    ThreadStatus.RUNNING.value,
+                    ThreadStatus.SUSPENDED.value,
+                }:
+                    return True
+            return False
 
 
 orchestrator_service = OrchestratorService()

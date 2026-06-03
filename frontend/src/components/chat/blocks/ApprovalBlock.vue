@@ -22,26 +22,101 @@
         </div>
         <p v-if="rejectReason" class="text-[11px] text-red-500 pl-5">{{ rejectReason }}</p>
       </div>
-      <div v-else class="flex items-center gap-1.5 text-[11px] text-amber-600">
-        <el-icon class="animate-pulse" :size="12"><Warning /></el-icon>
-        <span>Waiting for approval...</span>
+
+      <!-- Pending: approval buttons -->
+      <div v-else class="space-y-2">
+        <div class="flex items-center gap-1.5 text-[11px] text-amber-600">
+          <el-icon class="animate-pulse" :size="12"><Warning /></el-icon>
+          <span>Waiting for approval...</span>
+        </div>
+
+        <!-- Reject reason input -->
+        <div v-if="showRejectInput">
+          <input
+            ref="reasonInput"
+            v-model="rejectReason"
+            type="text"
+            placeholder="Reason for rejection (optional)"
+            class="w-full px-3 py-1.5 text-[12px] border border-red-200 rounded-lg focus:outline-none focus:border-red-400 bg-white"
+            @keydown.enter="confirmReject"
+            @keydown.escape="showRejectInput = false"
+          />
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+            @click="handleApprove"
+          >
+            Approve (Y)
+          </button>
+          <button
+            v-if="!showRejectInput"
+            class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer"
+            @click="showRejectInput = true; nextTick(() => reasonInput?.focus())"
+          >
+            Reject (N)
+          </button>
+          <button
+            v-else
+            class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer"
+            @click="confirmReject"
+          >
+            Confirm
+          </button>
+          <span class="text-[10px] text-amber-600 ml-auto">Press Y / N</span>
+        </div>
       </div>
     </div>
   </CollapsibleBlock>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { Warning, CircleCheck, CircleClose, Lock } from '@element-plus/icons-vue'
 import CollapsibleBlock from './CollapsibleBlock.vue'
+import { useChatStore } from '@/stores/chat'
+import { useConversationsStore } from '@/stores/conversations'
 
 const props = defineProps<{
+  messageId: string
+  blockId: string
   action: string
   detail: string
   status: 'pending' | 'approved' | 'rejected'
   decidedAt?: string
   rejectReason?: string
 }>()
+
+const conversationsStore = useConversationsStore()
+const chatStore = useChatStore()
+
+const showRejectInput = ref(false)
+const rejectReason = ref('')
+const reasonInput = ref<HTMLInputElement | null>(null)
+
+async function postDecision(decision: 'approve' | 'reject', reason?: string) {
+  const convId = conversationsStore.currentId
+  try {
+    const res = await fetch(`/api/v1/approvals/${props.blockId}/decide`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, reason: reason ?? null }),
+    })
+    if (res.ok) {
+      chatStore.resolveApproval(
+        convId ?? '',
+        props.messageId,
+        props.blockId,
+        decision === 'approve' ? 'approved' : 'rejected',
+      )
+    } else {
+      console.warn('[Approval] POST failed', res.status, await res.text())
+    }
+  } catch (e) {
+    console.error('[Approval] fetch error', e)
+  }
+}
 
 const icon = computed(() => {
   if (props.status === 'approved') return CircleCheck
@@ -64,4 +139,29 @@ const badge = computed(() => {
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString()
 }
+
+function handleApprove() {
+  postDecision('approve')
+}
+
+function confirmReject() {
+  postDecision('reject', rejectReason.value || undefined)
+  showRejectInput.value = false
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (props.status !== 'pending') return
+  if (showRejectInput.value) return
+  if (e.key === 'y' || e.key === 'Y') {
+    e.preventDefault()
+    handleApprove()
+  } else if (e.key === 'n' || e.key === 'N') {
+    e.preventDefault()
+    showRejectInput.value = true
+    nextTick(() => reasonInput.value?.focus())
+  }
+}
+
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 </script>

@@ -87,11 +87,13 @@
           <!-- Approval block -->
           <ApprovalBlock
             v-else-if="block.type === 'approval'"
-            :action="block.action"
-            :detail="block.detail"
-            :status="block.status"
-            :decided-at="block.decidedAt"
-            :reject-reason="block.rejectReason"
+            :message-id="message.id"
+            :block-id="(block as any).blockId"
+            :action="(block as any).action"
+            :detail="(block as any).detail"
+            :status="(block as any).status"
+            :decided-at="(block as any).decidedAt"
+            :reject-reason="(block as any).rejectReason"
           />
         </div>
       </div>

@@ -91,6 +91,7 @@ function apiBlockToUI(block: ContentBlock): StreamingBlock {
       return {
         block_id: id,
         type: 'approval',
+        blockId: id,
         action: block.action,
         detail: block.detail,
         status: block.status,

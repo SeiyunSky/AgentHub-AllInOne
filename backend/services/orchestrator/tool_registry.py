@@ -283,6 +283,8 @@ class ToolContext:
     conversation_id: str
     user_message_id: str
     user_id: str
+    tokens_input: int = 0
+    tokens_output: int = 0
 
 
 # ============================================================

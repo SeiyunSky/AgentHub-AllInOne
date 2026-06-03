@@ -28,17 +28,24 @@ function handleEvent(convId: string, event: SSEEvent) {
       workflowStore.onBlockStart(convId, event.thread_id, {
         blockId: event.block.block_id,
         type: event.block.type,
-        toolName: event.block.type === 'tool_use' ? event.block.tool_name : undefined,
+        toolName: event.block.type === 'tool_use' ? (event.block as any).tool_name : undefined,
+        toolInput: event.block.type === 'tool_use' ? (event.block as any).input ?? undefined : undefined,
+        content: (event.block.type === 'text' || event.block.type === 'thinking') ? (event.block as any).content : undefined,
+        language: event.block.type === 'code' ? (event.block as any).language : undefined,
+        code: event.block.type === 'code' ? (event.block as any).code : undefined,
+        filename: event.block.type === 'code' ? (event.block as any).filename : undefined,
       })
       break
 
     case 'block_delta':
       chatStore.updateBlock(convId, event.block_id, event.delta, event.agent_id)
+      workflowStore.onBlockDelta(convId, event.thread_id, event.block_id, event.delta)
       break
 
     case 'block_stop':
       chatStore.finishBlock(convId, event.block_id, event.final_fields, event.agent_id)
-      workflowStore.onBlockStop(convId, event.thread_id, event.block_id)
+      workflowStore.onBlockStop(convId, event.thread_id, event.block_id,
+        typeof event.final_fields?.content === 'string' ? event.final_fields.content : undefined)
       break
 
     case 'agent_done':
