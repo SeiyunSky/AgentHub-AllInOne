@@ -112,7 +112,7 @@ function getInitials(name: string) {
 
 const listRef = ref<HTMLElement>()
 const isNearBottom = ref(false)
-const pendingScrollToBottom = ref(false)
+const pendingScrollToBottom = ref(true)
 const isLoadingMore = ref(false)
 const hasMoreMessages = ref(true)
 
@@ -159,12 +159,10 @@ function scrollToBottom() {
   const el = listRef.value
   if (!el) return
 
-  setTimeout(() => {
-    el.scrollTo({
-      top: el.scrollHeight,
-      behavior: 'auto'
-    });
-  }, 50)
+  el.scrollTo({
+    top: el.scrollHeight,
+    behavior: 'auto'
+  });
 }
 
 // Reset when conversation changes, then scroll to bottom after messages load
@@ -188,7 +186,10 @@ watch(
     if (pendingScrollToBottom.value && props.messages.length > 0) {
       pendingScrollToBottom.value = false
       // 使用 nextTick 确保 DOM 更新完成
-      nextTick(() => scrollToBottom())
+      setTimeout(() => {
+        nextTick(() => scrollToBottom())
+      }, 100)
+      
       return
     }
 
@@ -200,6 +201,6 @@ watch(
       scrollToBottom()
     }
   },
-  { immediate:true, flush: 'post' },
+  { immediate:true, deep: true, flush: 'post' },
 )
 </script>
