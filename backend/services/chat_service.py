@@ -273,13 +273,29 @@ class ChatService:
         agent_id: str,
     ) -> None:
         """@个体特化:resume_or_create 复用历史 Thread,启动调度。"""
+        from backend.repositories.agent_repo import AgentRepository
+
+        # 注入身份锚定 header，防止子 Agent 把自己当主 Agent 响应
+        agent_row = AgentRepository(self.session).get(agent_id)
+        if agent_row:
+            anchor = (
+                f"=== 你的身份 ===\n"
+                f"你在群聊中被用户 @ 直接联系。\n"
+                f"你是「{agent_row.name}」，职责：{agent_row.description or '见 system prompt'}。\n"
+                f"只做你擅长的事，不要扮演主 Agent 或路由消息给其他 Agent。\n"
+                f"================\n\n"
+            )
+            dispatch_prompt = anchor + request.content
+        else:
+            dispatch_prompt = request.content
+
         self.thread_service.resume_or_create(
             conversation_id=request.conversation_id,
             agent_id=agent_id,
             message_id=self._msg_id(user_msg),
             # @个体特化也是用户与子 Agent 直接对话,本次消息作为 dispatch_prompt;
             # 复用既有 Thread 时也要刷新,否则子 Adapter 永远拿到第一次的 prompt
-            dispatch_prompt=request.content,
+            dispatch_prompt=dispatch_prompt,
         )
         # 同 _single_chat_flow:commit 让后台 Task 能看到
         self.session.commit()

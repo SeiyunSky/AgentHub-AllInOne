@@ -15,8 +15,10 @@ export const useUIStore = defineStore('ui', () => {
   const chatPanePercent = ref(55)
 
   // Right panel
-  const rightPanelActiveTab = ref<'workflow' | 'preview'>('workflow')
+  const rightPanelActiveTab = ref<'workflow' | 'files' | 'preview'>('workflow')
   const rightPanelVisible = ref(false)
+  // 进入 preview tab 之前的 tab(workflow / files),关闭预览后回到这里
+  const lastNonPreviewTab = ref<'workflow' | 'files'>('workflow')
 
   // Artifact preview
   const activeArtifact = ref<ActiveArtifact | null>(null)
@@ -35,10 +37,14 @@ export const useUIStore = defineStore('ui', () => {
 
   function openArtifact(messageId: string, item: ArtifactItem, itemIndex: number) {
     activeArtifact.value = {
-      id: `${messageId}-${itemIndex}`,
+      id: messageId ? `${messageId}-${itemIndex}` : `sandbox-${item.convId ?? ''}-${item.path ?? item.name}`,
       messageId,
       item,
       mode: 'preview',
+    }
+    // 记下进 preview 之前的 tab,关闭后回到这里
+    if (rightPanelActiveTab.value !== 'preview') {
+      lastNonPreviewTab.value = rightPanelActiveTab.value
     }
     rightPanelActiveTab.value = 'preview'
     rightPanelVisible.value = true
@@ -46,7 +52,15 @@ export const useUIStore = defineStore('ui', () => {
 
   function closeArtifact() {
     activeArtifact.value = null
-    rightPanelActiveTab.value = 'workflow'
+    rightPanelActiveTab.value = lastNonPreviewTab.value
+  }
+
+  function setRightPanelTab(tab: 'workflow' | 'files' | 'preview') {
+    if (tab !== 'preview') {
+      lastNonPreviewTab.value = tab
+    }
+    rightPanelActiveTab.value = tab
+    rightPanelVisible.value = true
   }
 
   function setPreviewMode(mode: 'preview' | 'edit') {
@@ -85,6 +99,7 @@ export const useUIStore = defineStore('ui', () => {
     chatPanePercent,
     rightPanelActiveTab,
     rightPanelVisible,
+    lastNonPreviewTab,
     activeArtifact,
     isResizing,
     sidebarWidth,
@@ -93,6 +108,7 @@ export const useUIStore = defineStore('ui', () => {
     openArtifact,
     closeArtifact,
     setPreviewMode,
+    setRightPanelTab,
     toggleRightPanel,
     setChatPanePercent,
     startResizing,

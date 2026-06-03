@@ -22,6 +22,32 @@
     </template>
 
     <div class="space-y-5">
+      <!-- Squad Templates -->
+      <section v-if="squads.length > 0">
+        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Squad Templates</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="squad in squads"
+            :key="squad.id"
+            class="squad-card"
+            :class="{ 'squad-card-active': selectedSquadId === squad.id }"
+            @click="applySquad(squad)"
+          >
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-base">{{ squadIcon(squad.icon) }}</span>
+              <span class="text-[12px] font-semibold text-on-surface truncate">{{ squad.name }}</span>
+            </div>
+            <p class="text-[10px] text-on-surface-variant text-left leading-snug line-clamp-2">{{ squad.description }}</p>
+            <div class="mt-1.5 flex items-center gap-1">
+              <span v-if="squad.agents.length > 0" class="text-[10px] text-on-surface-variant">
+                {{ squad.agents.map(a => a.name).join(' · ') }}
+              </span>
+              <span v-else class="text-[10px] text-on-surface-variant italic">暂无预设成员</span>
+            </div>
+          </button>
+        </div>
+      </section>
+
       <!-- Chat Title -->
       <section>
         <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Title</label>
@@ -137,6 +163,8 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { Close, Plus, ChatDotRound, EditPen, Loading } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
 import { useConversationsStore } from '@/stores/conversations'
+import { squadsApi } from '@/api/squads'
+import type { Squad } from '@/api/squads'
 import type { Agent } from '@/types/agent'
 import type { ConversationResponse } from '@/types/conversation'
 
@@ -159,6 +187,8 @@ const selectedAgents = ref<Agent[]>([])
 const creating = ref(false)
 const searchQuery = ref('')
 const titleInputRef = ref<HTMLInputElement>()
+const squads = ref<Squad[]>([])
+const selectedSquadId = ref<string | null>(null)
 
 const filteredAgents = computed(() => {
   const available = agentsStore.agents.filter(
@@ -226,6 +256,25 @@ function addAgent(id: string) {
 
 function removeAgent(id: string) {
   selectedAgents.value = selectedAgents.value.filter((a) => a.id !== id)
+  // 移除 Agent 后取消小组高亮
+  selectedSquadId.value = null
+}
+
+function squadIcon(icon: string) {
+  const map: Record<string, string> = { code: '⚙️', chat: '💬', research: '🔍', review: '🔎' }
+  return map[icon] ?? '🤖'
+}
+
+function applySquad(squad: Squad) {
+  selectedSquadId.value = squad.id
+  // 用 agentsStore 里真实的 Agent 对象填充（保证有完整字段）
+  const agentObjs = squad.agents
+    .map(sa => agentsStore.agents.find(a => a.id === sa.id))
+    .filter((a): a is Agent => !!a)
+  selectedAgents.value = agentObjs
+  if (!title.value.trim()) {
+    title.value = squad.name
+  }
 }
 
 function close() {
@@ -262,19 +311,48 @@ async function loadAgents() {
   await agentsStore.loadAgents()
 }
 
+async function loadSquads() {
+  try {
+    squads.value = await squadsApi.list()
+  } catch {
+    squads.value = []
+  }
+}
+
 watch(visible, async (open) => {
   if (open) {
     title.value = ''
     selectedAgents.value = []
     searchQuery.value = ''
-    await loadAgents()
-    // 不要默认塞 orchestrator:它是群聊主 Agent,由后端在 group 模式自动挂,
-    // 用户手动勾上反而会让 single 模式被算成 2 个 Agent → 422。
+    selectedSquadId.value = null
+    await Promise.all([loadAgents(), loadSquads()])
   }
 })
 </script>
 
 <style scoped>
+/* ── Squad Card ── */
+.squad-card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--color-outline-variant);
+  background: var(--color-surface-container-low);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+.squad-card:hover {
+  border-color: var(--color-brand);
+  background: var(--color-brand-light);
+}
+.squad-card-active {
+  border-color: var(--color-brand);
+  background: var(--color-brand-light);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 /* ── Title Input ── */
 .title-input-wrapper {
   display: flex;
