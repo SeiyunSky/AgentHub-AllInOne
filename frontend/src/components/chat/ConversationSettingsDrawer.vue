@@ -55,8 +55,9 @@
             class="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-white cursor-pointer transition"
             @click="onAdd(agent.id)"
           >
-            <div class="w-7 h-7 rounded-lg bg-brand-light text-brand text-[11px] font-bold flex items-center justify-center shrink-0">
-              {{ agent.name.charAt(0) }}
+            <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 overflow-hidden bg-brand-light">
+              <img v-if="agent.avatar" :src="agent.avatar" :alt="agent.name" class="w-full h-full object-cover" />
+              <span v-else class="text-brand text-[11px] font-bold">{{ agent.name.charAt(0) }}</span>
             </div>
             <div class="flex-1 min-w-0">
               <div class="text-[12px] font-medium text-on-surface truncate">{{ agent.name }}</div>
@@ -75,10 +76,15 @@
             :class="member.id === 'orchestrator' ? 'border-brand/30 bg-brand-light/30' : 'border-outline-variant'"
           >
             <div
-              class="w-9 h-9 rounded-lg text-[12px] font-bold flex items-center justify-center shrink-0"
-              :class="member.id === 'orchestrator' ? 'bg-brand text-white' : 'bg-brand-light text-brand'"
+              class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
+              :class="member.avatar ? '' : (member.id === 'orchestrator' ? 'bg-brand' : 'bg-brand-light')"
             >
-              {{ member.name.charAt(0) }}
+              <img v-if="member.avatar" :src="member.avatar" :alt="member.name" class="w-full h-full object-cover" />
+              <span
+                v-else
+                class="text-[12px] font-bold"
+                :class="member.id === 'orchestrator' ? 'text-white' : 'text-brand'"
+              >{{ member.name.charAt(0) }}</span>
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-1.5 flex-wrap">
@@ -167,7 +173,7 @@
 
     <!-- Footer -->
     <template #footer>
-      <div class="flex justify-between items-center pt-2">
+      <div class="flex justify-start items-center pt-2">
         <button
           class="text-[11px] text-on-surface-variant hover:text-brand inline-flex items-center gap-1"
           @click="loadTokenUsage"
@@ -175,7 +181,6 @@
           <el-icon :size="11"><Refresh /></el-icon>
           刷新用量
         </button>
-        <button class="btn-close" @click="close">关闭</button>
       </div>
     </template>
   </el-dialog>
