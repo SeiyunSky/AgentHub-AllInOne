@@ -44,8 +44,13 @@ onMounted(async () => {
   const convId = route.params.conversationId as string | undefined
   if (convId) {
     await loadConversation(convId)
-  } else if (conversationsStore.conversations.length === 0) {
-    await conversationsStore.loadList()
+  } else {
+    // 无 conversationId 时清除之前的激活状态
+    conversationsStore.currentId = null
+    conversationsStore.currentConversation = null
+    if (conversationsStore.conversations.length === 0) {
+      await conversationsStore.loadList({limit: 200})
+    }
   }
 })
 
