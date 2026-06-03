@@ -72,18 +72,44 @@
       </div>
     </div>
 
-    <!-- Preview-only modes -->
-    <template v-else>
-      <!-- HTML iframe -->
+    <!-- HTML (preview = iframe; edit = Monaco html) -->
+    <div v-else-if="rendererType === 'iframe'" class="flex-1 flex flex-col min-h-0">
+      <div v-if="mode === 'edit'" class="flex-1 flex flex-col min-h-0">
+        <VueMonacoEditor
+          :value="editContent ?? ''"
+          language="html"
+          :theme="monacoTheme"
+          class="flex-1"
+          :options="monacoOptionsFor('edit')"
+          @change="setEditContent"
+        />
+        <div class="flex items-center justify-end gap-2 px-3 py-2 border-t border-outline-variant bg-surface-container">
+          <span v-if="isSaving" class="text-[11px] text-on-surface-variant flex items-center gap-1">
+            <el-icon class="animate-spin"><Loading /></el-icon>
+            Saving...
+          </span>
+          <button
+            class="px-3 py-1 rounded-md text-[12px] font-medium bg-brand text-white hover:bg-brand/90 transition-colors disabled:opacity-50"
+            :disabled="isSaving"
+            @click="saveFileContent"
+          >
+            Save
+          </button>
+        </div>
+      </div>
       <iframe
-        v-if="rendererType === 'iframe'"
+        v-else
         :srcdoc="iframeSrcdoc"
         sandbox="allow-scripts"
         class="flex-1 w-full h-full border-0 bg-white"
       />
+    </div>
+
+    <!-- Preview-only modes -->
+    <template v-else>
       <!-- SVG -->
       <div
-        v-else-if="rendererType === 'svg'"
+        v-if="rendererType === 'svg'"
         class="flex-1 flex items-center justify-center p-6 bg-surface-container-low"
         v-html="sanitizedSvg"
       />
