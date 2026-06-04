@@ -175,6 +175,16 @@ class OrchestratorService:
             # 真有消息落库时会再触发新的 agent_start(message_id 不同)。
             from backend.adapters.events import AgentStartEvent
             from backend.services.stream_service import stream_service
+            # 从 DB 拿 orchestrator 头像(seed 配的 /static/avatars/avatar-1.jpg)
+            from backend.core.database import db_session
+            from backend.repositories.agent_repo import AgentRepository
+            orchestrator_avatar: Optional[str] = None
+            try:
+                with db_session() as _s:
+                    _row = AgentRepository(_s).get("orchestrator")
+                    orchestrator_avatar = _row.avatar if _row else None
+            except Exception:
+                pass
             try:
                 await stream_service.push_event(
                     conversation_id,
@@ -182,7 +192,8 @@ class OrchestratorService:
                         agent_id="orchestrator",
                         thread_id=thread_id,
                         message_id=thread_id,  # 占位,respond_to_user 会推真的 message_id
-                        agent_name="主 Agent",
+                        agent_name="Orchestrator",
+                        agent_avatar=orchestrator_avatar,
                     ),
                 )
             except Exception:
@@ -746,7 +757,7 @@ class OrchestratorService:
         from backend.core.utils import gen_uuid
 
         _ORCHESTRATOR_AGENT_ID = "orchestrator"
-        _ORCHESTRATOR_AGENT_NAME = "主 Agent"
+        _ORCHESTRATOR_AGENT_NAME = "Orchestrator"
 
         block_id = gen_uuid()
         msg = await message_service.create_assistant_message(

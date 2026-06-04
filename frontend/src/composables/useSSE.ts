@@ -15,7 +15,7 @@ function handleEvent(convId: string, event: SSEEvent) {
 
   switch (event.type) {
     case 'agent_start':
-      chatStore.startStreaming(convId, event.agent_id, event.agent_name, event.message_id)
+      chatStore.startStreaming(convId, event.agent_id, event.agent_name, event.message_id, event.agent_avatar)
       workflowStore.onAgentStart(convId, {
         agentId: event.agent_id,
         agentName: event.agent_name,
