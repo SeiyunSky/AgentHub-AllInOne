@@ -69,6 +69,9 @@ function handleEvent(convId: string, event: SSEEvent) {
 
     case 'round_done':
       chatStore.clearRound(convId)
+      // 同步 workflow:把所有还在 running 的 thread 节点标 cancelled
+      // (stop 流程下后端不会发 agent_done/agent_error,workflow 节点会永远转圈)
+      workflowStore.markActiveAsCancelled(convId)
       // sync last agent message to conversation list preview
       {
         const conversationsStore = useConversationsStore()

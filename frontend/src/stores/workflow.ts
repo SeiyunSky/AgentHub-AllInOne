@@ -157,6 +157,32 @@ export const useWorkflowStore = defineStore('workflow', () => {
     threadMap.value.set(convId, [])
   }
 
+  /**
+   * stop 时被调:把所有还在 running/init/suspended 的 thread 标 cancelled,
+   * 同步把它们尚未结束的 block.status 也标 done(避免转圈)。
+   * 已 done/error/cancelled 的不动,保留本轮历史给用户回看。
+   */
+  function markActiveAsCancelled(convId: string) {
+    const threads = getThreads(convId)
+    let changed = false
+    for (const t of threads) {
+      if (t.status === 'running' || t.status === 'init' || t.status === 'suspended') {
+        t.status = 'cancelled'
+        t.finishedAt = Date.now()
+        changed = true
+        for (const b of t.blocks) {
+          if (b.status === 'running') {
+            b.status = 'done'
+            b.finishedAt = Date.now()
+          }
+        }
+      }
+    }
+    if (changed) {
+      threadMap.value.set(convId, [...threads])
+    }
+  }
+
   return {
     threadMap,
     getThreads,
@@ -167,5 +193,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     onAgentDone,
     onAgentError,
     clearRound,
+    markActiveAsCancelled,
   }
 })
