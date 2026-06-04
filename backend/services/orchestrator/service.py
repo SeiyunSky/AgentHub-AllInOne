@@ -52,7 +52,7 @@ from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
-from backend.hooks.base import HookContext, HookEvent
+from backend.hooks.base import HookBlockedException, HookContext, HookEvent
 from backend.hooks.manager import hook_manager
 from backend.schemas.thread import ThreadStatus
 from backend.services.orchestrator.context_compactor import context_compactor
@@ -222,25 +222,47 @@ class OrchestratorService:
             # 子 Agent 的 token 写库不在这里,见 thread_service._run_thread 收 AgentDoneEvent 后单独写。
             #
             # 短 session:每次开 / commit / close,绝不长持
+            # 重试逻辑:stop 流程里 cancel_all_in_conversation 可能与本 finally 并发写同一行,
+            # 触发 MySQL 1205 lock wait timeout 或 1213 deadlock;最多重试 3 次,指数退避。
             from backend.core.database import db_session as _db_session
-            try:
-                with _db_session() as s:
-                    ts = ThreadService(s)
-                    if total_tokens_in or total_tokens_out:
-                        ts.repo.update_tokens(
-                            thread_id,
-                            total_tokens_in + total_tokens_out,
+            from sqlalchemy.exc import OperationalError as _OperationalError
+            _MAX_RETRIES = 3
+            for _attempt in range(_MAX_RETRIES):
+                try:
+                    with _db_session() as s:
+                        ts = ThreadService(s)
+                        if total_tokens_in or total_tokens_out:
+                            ts.repo.update_tokens(
+                                thread_id,
+                                total_tokens_in + total_tokens_out,
+                            )
+                        if loop_error is None:
+                            await ts.mark_done(thread_id, "(orchestrator round complete)")
+                        else:
+                            await ts.mark_error(thread_id, str(loop_error))
+                        s.commit()
+                    break  # 成功,跳出重试循环
+                except _OperationalError as _oe:
+                    _err_code = getattr(_oe.orig, "args", (None,))[0] if _oe.orig else None
+                    if _err_code in (1205, 1213) and _attempt < _MAX_RETRIES - 1:
+                        logger.warning(
+                            "orchestrator %s mark final status hit lock error (code=%s), "
+                            "retry %d/%d",
+                            thread_id, _err_code, _attempt + 1, _MAX_RETRIES,
                         )
-                    if loop_error is None:
-                        await ts.mark_done(thread_id, "(orchestrator round complete)")
+                        await asyncio.sleep(0.5 * (2 ** _attempt))
                     else:
-                        await ts.mark_error(thread_id, str(loop_error))
-                    s.commit()
-            except Exception:
-                logger.exception(
-                    "orchestrator %s mark final status failed",
-                    thread_id,
-                )
+                        logger.exception(
+                            "orchestrator %s mark final status failed (attempt %d)",
+                            thread_id, _attempt + 1,
+                        )
+                        break
+                except Exception:
+                    logger.exception(
+                        "orchestrator %s mark final status failed",
+                        thread_id,
+                    )
+                    break
 
             # 触发 chat_service 推 round_done + drain pending 消息
             # lazy import 防循环依赖(chat_service 也 import orchestrator)
@@ -331,6 +353,16 @@ class OrchestratorService:
         while True:
             round_count += 1
 
+            # ---- 步 0:中止检查 ----
+            # 用户点 stop 或上游 cancel 后,stream_service.abort() 会被调用。
+            # 这里在每轮开头主动检查,直接抛 CancelledError 退出 loop,
+            # 比依赖 task.cancel() 注入更可靠(避免 except Exception 误吞 + LLM 调用
+            # 中途的 retry 路径无法及时响应 cancel)。
+            from backend.services.stream_service import stream_service as _ss
+            if _ss.is_aborted(conversation_id):
+                logger.info("orchestrator %s aborted by user, exit loop", thread_id)
+                raise asyncio.CancelledError()
+
             # ---- 步 1:消费 pending_events ----
             pending_summaries = ThreadService.pop_pending_events(thread_id)
             for summary in pending_summaries:
@@ -354,6 +386,10 @@ class OrchestratorService:
                     messages=messages,
                     tools=tools,
                 )
+            except asyncio.CancelledError:
+                # cancel 信号最高优先级,直接外抛让 start_loop finally 走 cancel 路径,
+                # 不要进 error_recovery 的 retry 死循环
+                raise
             except Exception as exc:
                 category = classify_api_error(exc)
                 if category == "fatal":
@@ -488,6 +524,9 @@ class OrchestratorService:
                 # 否则:assistant_blocks 用改前 input,实际执行用改后 input,
                 # messages 历史里 tool_use 块和 tool_result 的入参对不上 → LLM 看到错位易产生幻觉
                 resolved_calls: list[tuple[Any, dict[str, Any]]] = []
+                # 被 PRE_TOOL_USE block 掉的 call(reject / 黑名单 / 路径越界 / 审批超时),
+                # 不真正执行,直接合成 error tool_result 返回给 LLM
+                blocked_calls: dict[str, str] = {}  # call_id → block_reason
                 for call in response.tool_calls:
                     pre_ctx = HookContext(
                         event=HookEvent.PRE_TOOL_USE,
@@ -500,7 +539,19 @@ class OrchestratorService:
                         tool_name=call.name,
                         tool_input=call.input,
                     )
-                    pre_result = await hook_manager.fire(HookEvent.PRE_TOOL_USE, pre_ctx)
+                    # hook_manager.fire 在任一 sync hook 返回 block 时会抛 HookBlockedException,
+                    # 不会以 HookResult(decision="block") 返回。这里捕获后转成 blocked_calls,
+                    # 让 LLM 拿到 is_error tool_result 自己决定下一步,而不是让整个 orchestrator
+                    # loop 因为审批超时 / 拒绝就崩掉(原行为:HookBlockedException 一路冒到
+                    # start_loop,thread mark_error,前端永远等不到 round_done)。
+                    try:
+                        pre_result = await hook_manager.fire(HookEvent.PRE_TOOL_USE, pre_ctx)
+                    except HookBlockedException as exc:
+                        blocked_calls[call.id] = str(exc.reason or exc) or "操作被拒绝"
+                        # 仍要进 resolved_calls,assistant_blocks 里 tool_use 块和
+                        # tool_result 块必须成对出现(Anthropic API 强制要求)
+                        resolved_calls.append((call, call.input))
+                        continue
                     if pre_result.decision == "replace_input" and pre_result.updated_input is not None:
                         final_input = pre_result.updated_input
                     else:
@@ -526,6 +577,18 @@ class OrchestratorService:
                 # 串行执行每个 tool_call(并行可能引起工具间状态竞争)
                 tool_result_blocks: list[dict[str, Any]] = []
                 for call, final_input in resolved_calls:
+                    # 被 PRE_TOOL_USE block 的 call:不真正执行,合成 error tool_result
+                    # 让 LLM 知道该工具被拒了,自己决定下一步(重试 / 换思路 / 收手)
+                    if call.id in blocked_calls:
+                        block_reason = blocked_calls[call.id]
+                        tool_result_blocks.append({
+                            "type": "tool_result",
+                            "tool_use_id": call.id,
+                            "content": block_reason,
+                            "is_error": True,
+                        })
+                        continue
+
                     # 用 dataclasses.replace 构造带新 input 的 LLMToolCall,
                     # 不修改 LLM SDK 返回的原对象(避免后续轮次读到被改过的字段)
                     effective_call = dataclasses.replace(call, input=final_input)
