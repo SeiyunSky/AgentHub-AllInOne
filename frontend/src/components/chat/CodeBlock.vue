@@ -11,14 +11,50 @@
       />
     </div>
 
-    <!-- Shiki 高亮视图 -->
+    <!-- Shiki 高亮视图(超过阈值行数时支持折叠) -->
     <template v-else-if="highlightedHtml">
-      <div class="code-highlighted bg-[#f6f8fa] text-xs font-mono leading-[1.6] px-4 py-3" v-html="highlightedHtml"></div>
+      <div class="relative">
+        <div
+          class="code-highlighted bg-[#f6f8fa] text-xs font-mono leading-[1.6] px-4 py-3 transition-[max-height] duration-200"
+          :class="needsCollapse && !fullyExpanded ? 'overflow-hidden' : 'overflow-x-auto'"
+          :style="needsCollapse && !fullyExpanded ? { maxHeight: collapsedMaxHeight + 'px' } : {}"
+          v-html="highlightedHtml"
+        ></div>
+        <!-- 渐变蒙层 + 展开按钮 -->
+        <div
+          v-if="needsCollapse && !fullyExpanded"
+          class="absolute inset-x-0 bottom-0 h-12 pointer-events-none bg-gradient-to-t from-[#f6f8fa] via-[#f6f8fa]/80 to-transparent"
+        ></div>
+        <button
+          v-if="needsCollapse"
+          class="w-full text-[11px] text-brand hover:text-brand-dark hover:bg-brand-light/30 transition-colors py-1.5 border-t border-outline-variant cursor-pointer flex items-center justify-center gap-1"
+          @click.stop="fullyExpanded = !fullyExpanded"
+        >
+          {{ fullyExpanded ? `Collapse (${lineCount} lines)` : `Show all ${lineCount} lines` }}
+        </button>
+      </div>
     </template>
 
-    <!-- 纯文本回退 -->
+    <!-- 纯文本回退(同样支持折叠) -->
     <template v-else>
-      <pre class="bg-[#f6f8fa] text-xs font-mono leading-[1.6] px-4 py-3 whitespace-pre text-neutral-700">{{ code }}</pre>
+      <div class="relative">
+        <pre
+          class="bg-[#f6f8fa] text-xs font-mono leading-[1.6] px-4 py-3 whitespace-pre text-neutral-700 transition-[max-height] duration-200"
+          :class="needsCollapse && !fullyExpanded ? 'overflow-hidden' : 'overflow-x-auto'"
+          :style="needsCollapse && !fullyExpanded ? { maxHeight: collapsedMaxHeight + 'px' } : {}"
+        >{{ code }}</pre>
+        <div
+          v-if="needsCollapse && !fullyExpanded"
+          class="absolute inset-x-0 bottom-0 h-12 pointer-events-none bg-gradient-to-t from-[#f6f8fa] via-[#f6f8fa]/80 to-transparent"
+        ></div>
+        <button
+          v-if="needsCollapse"
+          class="w-full text-[11px] text-brand hover:text-brand-dark hover:bg-brand-light/30 transition-colors py-1.5 border-t border-outline-variant cursor-pointer flex items-center justify-center gap-1"
+          @click.stop="fullyExpanded = !fullyExpanded"
+        >
+          {{ fullyExpanded ? `Collapse (${lineCount} lines)` : `Show all ${lineCount} lines` }}
+        </button>
+      </div>
     </template>
   </div>
 </template>
@@ -43,6 +79,14 @@ const emit = defineEmits<{
 // 右侧可编辑内容，初始值为 props.code
 const editableCode = ref(props.code)
 watch(() => props.code, val => { editableCode.value = val })
+
+// 长代码块默认折叠到 ~12 行(约 240px),避免聊天最后一条是大代码块时
+// 把视口撑到看不到上下文。点底部按钮再展开全部。
+const _LINE_THRESHOLD = 12
+const collapsedMaxHeight = 240
+const fullyExpanded = ref(false)
+const lineCount = computed(() => (props.code ?? '').split('\n').length)
+const needsCollapse = computed(() => lineCount.value > _LINE_THRESHOLD)
 
 // Monaco 语言 ID 映射
 const LANGUAGE_MAP: Record<string, string> = {

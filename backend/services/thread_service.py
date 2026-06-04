@@ -336,13 +336,44 @@ class ThreadService:
         return await self.mark_cancelled(thread_id)
 
     async def cancel_all_in_conversation(self, conversation_id: str) -> list[Thread]:
-        """流式中止 / 队列抢占:取消该会话所有未结束 Thread。"""
-        threads = self.repo.list_active_in_conversation(conversation_id)
+        """
+        流式中止 / 队列抢占:取消该会话所有未结束 Thread。
+
+        【session 策略】用独立短 session 立刻 commit。
+        关键:不能用 self.session(HTTP 请求级 session,不 commit 不释放行锁),
+        否则 orchestrator 的 finally 块抢同一行会撞 1205,等满 innodb_lock_wait_timeout(10s)
+        × 重试 N 次 = 几十秒 → 用户点 stop 后前端卡住。
+        每个 thread 独立短事务:cancel asyncio.Task + UPDATE + commit + close,瞬间释锁。
+        """
+        from backend.core.database import db_session
+
+        # 拿待取消列表用短 session(只读)
+        with db_session() as s:
+            threads = ThreadRepository(s).list_active_in_conversation(conversation_id)
+            thread_ids = [t.id for t in threads]
+
         cancelled: list[Thread] = []
-        for thread in threads:
-            result = await self.cancel_thread(thread.id)
-            if result is not None:
-                cancelled.append(result)
+        for tid in thread_ids:
+            # 1. cancel asyncio.Task(瞬间)
+            task = _running_tasks.pop(tid, None)
+            if task and not task.done():
+                task.cancel()
+            # 2. 独立短事务写终态 + 立即 commit 释锁
+            with db_session() as s:
+                t = ThreadRepository(s).mark_status(tid, ThreadStatus.CANCELLED)
+                s.commit()
+                if t is not None:
+                    s.refresh(t)
+                    s.expunge(t)
+                    cancelled.append(t)
+            # 3. 触发父 Agent 唤醒等后续(用本 service 的 self,但 _on_thread_terminal
+            # 内部也走短 session,不依赖 self.session 的事务状态)
+            if cancelled and cancelled[-1].id == tid:
+                await self._on_thread_terminal(
+                    cancelled[-1],
+                    f"Thread {tid} 已取消",
+                    success=False,
+                )
         return cancelled
 
     async def cancel_dependents(

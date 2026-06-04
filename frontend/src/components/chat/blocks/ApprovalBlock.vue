@@ -7,8 +7,8 @@
     :default-expanded="true"
   >
     <div class="px-3 py-2 space-y-2">
-      <!-- Detail -->
-      <p class="text-[12px] text-on-surface whitespace-pre-wrap max-h-[240px] overflow-auto">{{ detail }}</p>
+      <!-- 结构化详情(create_file/edit_file 显示路径+大小+折叠内容,其他工具兜底原文) -->
+      <ApprovalDetail :action="action" :detail="detail" />
 
       <!-- Status indicators -->
       <div v-if="status === 'approved'" class="flex items-center gap-1.5 text-[11px] text-emerald-600">
@@ -75,6 +75,7 @@
 import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { Warning, CircleCheck, CircleClose, Lock } from '@element-plus/icons-vue'
 import CollapsibleBlock from './CollapsibleBlock.vue'
+import ApprovalDetail from './ApprovalDetail.vue'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
 import { http } from '@/api/http'
