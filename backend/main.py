@@ -101,11 +101,13 @@ async def lifespan(app: FastAPI):
                 result.rowcount,
             )
 
-        n_agents = seed_agents(db)
-        logger.info("seed_agents: %d rows affected", n_agents)
-
+        # 顺序约束:必须先 scan_builtin 让 skills 表填好,seed_agents 再写 agent_skills
+        # 关联(seed_agents 内部按 default_skills 配置查 skills 表挂载)
         n_skills = SkillService(db).scan_builtin()
         logger.info("skill_service.scan_builtin: %d rows affected", n_skills)
+
+        n_agents = seed_agents(db)
+        logger.info("seed_agents: %d rows affected", n_agents)
 
         adapter_registry.seed_from_db(db)
     except Exception:
