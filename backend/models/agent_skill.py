@@ -13,7 +13,7 @@ agent_skills — Agent 挂载 Skill 关联表
 
 from sqlalchemy import Column, String, TIMESTAMP, Index, func
 
-from backend.models.base import Base
+from backend.models.base import Base, UTCTimestamp
 
 
 class AgentSkill(Base):
@@ -21,8 +21,7 @@ class AgentSkill(Base):
 
     agent_id = Column(String(36), primary_key=True, comment="agents.id")
     skill_id = Column(String(36), primary_key=True, comment="skills.id")
-    created_at = Column(
-        TIMESTAMP,
+    created_at = Column(UTCTimestamp,
         nullable=False,
         server_default=func.current_timestamp(),
     )
