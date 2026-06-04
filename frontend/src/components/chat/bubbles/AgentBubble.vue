@@ -1,12 +1,12 @@
 <template>
-  <div class="flex gap-3 message-enter group">
+  <div class="flex gap-3 message-enter group mb-5">
     <div
       class="w-9 h-9 rounded-[20%] flex items-center justify-center shrink-0 overflow-hidden"
     >
       <img v-if="agentAvatar" :src="agentAvatar" :alt="displayAgentName" class="w-full h-full object-cover" />
     </div>
 
-    <div class="flex-1 min-w-0 relative pb-3">
+    <div class="flex-1 min-w-0 relative pb-5">
       <!-- Header -->
       <div class="flex items-center gap-2 mb-1.5">
         <span class="text-[12px] font-semibold text-on-surface">{{ displayAgentName }}</span>
@@ -135,13 +135,12 @@
         @reply="$emit('reply', $event)"
         @copy="$emit('copy', $event)"
         @react="(id, type) => $emit('react', id, type)"
-        @more="$emit('more', $event)"
       />
 
       <!-- Persistent reaction badge -->
       <div
         v-if="message.reaction"
-        class="absolute -bottom-2 left-1 text-[13px] leading-none select-none"
+        class="px-1 py-1.5 rounded-md bg-neutral-100 text-[14px] leading-none select-none inline-flex items-center gap-1 w-fit"
         :title="message.reaction === 'like' ? '已点赞' : '已点踩'"
       >{{ message.reaction === 'like' ? '😀' : '🙁' }}</div>
     </div>
@@ -177,7 +176,6 @@ defineEmits<{
   reply: [messageId: string]
   copy: [messageId: string]
   react: [messageId: string, type: 'like' | 'dislike']
-  more: [messageId: string]
 }>()
 
 const agentsStore = useAgentsStore()

@@ -16,7 +16,6 @@
       @reply="onReply"
       @copy="onCopy"
       @react="onReact"
-      @more="onMore"
     />
 
     <!-- Archived notice (replaces input for archived conversations) -->
@@ -77,6 +76,7 @@ const emit = defineEmits<{
   send: [content: string, mentions: string[], replyToId?: string]
   stop: []
   reply: [messageId: string]
+  copy: [messageId: string]
   react: [messageId: string, type: 'like' | 'dislike']
 }>()
 
@@ -156,10 +156,6 @@ function onCopy(_messageId: string) {
 
 function onReact(messageId: string, type: 'like' | 'dislike') {
   emit('react', messageId, type)
-}
-
-function onMore(messageId: string) {
-  console.log('More actions for message:', messageId)
 }
 
 function handleApprove() {

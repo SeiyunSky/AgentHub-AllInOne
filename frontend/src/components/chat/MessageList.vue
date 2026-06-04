@@ -8,9 +8,9 @@
     <template v-for="msg in messages" :key="msg.id">
       <AgentBubble v-if="msg.type === 'agent'" :message="msg" :streaming="isStreamingMessage(msg)"
         :activity="streamingActivityFor(msg)" :current-tool="streamingToolFor(msg)" @reply="$emit('reply', $event)"
-        @copy="$emit('copy', $event)" @react="(id, type) => $emit('react', id, type)" @more="$emit('more', $event)" />
+        @copy="$emit('copy', $event)" @react="(id, type) => $emit('react', id, type)" />
       <UserBubble v-else-if="msg.type === 'user'" :message="msg" @reply="$emit('reply', $event)"
-        @copy="$emit('copy', $event)" @react="(id, type) => $emit('react', id, type)" @more="$emit('more', $event)" />
+        @copy="$emit('copy', $event)" />
       <!-- Typing indicator -->
       <div v-else-if="msg.type === 'typing'" class="flex gap-3 message-enter">
         <div
@@ -54,7 +54,6 @@ defineEmits<{
   reply: [messageId: string]
   copy: [messageId: string]
   react: [messageId: string, type: 'like' | 'dislike']
-  more: [messageId: string]
 }>()
 
 const chatStore = useChatStore()

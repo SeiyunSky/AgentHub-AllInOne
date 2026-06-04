@@ -59,6 +59,7 @@
             type="text"
             placeholder="Enter chat title..."
             class="title-input"
+            @input="onTitleInput"
           />
         </div>
       </section>
@@ -189,6 +190,8 @@ const searchQuery = ref('')
 const titleInputRef = ref<HTMLInputElement>()
 const squads = ref<Squad[]>([])
 const selectedSquadId = ref<string | null>(null)
+// 追踪用户是否手动修改过 title（用于决定切换小组时是否覆盖）
+const userModifiedTitle = ref(false)
 
 const filteredAgents = computed(() => {
   const available = agentsStore.agents.filter(
@@ -265,15 +268,35 @@ function squadIcon(icon: string) {
   return map[icon] ?? '🤖'
 }
 
+// 用户手动输入 title 时标记已修改
+function onTitleInput() {
+  userModifiedTitle.value = true
+}
+
 function applySquad(squad: Squad) {
-  selectedSquadId.value = squad.id
-  // 用 agentsStore 里真实的 Agent 对象填充（保证有完整字段）
-  const agentObjs = squad.agents
-    .map(sa => agentsStore.agents.find(a => a.id === sa.id))
-    .filter((a): a is Agent => !!a)
-  selectedAgents.value = agentObjs
-  if (!title.value.trim()) {
-    title.value = squad.name
+  // 切换小组模板时，更新选中状态和 agents
+  const isDeselect = selectedSquadId.value === squad.id
+  if (isDeselect) {
+    // 点击已选中的小组 → 取消选中
+    selectedSquadId.value = null
+    selectedAgents.value = []
+    // 只有用户没手动改过 title 才清空
+    if (!userModifiedTitle.value) {
+      title.value = ''
+    }
+  } else {
+    // 选中新小组
+    selectedSquadId.value = squad.id
+    // 用 agentsStore 里真实的 Agent 对象填充（保证有完整字段）
+    const agentObjs = squad.agents
+      .map(sa => agentsStore.agents.find(a => a.id === sa.id))
+      .filter((a): a is Agent => !!a)
+    selectedAgents.value = agentObjs
+    // 只有用户没手动改过 title 或者title为空才用小组名覆盖
+    if (!userModifiedTitle.value || !title.value) {
+      title.value = squad.name
+      userModifiedTitle.value = false
+    }
   }
 }
 
@@ -325,6 +348,7 @@ watch(visible, async (open) => {
     selectedAgents.value = []
     searchQuery.value = ''
     selectedSquadId.value = null
+    userModifiedTitle.value = false
     await Promise.all([loadAgents(), loadSquads()])
   }
 })
