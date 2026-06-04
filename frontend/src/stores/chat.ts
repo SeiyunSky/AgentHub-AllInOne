@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { ContentBlock, MessageResponse } from '@/types/api'
 import type { AgentMessage, Message, UIBlock, UIApprovalBlock, ReplyPreview } from '@/types/chat'
+import { useConversationsStore } from '@/stores/conversations'
 
 type StreamingBlock = UIBlock & { block_id?: string }
 
@@ -440,7 +441,23 @@ export const useChatStore = defineStore('chat', () => {
     // 不留下空气泡占着列表("主 Agent · just now" 但内容为空的怪现象)。
     if (streaming.blocks.length > 0) {
       const msgs = [...getMessages(convId)]
-      msgs.push(streamingToMessage(streaming))
+      // 从当前会话的 agent 列表中查找头像和名称作为兜底（数据库是真相源）
+      const conversationsStore = useConversationsStore()
+      const conv = conversationsStore.conversations.find(c => c.id === convId)
+      const agentMember = conv?.agents.find(a => a.id === agentId)
+      const finalAvatar = agentMember?.avatar ?? streaming.avatar
+      const finalName = agentMember?.name ?? streaming.agentName
+
+      msgs.push({
+        id: streaming.messageId,
+        type: 'agent',
+        agentId: streaming.agentId,
+        agentName: finalName,
+        avatar: finalAvatar,
+        content: (streaming.blocks.find(b => b.type === 'text') as { content: string } | undefined)?.content ?? '',
+        timestamp: streaming.startedAt,
+        blocks: streaming.blocks,
+      })
       setMessages(convId, msgs)
     }
     inner.delete(agentId)

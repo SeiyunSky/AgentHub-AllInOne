@@ -10,7 +10,6 @@ import type { SSEEvent } from '@/types/api'
 const controllers = ref<Map<string, AbortController>>(new Map())
 
 function handleEvent(convId: string, event: SSEEvent) {
-  console.log('[SSE]', convId, event)
   const chatStore = useChatStore()
   const workflowStore = useWorkflowStore()
 
