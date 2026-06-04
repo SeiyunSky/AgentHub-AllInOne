@@ -1,5 +1,5 @@
 <template>
-  <div class="py-8 px-8 pr-12 space-y-5 custom-scrollbar">
+  <div class="py-8 px-8 pr-12 space-y-5 custom-scrollbar" :class="{ 'opacity-70': readonly }">
 
       <!-- Agent Identity: Avatar + Name -->
       <section class="flex items-center gap-4">
@@ -14,6 +14,7 @@
             size="large"
             class="borderless-input"
             input-style="padding: 0; font-size: 28px; font-weight: 600;"
+            :disabled="readonly"
           />
           <p v-if="!draft.name" class="text-[11px] text-on-surface-variant mt-1">Give your agent a memorable name</p>
         </div>
@@ -32,6 +33,7 @@
           placeholder="Brief description of what this agent does..."
           resize="none"
           input-style="padding: 12px 16px; font-size: 13px; resize: none; line-height: 1.5;"
+          :disabled="readonly"
         />
       </section>
 
@@ -45,10 +47,11 @@
           <button
             v-for="p in platformOptions"
             :key="p.value"
-            class="relative flex flex-col items-center gap-2 p-5 rounded-xl border-2 cursor-pointer transition-all duration-200"
+            class="relative flex flex-col items-center gap-2 p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
             :class="draft.type === p.value
               ? 'border-brand bg-brand-light/30 shadow-soft'
               : 'border-outline-variant bg-white hover:border-brand/40 hover:bg-brand-light/10'"
+            :disabled="readonly"
             @click="draft.type = p.value"
           >
             <div
@@ -89,7 +92,8 @@
             <el-icon :size="12"><component :is="skill.icon" /></el-icon>
             {{ skill.label }}
             <button
-              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-black/10 transition-colors"
+              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-black/10 transition-colors disabled:cursor-not-allowed"
+              :disabled="readonly"
               @click="removeSkill(skill.key)"
             >
               <el-icon :size="8"><Close /></el-icon>
@@ -103,7 +107,8 @@
             <el-icon :size="12"><Promotion /></el-icon>
             {{ skill.displayName || skill.name }}
             <button
-              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-black/10 transition-colors"
+              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-black/10 transition-colors disabled:cursor-not-allowed"
+              :disabled="readonly"
               @click="removeApiSkill(skill.id)"
             >
               <el-icon :size="8"><Close /></el-icon>
@@ -121,7 +126,7 @@
           popper-class="skill-picker-popper"
         >
           <template #reference>
-            <button class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium border border-outline-variant bg-white hover:border-brand hover:bg-brand-light/20 transition-all cursor-pointer">
+            <button class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium border border-outline-variant bg-white hover:border-brand hover:bg-brand-light/20 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60" :disabled="readonly">
               <el-icon :size="14"><Plus /></el-icon>
               {{ totalSelected > 0 ? 'Add more skills' : 'Select skills' }}
             </button>
@@ -197,6 +202,7 @@
             resize="none"
             placeholder="### Goals&#10;Define what the agent should accomplish...&#10;&#10;### Skills&#10;List the agent's core capabilities...&#10;&#10;### Workflow&#10;Describe how the agent should work...&#10;&#10;### Constraints&#10;Set boundaries and limitations..."
             input-style="padding: 16px; font-size: 13px; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; line-height: 1.7; resize: none; border: none; box-shadow: none; background: transparent;"
+            :disabled="readonly"
           />
         </div>
       </section>
@@ -215,7 +221,8 @@
           >
             {{ tag }}
             <button
-              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-brand/20 transition-colors"
+              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-brand/20 transition-colors disabled:cursor-not-allowed"
+              :disabled="readonly"
               @click="removeTag(tag)"
             >
               <el-icon :size="8"><Close /></el-icon>
@@ -225,7 +232,8 @@
             v-model="tagInput"
             type="text"
             placeholder="Add tag..."
-            class="flex-1 min-w-[100px] px-2 py-1 text-[13px] outline-none bg-transparent"
+            class="flex-1 min-w-[100px] px-2 py-1 text-[13px] outline-none bg-transparent disabled:cursor-not-allowed"
+            :disabled="readonly"
             @keyup.enter="addTag"
             @blur="addTag"
           />
@@ -244,7 +252,7 @@
             <p class="text-[13px] font-medium text-on-surface">Public Agent</p>
             <p class="text-[12px] text-on-surface-variant">Allow other users to discover and use this agent</p>
           </div>
-          <el-switch v-model="draft.isPublic" />
+          <el-switch v-model="draft.isPublic" :disabled="readonly" />
         </div>
       </section>
 
@@ -259,7 +267,7 @@
             <p class="text-[13px] font-medium text-on-surface">Active</p>
             <p class="text-[12px] text-on-surface-variant">Disabled agents cannot be used in conversations</p>
           </div>
-          <el-switch v-model="draft.isActive" />
+          <el-switch v-model="draft.isActive" :disabled="readonly" />
         </div>
       </section>
 
@@ -277,6 +285,7 @@ import { useSkillsStore } from '@/stores/skills'
 const props = defineProps<{
   draft: AgentDraft
   editMode?: boolean
+  readonly?: boolean
 }>()
 
 const skillsStore = useSkillsStore()

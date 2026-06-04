@@ -48,6 +48,19 @@ def _to_response(agent, skill_repo: SkillRepository) -> AgentResponse:
     return resp
 
 
+def _assert_writable(agent, user_id: str) -> None:
+    """
+    写权限校验：只有创建者本人能改。
+
+    内置 Agent 的 user_id == 'GUGA'（系统用户，无法登录），普通用户
+    永远不会等于它，自然被拒绝。同时也防止用户改其他用户的私有 Agent。
+    """
+    if agent.user_id != user_id:
+        if agent.user_id == "GUGA":
+            raise HTTPException(status_code=403, detail="内置 Agent 不可修改")
+        raise HTTPException(status_code=403, detail="无权修改他人创建的 Agent")
+
+
 @router.get("/agents", response_model=list[AgentResponse])
 def list_agents(
     db: Session = Depends(get_db),
@@ -113,6 +126,7 @@ def update_agent(
     agent = repo.get(agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
+    _assert_writable(agent, user_id)
 
     fields = data.model_dump(exclude_unset=True, exclude={"skill_ids"})
     if "is_public" in fields:
@@ -157,6 +171,7 @@ def delete_agent(
     agent = repo.get(agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
+    _assert_writable(agent, user_id)
     db.delete(agent)
     db.commit()
 
@@ -169,9 +184,11 @@ def activate_agent(
 ):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
-    agent = repo.set_active(agent_id, True)
+    agent = repo.get(agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
+    _assert_writable(agent, user_id)
+    agent = repo.set_active(agent_id, True)
     db.commit()
     return _to_response(agent, skill_repo)
 
@@ -184,9 +201,11 @@ def deactivate_agent(
 ):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
-    agent = repo.set_active(agent_id, False)
+    agent = repo.get(agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
+    _assert_writable(agent, user_id)
+    agent = repo.set_active(agent_id, False)
     db.commit()
     return _to_response(agent, skill_repo)
 
