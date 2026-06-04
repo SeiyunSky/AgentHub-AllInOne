@@ -20,6 +20,7 @@ export interface AgentStreamingState {
   messageId: string
   agentId: string
   agentName: string
+  avatar?: string
   blocks: StreamingBlock[]
   activity: AgentActivity
   currentTool?: string         // 例:"dispatch_to_agent" / "read_thread_result"
@@ -139,6 +140,7 @@ function streamingToMessage(s: AgentStreamingState): AgentMessage {
     type: 'agent',
     agentId: s.agentId,
     agentName: s.agentName,
+    avatar: s.avatar,
     content: (s.blocks.find(b => b.type === 'text') as { content: string } | undefined)?.content ?? '',
     timestamp: s.startedAt,
     blocks: s.blocks,
@@ -302,7 +304,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /** SSE agent_start:为该 agent 起一条新的 streaming 气泡(若已存在则刷新) */
-  function startStreaming(convId: string, agentId: string, agentName: string, messageId: string) {
+  function startStreaming(convId: string, agentId: string, agentName: string, messageId: string, avatar?: string) {
     streamingConvIds.value.add(convId)
     let inner = streamingMap.value.get(convId)
     if (!inner) {
@@ -313,6 +315,7 @@ export const useChatStore = defineStore('chat', () => {
       messageId,
       agentId,
       agentName,
+      avatar,
       blocks: [],
       activity: 'thinking',
       startedAt: new Date(),
