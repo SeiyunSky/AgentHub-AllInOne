@@ -576,6 +576,15 @@ class OrchestratorService:
 
                 # 串行执行每个 tool_call(并行可能引起工具间状态竞争)
                 tool_result_blocks: list[dict[str, Any]] = []
+                # 推 tool_use 块的 SSE 事件需要的依赖,模块顶部 lazy import 防循环
+                from backend.adapters.events import (
+                    BlockStartEvent as _BlockStartEvent,
+                    BlockStopEvent as _BlockStopEvent,
+                )
+                from backend.domain.message import ToolUseBlock as _ToolUseBlock
+                from backend.services.stream_service import (
+                    stream_service as _stream_service,
+                )
                 for call, final_input in resolved_calls:
                     # 被 PRE_TOOL_USE block 的 call:不真正执行,合成 error tool_result
                     # 让 LLM 知道该工具被拒了,自己决定下一步(重试 / 换思路 / 收手)
@@ -593,7 +602,63 @@ class OrchestratorService:
                     # 不修改 LLM SDK 返回的原对象(避免后续轮次读到被改过的字段)
                     effective_call = dataclasses.replace(call, input=final_input)
 
+                    # 推 BlockStart(ToolUseBlock):前端 workflow 据此显示工具调用详情
+                    # (旧版主 Agent loop 完全不推 tool_use SSE,workflow 看不到主 Agent
+                    # 自己调了哪些工具,审批 / dispatch 等关键链路无可视化)。
+                    # call.id 直接当 block_id 用:同次 tool 调用从 LLM 那儿拿到的就这一个 id,
+                    # 跟 tool_result 的 tool_use_id 一致,前端拼接也方便。
+                    base_kwargs = {
+                        "agent_id": "orchestrator",
+                        "thread_id": thread_id,
+                        "message_id": user_message_id,
+                    }
+                    tool_block = _ToolUseBlock(
+                        block_id=call.id,
+                        tool_name=call.name,
+                        input=final_input,
+                        status="running",
+                    )
+                    try:
+                        await _stream_service.push_event(
+                            conversation_id,
+                            _BlockStartEvent(**base_kwargs, block=tool_block),
+                        )
+                    except Exception:
+                        logger.exception(
+                            "orchestrator %s push tool_use block_start failed (non-fatal)",
+                            thread_id,
+                        )
+
                     tool_result = await dispatch_tool_call(effective_call, ctx=tool_ctx)
+
+                    # 推 BlockStop:把 status / output 落到前端 workflow,转圈停下来
+                    final_status = "error" if tool_result.is_error else "completed"
+                    output_text: Optional[str] = None
+                    try:
+                        if tool_result.output is not None:
+                            import json as _json2
+                            output_text = _json2.dumps(
+                                tool_result.output, ensure_ascii=False, default=str
+                            )
+                    except Exception:
+                        output_text = str(tool_result.output)
+                    try:
+                        await _stream_service.push_event(
+                            conversation_id,
+                            _BlockStopEvent(
+                                **base_kwargs,
+                                block_id=call.id,
+                                final_fields={
+                                    "status": final_status,
+                                    "output": output_text,
+                                },
+                            ),
+                        )
+                    except Exception:
+                        logger.exception(
+                            "orchestrator %s push tool_use block_stop failed (non-fatal)",
+                            thread_id,
+                        )
 
                     # POST_TOOL_USE hook(主要给 audit)
                     post_ctx = HookContext(
