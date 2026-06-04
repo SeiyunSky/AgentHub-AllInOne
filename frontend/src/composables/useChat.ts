@@ -2,12 +2,14 @@ import { computed } from 'vue'
 import { chatApi } from '@/api/chat'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
+import { useWorkflowStore } from '@/stores/workflow'
 import { useSSE } from './useSSE'
 import type { SelectedRange } from '@/types/api'
 
 export function useChat() {
   const chatStore = useChatStore()
   const conversationsStore = useConversationsStore()
+  const workflowStore = useWorkflowStore()
   const sse = useSSE()
 
   const convId = computed(() => conversationsStore.currentId)
@@ -49,11 +51,17 @@ export function useChat() {
     const id = conversationsStore.currentId
     if (!id) return
 
+    // 乐观 UI:点击瞬间就把 streaming 气泡 / workflow 节点全部停掉,
+    // 不等 HTTP 响应。后端 stop 流程 + cancel 数据库 UPDATE 慢则几秒,
+    // 等响应再清 UI 用户会感觉卡死。后端推的 round_done 是兜底确认。
+    chatStore.finishStreaming(id)
+    workflowStore.markActiveAsCancelled(id)
+
     try {
       await chatApi.stop({ conversation_id: id })
     } catch {
+      // 失败时也强制断开 SSE,避免连接挂死
       sse.disconnect(id)
-      chatStore.finishStreaming(id)
     }
   }
 

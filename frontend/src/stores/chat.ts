@@ -433,9 +433,13 @@ export const useChatStore = defineStore('chat', () => {
     if (!inner) return
     const streaming = inner.get(agentId)
     if (!streaming) return
-    const msgs = [...getMessages(convId)]
-    msgs.push(streamingToMessage(streaming))
-    setMessages(convId, msgs)
+    // 空 streaming(blocks=[],被 stop 中断时主 Agent 还没产出任何块)直接丢弃,
+    // 不留下空气泡占着列表("主 Agent · just now" 但内容为空的怪现象)。
+    if (streaming.blocks.length > 0) {
+      const msgs = [...getMessages(convId)]
+      msgs.push(streamingToMessage(streaming))
+      setMessages(convId, msgs)
+    }
     inner.delete(agentId)
     if (inner.size === 0) {
       streamingMap.value.delete(convId)
