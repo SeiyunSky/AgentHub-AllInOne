@@ -1,5 +1,5 @@
 <template>
-  <div class="py-8 px-8 pr-12 space-y-5 custom-scrollbar">
+  <div class="py-8 px-8 pr-12 space-y-5 custom-scrollbar" :class="{ 'opacity-70': readonly }">
 
     <!-- Skill Identity: Name + Display Name -->
     <section class="flex items-center gap-4">
@@ -13,7 +13,7 @@
           size="large"
           class="borderless-input"
           input-style="padding: 0; font-size: 28px; font-weight: 600; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace;"
-          :disabled="editMode"
+          :disabled="editMode || readonly"
         />
         <p v-if="!draft.name" class="text-[11px] text-on-surface-variant mt-1">
           English identifier (lowercase, numbers, hyphens, underscores)
@@ -31,6 +31,7 @@
         v-model="draft.displayName"
         placeholder="中文名称（可选）"
         input-style="padding: 10px 16px; font-size: 13px;"
+        :disabled="readonly"
       />
     </section>
 
@@ -47,6 +48,7 @@
         placeholder="Brief description of what this skill does..."
         resize="none"
         input-style="padding: 12px 16px; font-size: 13px; resize: none; line-height: 1.5;"
+        :disabled="readonly"
       />
     </section>
 
@@ -61,6 +63,7 @@
         placeholder="Select category"
         clearable
         style="width: 100%;"
+        :disabled="readonly"
       >
         <el-option
           v-for="cat in categoryOptions"
@@ -86,6 +89,7 @@
           resize="none"
           placeholder="### Overview&#10;Describe the skill's purpose and scope...&#10;&#10;### Instructions&#10;Step-by-step guidance for the agent...&#10;&#10;### Examples&#10;Provide example inputs and outputs...&#10;&#10;### Constraints&#10;Set boundaries and limitations..."
           input-style="padding: 16px; font-size: 13px; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; line-height: 1.7; resize: none; border: none; box-shadow: none; background: transparent;"
+          :disabled="readonly"
         />
       </div>
     </section>
@@ -101,7 +105,7 @@
           <p class="text-[13px] font-medium text-on-surface">Public Skill</p>
           <p class="text-[12px] text-on-surface-variant">Allow other users to discover and use this skill</p>
         </div>
-        <el-switch v-model="draft.isPublic" />
+        <el-switch v-model="draft.isPublic" :disabled="readonly" />
       </div>
     </section>
 
@@ -116,7 +120,7 @@
           <p class="text-[13px] font-medium text-on-surface">Active</p>
           <p class="text-[12px] text-on-surface-variant">Disabled skills cannot be selected by agents</p>
         </div>
-        <el-switch v-model="draft.isActive" />
+        <el-switch v-model="draft.isActive" :disabled="readonly" />
       </div>
     </section>
 
@@ -130,6 +134,7 @@ import type { SkillDraft } from '@/types/skill'
 defineProps<{
   draft: SkillDraft
   editMode: boolean
+  readonly?: boolean
 }>()
 
 const categoryOptions = ['代码', '安全', '领域知识', '通用']
