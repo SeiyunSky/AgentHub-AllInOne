@@ -8,10 +8,14 @@
       >
         <template #headerActions>
           <div class="flex items-center gap-2">
+            <span v-if="isReadOnly" class="text-[11px] text-on-surface-variant px-2 py-1 rounded bg-surface-container">
+              {{ readOnlyTooltip }}（只读）
+            </span>
             <button
               v-if="isEditMode"
               class="h-8 px-4 rounded-lg text-[13px] font-medium border border-red-200 bg-white text-red-500 hover:bg-red-50 hover:border-red-300 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="isDeleting"
+              :disabled="isDeleting || isReadOnly"
+              :title="isReadOnly ? readOnlyTooltip : ''"
               @click="handleDelete"
             >
               <el-icon v-if="isDeleting" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
@@ -25,7 +29,8 @@
             </button>
             <button
               class="h-8 px-4 rounded-lg text-[13px] font-medium bg-gradient-to-r from-brand to-brand-dark text-white shadow-soft hover:shadow-glow hover:-translate-y-px transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              :disabled="isSaving"
+              :disabled="isSaving || isReadOnly"
+              :title="isReadOnly ? readOnlyTooltip : ''"
               @click="handleSave"
             >
               <el-icon v-if="isSaving" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
@@ -57,7 +62,7 @@
               <div class="h-20 rounded-xl bg-surface-container-high shimmer"></div>
             </div>
           </div>
-          <AgentForm v-else :draft="localDraft" :edit-mode="isEditMode" />
+          <AgentForm v-else :draft="localDraft" :edit-mode="isEditMode" :readonly="isReadOnly" />
         </div>
       </PanelContainer>
     </Pane>
@@ -75,6 +80,7 @@ import { User, ArrowRight, ArrowLeft, Loading } from '@element-plus/icons-vue'
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
 import { useAgentsStore } from '@/stores/agents'
+import { useAuthStore } from '@/stores/auth'
 import { agentsApi, type AgentResponse } from '@/api/agents'
 import type { AgentDraft } from '@/types/agent'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
@@ -84,6 +90,18 @@ import ChatPanel from '@/components/layout/ChatPanel.vue'
 const route = useRoute()
 const router = useRouter()
 const agentsStore = useAgentsStore()
+const authStore = useAuthStore()
+
+// 只读判断：编辑模式下，owner 不是当前用户（含内置 GUGA 资源 / 他人创建）→ 只读
+const isReadOnly = computed(() => {
+  if (!isEditMode.value) return false
+  if (!loadedOwnerId.value) return false
+  return loadedOwnerId.value !== authStore.user?.id
+})
+const isBuiltin = computed(() => loadedOwnerId.value === 'GUGA')
+const readOnlyTooltip = computed(() =>
+  isBuiltin.value ? '内置 Agent 不可修改' : '无权修改他人创建的 Agent'
+)
 
 const isSaving = ref(false)
 const isDeleting = ref(false)
@@ -107,6 +125,9 @@ const defaultDraft: AgentDraft = {
 }
 
 const localDraft = ref<AgentDraft>({ ...defaultDraft })
+// 当前 agent 的 owner user_id（从 API 返回的 raw 拿，AgentDraft 不包含此字段）。
+// 用于判断是否可写：当前用户 id !== owner 时只读（包括内置 GUGA 资源）
+const loadedOwnerId = ref<string | null>(null)
 
 function rawToDraft(raw: AgentResponse): AgentDraft {
   return {
@@ -130,8 +151,12 @@ function rawToDraft(raw: AgentResponse): AgentDraft {
 
 async function loadAgentById(id: string) {
   isLoading.value = true
+  // 切换 agent 时立刻清掉旧 owner，避免 loading 期间用上一个 agent 的 readonly 状态
+  loadedOwnerId.value = null
   try {
-    localDraft.value = rawToDraft(await agentsApi.get(id))
+    const raw = await agentsApi.get(id)
+    loadedOwnerId.value = raw.user_id ?? null
+    localDraft.value = rawToDraft(raw)
   } catch {
     ElMessage.error('Failed to load agent')
     router.push({ name: 'agents' })

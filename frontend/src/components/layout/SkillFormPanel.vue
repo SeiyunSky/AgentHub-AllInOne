@@ -6,10 +6,14 @@
   >
     <template #headerActions>
       <div class="flex items-center gap-2">
+        <span v-if="isReadOnly" class="text-[11px] text-on-surface-variant px-2 py-1 rounded bg-surface-container">
+          {{ readOnlyTooltip }}（只读）
+        </span>
         <button
           v-if="isEditMode"
           class="h-8 px-4 rounded-lg text-[13px] font-medium border border-red-200 bg-white text-red-500 hover:bg-red-50 hover:border-red-300 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="isDeleting"
+          :disabled="isDeleting || isReadOnly"
+          :title="isReadOnly ? readOnlyTooltip : ''"
           @click="handleDelete"
         >
           <el-icon v-if="isDeleting" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
@@ -23,7 +27,8 @@
         </button>
         <button
           class="h-8 px-4 rounded-lg text-[13px] font-medium bg-gradient-to-r from-brand to-brand-dark text-white shadow-soft hover:shadow-glow hover:-translate-y-px transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-          :disabled="isSaving"
+          :disabled="isSaving || isReadOnly"
+          :title="isReadOnly ? readOnlyTooltip : ''"
           @click="handleSave"
         >
           <el-icon v-if="isSaving" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
@@ -46,7 +51,7 @@
           <div class="h-20 rounded-xl bg-surface-container-high shimmer"></div>
         </div>
       </div>
-      <SkillForm v-else :draft="localDraft" :edit-mode="isEditMode" />
+      <SkillForm v-else :draft="localDraft" :edit-mode="isEditMode" :readonly="isReadOnly" />
     </div>
   </PanelContainer>
 </template>
@@ -57,6 +62,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { MagicStick, Loading } from '@element-plus/icons-vue'
 import { useSkillsStore } from '@/stores/skills'
+import { useAuthStore } from '@/stores/auth'
 import { skillsApi, type SkillWithContentResponse } from '@/api/skills'
 import type { Skill, SkillDraft } from '@/types/skill'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
@@ -65,6 +71,7 @@ import SkillForm from '@/components/skills/SkillForm.vue'
 const route = useRoute()
 const router = useRouter()
 const skillsStore = useSkillsStore()
+const authStore = useAuthStore()
 
 const isSaving = ref(false)
 const isDeleting = ref(false)
@@ -84,6 +91,19 @@ const defaultDraft: SkillDraft = {
 }
 
 const localDraft = ref<SkillDraft>({ ...defaultDraft })
+// 当前 skill 的 author_id（SkillDraft 不含此字段，单独存来做权限判断）
+const loadedAuthorId = ref<string | null>(null)
+
+// 只读判断：编辑模式下 author 不是当前用户（含内置 GUGA / 他人创建）→ 只读
+const isReadOnly = computed(() => {
+  if (!isEditMode.value) return false
+  if (!loadedAuthorId.value) return false
+  return loadedAuthorId.value !== authStore.user?.id
+})
+const isBuiltin = computed(() => loadedAuthorId.value === 'GUGA')
+const readOnlyTooltip = computed(() =>
+  isBuiltin.value ? '内置 Skill 不可修改' : '无权修改他人创建的 Skill'
+)
 
 function toDraft(raw: SkillWithContentResponse): SkillDraft {
   return {
@@ -112,37 +132,36 @@ function toSkill(raw: SkillWithContentResponse): Skill {
   }
 }
 
+async function loadSkillById(id: string) {
+  isLoading.value = true
+  // 清掉旧 author，避免 loading 期间残留上一个 skill 的 readonly 状态
+  loadedAuthorId.value = null
+  try {
+    const raw = await skillsApi.get(id)
+    loadedAuthorId.value = raw.author_id ?? null
+    localDraft.value = toDraft(raw)
+  } catch {
+    ElMessage.error('Failed to load skill')
+    router.push({ name: 'skills' })
+  } finally {
+    isLoading.value = false
+  }
+}
+
 // Load skill data when editing
 onMounted(async () => {
   if (isEditMode.value) {
-    isLoading.value = true
-    try {
-      const raw = await skillsApi.get(skillId.value!)
-      localDraft.value = toDraft(raw)
-    } catch {
-      ElMessage.error('Failed to load skill')
-      router.push({ name: 'skills' })
-    } finally {
-      isLoading.value = false
-    }
+    await loadSkillById(skillId.value!)
   }
 })
 
 // Watch route param changes (navigating between different skills)
 watch(skillId, async (newId) => {
   if (newId) {
-    isLoading.value = true
-    try {
-      const raw = await skillsApi.get(newId)
-      localDraft.value = toDraft(raw)
-    } catch {
-      ElMessage.error('Failed to load skill')
-      router.push({ name: 'skills' })
-    } finally {
-      isLoading.value = false
-    }
+    await loadSkillById(newId)
   } else {
     localDraft.value = { ...defaultDraft }
+    loadedAuthorId.value = null
   }
 })
 
