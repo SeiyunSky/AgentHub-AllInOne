@@ -167,9 +167,9 @@ class SkillService:
         skill = self._repo.get(skill_id)
         if skill is None:
             return None
-        # 内置 Skill（author_id='GUGA'）允许任何用户编辑；用户 Skill 只允许本人
-        owner = str(skill.author_id)
-        if owner != "GUGA" and owner != author_id:
+        # 只有创建者本人能改：内置 Skill 的 author_id='GUGA'（系统用户，无法登录），
+        # 普通用户永远不会等于它，自然被拒绝。同时也防止用户改其他用户的私有 Skill。
+        if str(skill.author_id) != author_id:
             return None
 
         fields = data.model_dump(exclude_unset=True)
@@ -189,8 +189,8 @@ class SkillService:
         skill = self._repo.get(skill_id)
         if skill is None:
             return False
-        owner = str(skill.author_id)
-        if owner != "GUGA" and owner != author_id:
+        # 只有创建者本人能删：内置 Skill 的 author_id='GUGA' 与任何登录用户都不等
+        if str(skill.author_id) != author_id:
             return False
 
         # 先删本地 .md 文件，再删 DB 行（顺序不可颠倒：DB 行是文件路径的来源）

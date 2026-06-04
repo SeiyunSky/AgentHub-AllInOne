@@ -53,6 +53,7 @@ from backend.schemas.orchestrator_tools import (
     CreateTaskPlanInput,
     DispatchToAgentInput,
     EditFileInput,
+    DeployAppInput,
     GetAgentCapabilitiesInput,
     ListAvailableAgentsInput,
     ListDirectoryInput,
@@ -83,7 +84,7 @@ logger = logging.getLogger(__name__)
 
 # 主 Agent 在 SSE 中的 agent_id 约定 —— 复用 Step 3 service.py 里的常量
 _ORCHESTRATOR_AGENT_ID = "orchestrator"
-_ORCHESTRATOR_AGENT_NAME = "主 Agent"
+_ORCHESTRATOR_AGENT_NAME = "Orchestrator"
 
 
 # ============================================================
@@ -148,10 +149,10 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
 
     session = SessionLocal()
     try:
-        # 查用户原始消息文本
+        # 查用户原始消息文本(让子 Agent 知道用户原话,不只是主 Agent 改写过的派活指令)
+        # 身份 / 角色 / 群聊成员等基础信息由 thread_service._build_runtime_context_header
+        # 统一注入 system_prompt,这里只补充 dispatch_prompt 级别的"用户原始请求"语境。
         from backend.repositories.message_repo import MessageRepository
-        from backend.repositories.conversation_repo import ConversationRepository
-        from backend.repositories.agent_repo import AgentRepository as _AgentRepo
 
         user_msg_text = ""
         user_msg = MessageRepository(session).get(ctx.user_message_id)
@@ -161,36 +162,11 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
                     user_msg_text = block.get("content", "")
                     break
 
-        # 查群聊成员列表
-        conv = ConversationRepository(session).get(ctx.conversation_id)
-        member_lines: list[str] = []
-        self_agent_name = parsed.agent_id
-        if conv and conv.mode == "group":
-            agent_ids = ConversationRepository(session).list_active_agent_ids(ctx.conversation_id)
-            for aid in agent_ids:
-                agent = _AgentRepo(session).get(aid)
-                if agent is None:
-                    continue
-                if aid == parsed.agent_id:
-                    self_agent_name = agent.name
-                # 取 system_prompt 第一行作简介，截断到 60 字符
-                brief = ""
-                if agent.system_prompt:
-                    first_line = agent.system_prompt.strip().splitlines()[0]
-                    brief = first_line[:60] + ("…" if len(first_line) > 60 else "")
-                member_lines.append(f"- {agent.name}（{brief}）" if brief else f"- {agent.name}")
-
-        # 仅群聊且能拿到有效信息时注入 context header
-        if conv and conv.mode == "group" and (user_msg_text or member_lines):
-            header_parts = ["=== 群聊上下文 ==="]
-            if user_msg_text:
-                header_parts.append(f"用户原始请求：{user_msg_text}")
-            if member_lines:
-                header_parts.append("当前群聊成员：")
-                header_parts.extend(member_lines)
-            header_parts.append(f"你的角色：{self_agent_name}")
-            header_parts.append("==================")
-            final_prompt = "\n".join(header_parts) + "\n\n" + final_prompt
+        if user_msg_text:
+            final_prompt = (
+                f"[用户原始请求]\n{user_msg_text}\n\n"
+                f"[主 Agent 派给你的具体任务]\n{final_prompt}"
+            )
 
         ts = ThreadService(session)
         thread = ts.create_thread(
@@ -713,7 +689,23 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
     前端展示 Approve/Reject 按钮，用户决策后通过 POST /api/v1/approvals/{block_id}/decide 回流。
     """
     import asyncio
+    import json as _json_inner
     from backend.hooks.approval import _pending_approvals, _PendingApproval, _APPROVAL_TIMEOUT_SECONDS
+
+    # LLM 经常把嵌套对象字段当 string 传(Anthropic API 在嵌套 schema 上的概率性行为):
+    # plan 应该是 dict 但实际收到 '{"tasks": [...]}' string,直接 model_validate 会
+    # 抛 ValidationError 让函数早退,审批气泡推不出来。
+    # 这里宽容兜底:遇到 string 就 json.loads 一次再喂给 pydantic。
+    if isinstance(tool_input, dict):
+        plan_field = tool_input.get("plan")
+        if isinstance(plan_field, str):
+            try:
+                tool_input = {**tool_input, "plan": _json_inner.loads(plan_field)}
+            except Exception:
+                logger.warning(
+                    "present_task_plan_for_review: plan 字段是 string 但 json.loads 失败,"
+                    "原样交给 pydantic 报错"
+                )
 
     parsed = PresentTaskPlanForReviewInput.model_validate(tool_input)
 
@@ -726,13 +718,11 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
         plan_text_lines.append(f"{i}. **{task.agent_id}**{deps}\n   {task.prompt}")
     plan_detail = "\n".join(plan_text_lines)
 
-    # 2. 生成 block_id，注册待审批
+    # 2. 生成 block_id(消息 + _PendingApproval 都用同一个)
     block_id = gen_uuid()
-    pending = _PendingApproval(block_id=block_id, event=asyncio.Event())
-    _pending_approvals[block_id] = pending
 
     try:
-        # 3. 落 ApprovalBlock 消息
+        # 3. 落 ApprovalBlock 消息(独立消息,不混进主 Agent streaming 气泡)
         approval_block = ApprovalBlock(
             block_id=block_id,
             action="present_task_plan_for_review",
@@ -745,15 +735,51 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
             sender=_ORCHESTRATOR_AGENT_NAME,
         )
 
-        # 4. 推 SSE ApprovalBlock
-        base = {
-            "agent_id": _ORCHESTRATOR_AGENT_ID,
-            "thread_id": ctx.thread_id,
-            "message_id": msg.id,
+        # 4. 用拿到的真 message_id 注册 pending —— 必须在推 SSE 之前完成,
+        # 否则用户秒点 Approve 时 decide() 写库会拿不到 message_id
+        pending = _PendingApproval(
+            block_id=block_id,
+            message_id=msg.id,
+            event=asyncio.Event(),
+        )
+        _pending_approvals[block_id] = pending
+
+        # 5. 推 MessageAppendedEvent(独立消息走非 streaming 路径)
+        # 不能用 BlockStartEvent: 那会让前端把 approval 块塞进主 Agent streaming
+        # 气泡,前端 ApprovalBlock 拿到的 message_id 是 streaming 占位 thread_id 而非
+        # 真 msg.id, resolveApproval 在 messageMap 里找不到 → "审批了还是 Waiting"。
+        from backend.adapters.events import MessageAppendedEvent
+        # ORM Message.content 在 schema 里叫 blocks,不能用 from_attributes=True
+        # (那会找 msg.blocks 属性,ORM 没有,导致前端拿到空消息)。
+        # 手动 dict 构造,字段映射照 api/v1/conversations.py:_message_orm_to_response
+        msg_payload = {
+            "id": msg.id,
+            "conversation_id": msg.conversation_id,
+            "thread_id": msg.thread_id,
+            "parent_id": getattr(msg, "parent_id", None),
+            "user_id": msg.user_id,
+            "agent_id": msg.agent_id,
+            "agent_avatar": None,
+            "role": msg.role,
+            "blocks": msg.content or [],  # DB 列叫 content,API 字段叫 blocks
+            "status": msg.status,
+            "error_message": msg.error_message,
+            "model": msg.model,
+            "sender": msg.sender,
+            "tokens_input": msg.tokens_input,
+            "tokens_output": msg.tokens_output,
+            "latency_ms": msg.latency_ms,
+            "feedback": msg.feedback,
+            "selected_range": msg.selected_range,
+            "is_deleted": bool(msg.is_deleted),
+            "created_at": msg.created_at.isoformat() if msg.created_at else None,
         }
         await stream_service.push_event(
             ctx.conversation_id,
-            BlockStartEvent(**base, block=approval_block),
+            MessageAppendedEvent(
+                conversation_id=ctx.conversation_id,
+                message=msg_payload,
+            ),
         )
 
         logger.info(
@@ -761,7 +787,7 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
             block_id, ctx.conversation_id,
         )
 
-        # 5. 阻塞等待用户审批
+        # 6. 阻塞等待用户审批
         try:
             await asyncio.wait_for(
                 pending.event.wait(),
@@ -1028,4 +1054,179 @@ async def list_directory(tool_input: dict[str, Any], *, ctx: ToolContext) -> dic
     return {
         "path": _relative_to_sandbox(ctx, abs_path),
         "entries": entries,
+    }
+
+
+# ============================================================
+# F. 部署 (1)
+# ============================================================
+
+@register_tool(
+    name="deploy_app",
+    description=(
+        "部署沙箱里的 Python 应用到 AgentHub 内置 Docker 容器,返回可访问 URL。"
+        "调用前应该先让审查 Agent 做部署前合规检查(见 deployment_workflow skill)。"
+        "高危工具,会触发用户审批。"
+    ),
+    input_model=DeployAppInput,
+)
+async def deploy_app(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
+    """
+    部署流程:
+    1. 检查沙箱有 entry_point 文件
+    2. ensure_image() 确保 agenthub-runtime 镜像已就绪
+    3. 复用已有容器(同 conv_id)或起新容器(挂载沙箱目录到 /app)
+    4. 容器内 pkill -f uvicorn 杀旧进程(支持重 deploy)
+    5. 容器内 pip install -r requirements.txt(如有)
+    6. 容器内后台启 uvicorn {entry_module}:app --host 0.0.0.0 --port 8000
+    7. 健康检查:5 秒内 curl localhost:8000/ 返回 200
+    8. 返回 { url, status, logs }
+
+    返回 url 是 AgentHub reverse proxy 路径(/preview/{conv_id}/),需要 Phase 2.D
+    路由实装后才能真访问。
+    """
+    import asyncio as _asyncio
+    from backend.services.docker_runtime import get_docker_runtime
+
+    parsed = DeployAppInput.model_validate(tool_input)
+
+    # Step 1: entry 文件存在?
+    entry_abs = _resolve_sandbox_path(ctx, parsed.entry_point)
+    if not entry_abs.exists() or not entry_abs.is_file():
+        return {
+            "status": "error",
+            "error": f"entry_point {parsed.entry_point!r} 不存在或不是文件",
+            "logs": "",
+        }
+
+    # entry 模块名:app.py → "app", path/to/main.py → "path.to.main"
+    sandbox_root = _resolve_sandbox_path(ctx, "")
+    entry_rel = entry_abs.relative_to(sandbox_root)
+    entry_module = ".".join(entry_rel.with_suffix("").parts)
+
+    runtime = get_docker_runtime()
+
+    # Step 2: 镜像就绪
+    try:
+        await runtime.ensure_image()
+    except Exception as exc:
+        logger.exception("deploy_app: ensure_image failed conv=%s", ctx.conversation_id)
+        return {
+            "status": "error",
+            "error": f"Docker 运行时不可用: {exc}",
+            "logs": "",
+        }
+
+    # Step 3: 拿 / 起容器
+    try:
+        handle = await runtime.get_container(ctx.conversation_id)
+        if handle is None:
+            handle = await runtime.start_container(ctx.conversation_id, sandbox_root)
+    except Exception as exc:
+        logger.exception("deploy_app: start_container failed conv=%s", ctx.conversation_id)
+        return {
+            "status": "error",
+            "error": f"容器启动失败: {exc}",
+            "logs": "",
+        }
+
+    container_id = handle.container_id
+    accumulated_logs: list[str] = []
+
+    # Step 4: 杀旧 uvicorn (重 deploy 支持) —— 失败也无所谓,可能本来就没旧的
+    try:
+        await runtime.exec_in_container(container_id, "pkill -f uvicorn || true")
+    except Exception:
+        pass
+
+    # Step 5: pip install requirements (如有)
+    req_file = sandbox_root / "requirements.txt"
+    if req_file.exists():
+        try:
+            install_result = await runtime.exec_in_container(
+                container_id,
+                "pip install --no-cache-dir -r requirements.txt 2>&1 | tail -20",
+            )
+            accumulated_logs.append(f"[pip install]\n{install_result.output}")
+            if install_result.exit_code != 0:
+                return {
+                    "status": "error",
+                    "error": "pip install 失败,可能引用了清单外的依赖",
+                    "logs": "\n".join(accumulated_logs),
+                }
+        except Exception as exc:
+            logger.exception("deploy_app: pip install failed")
+            return {
+                "status": "error",
+                "error": f"pip install 异常: {exc}",
+                "logs": "\n".join(accumulated_logs),
+            }
+
+    # Step 6: 启 uvicorn (后台)
+    # nohup + 重定向 log 到 /app/.deploy.log,出错时方便看
+    # 使用 detach=True,exec 立即返回不阻塞
+    uvicorn_cmd = (
+        f"nohup uvicorn {entry_module}:app --host 0.0.0.0 --port 8000 "
+        f"> /app/.deploy.log 2>&1 &"
+    )
+    try:
+        await runtime.exec_in_container(container_id, uvicorn_cmd, detach=True)
+    except Exception as exc:
+        logger.exception("deploy_app: uvicorn start failed")
+        return {
+            "status": "error",
+            "error": f"uvicorn 启动失败: {exc}",
+            "logs": "\n".join(accumulated_logs),
+        }
+
+    # Step 7: 健康检查 —— 等容器内 8000 端口响应
+    healthy = False
+    last_check_output = ""
+    for _ in range(10):  # 最多等 5 秒
+        await _asyncio.sleep(0.5)
+        try:
+            # curl 在镜像里有装(Dockerfile 里 apt install curl)
+            # -s 静默,-o /dev/null 不输出 body,-w "%{http_code}" 只输出状态码
+            check = await runtime.exec_in_container(
+                container_id,
+                'curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ || echo "000"',
+            )
+            last_check_output = check.output.strip()
+            # 任何 2xx / 3xx / 4xx 都算"服务起来了" (404 也是有 server 在响应)
+            # 5xx / 000 (curl 失败) 才算 unhealthy
+            if last_check_output and last_check_output[0] in ("2", "3", "4"):
+                healthy = True
+                break
+        except Exception:
+            pass
+
+    if not healthy:
+        # 抓最后部署日志返回给 LLM 排错
+        try:
+            log_result = await runtime.exec_in_container(
+                container_id,
+                "tail -30 /app/.deploy.log 2>/dev/null || true",
+            )
+            accumulated_logs.append(f"[uvicorn .deploy.log tail]\n{log_result.output}")
+        except Exception:
+            pass
+        return {
+            "status": "error",
+            "error": f"应用启动后健康检查失败 (last_http_code={last_check_output!r})",
+            "logs": "\n".join(accumulated_logs),
+        }
+
+    # Step 8: 成功 —— 返回 URL
+    # URL 是 AgentHub reverse proxy 路径,需要 Phase 2.D 接通才能真访问
+    url = f"/preview/{ctx.conversation_id}/"
+    accumulated_logs.append(f"[deploy_app] healthy at {url}")
+    logger.info(
+        "deploy_app success conv=%s entry=%s url=%s",
+        ctx.conversation_id, parsed.entry_point, url,
+    )
+    return {
+        "status": "running",
+        "url": url,
+        "entry_point": parsed.entry_point,
+        "logs": "\n".join(accumulated_logs),
     }

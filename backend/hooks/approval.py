@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 _HIGH_RISK_TOOLS: frozenset[str] = frozenset({
     "create_file",
     "edit_file",
+    "deploy_app",          # 启 Docker 容器跑用户代码,对外暴露 URL,必须用户审批
     # TODO: 等以下工具实装后加入
     #   "web_search"  网页查找类工具
     #   "run_command" / "bash"  shell 命令执行类工具
@@ -266,7 +267,6 @@ class ApprovalHook(SyncHook):
         返回创建的 message_id(供 _PendingApproval 记录,decide 时回写持久化字段);
         落库失败返回 None,调用方自行兜底。
         """
-        from backend.adapters.events import BlockStartEvent
         from backend.domain.message import ApprovalBlock
         from backend.services.message_service import message_service
         from backend.services.stream_service import stream_service
@@ -299,12 +299,47 @@ class ApprovalHook(SyncHook):
             )
             return None
 
+        # 关键:用 MessageAppendedEvent 推送(独立消息),不要用 BlockStartEvent。
+        # BlockStartEvent 会被 chatStore.appendBlock 错塞到主 Agent 当前的 streaming
+        # 气泡里(approval message 是 hook 新建的独立消息,有自己的 message_id),
+        # 导致:
+        # 1) ApprovalBlock 组件拿到的 message_id 是 streaming 占位的 thread_id,
+        #    resolveApproval 在 messageMap 里找不到 → UI 不更新 → "审批了还是 Waiting"
+        # 2) approve 后主 Agent loop 继续推后续 block 事件,前端 streaming 状态错位
+        #    → 用户必须刷新才看到完整结果
+        # MessageAppendedEvent 走非 streaming 路径,前端直接 append 一条完整消息,
+        # 与主 Agent streaming 气泡完全解耦。
         try:
-            event = BlockStartEvent(
-                agent_id=ctx.agent_id or "",
-                thread_id=ctx.thread_id or "",
-                message_id=message_id or "",
-                block=approval_block,
+            from backend.adapters.events import MessageAppendedEvent
+            # ORM Message.content 在 schema 里叫 blocks(DB 列叫 content,API 字段叫 blocks),
+            # 所以不能用 model_validate(msg, from_attributes=True) — 那会去找 msg.blocks
+            # 属性,ORM 没有,导致 blocks=[] 前端拿到空消息,审批气泡里啥都没有。
+            # 手动构造 dict,字段映射照 conversations.py:_message_orm_to_response
+            msg_payload = {
+                "id": msg.id,
+                "conversation_id": msg.conversation_id,
+                "thread_id": msg.thread_id,
+                "parent_id": getattr(msg, "parent_id", None),
+                "user_id": msg.user_id,
+                "agent_id": msg.agent_id,
+                "agent_avatar": None,
+                "role": msg.role,
+                "blocks": msg.content or [],  # DB 列叫 content,API 字段叫 blocks
+                "status": msg.status,
+                "error_message": msg.error_message,
+                "model": msg.model,
+                "sender": msg.sender,
+                "tokens_input": msg.tokens_input,
+                "tokens_output": msg.tokens_output,
+                "latency_ms": msg.latency_ms,
+                "feedback": msg.feedback,
+                "selected_range": msg.selected_range,
+                "is_deleted": bool(msg.is_deleted),
+                "created_at": msg.created_at.isoformat() if msg.created_at else None,
+            }
+            event = MessageAppendedEvent(
+                conversation_id=ctx.conversation_id or "",
+                message=msg_payload,
             )
             await stream_service.push_event(ctx.conversation_id or "", event)
         except Exception:

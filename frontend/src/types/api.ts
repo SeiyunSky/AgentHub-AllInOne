@@ -143,6 +143,7 @@ export interface AgentStartEvent {
   thread_id: string
   message_id: string
   agent_name: string
+  agent_avatar?: string
   timestamp: string
 }
 

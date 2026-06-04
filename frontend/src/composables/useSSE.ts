@@ -4,6 +4,7 @@ import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useSandboxFilesStore } from '@/stores/sandboxFiles'
+import { useDeploymentsStore } from '@/stores/deployments'
 import type { SSEEvent } from '@/types/api'
 
 const controllers = ref<Map<string, AbortController>>(new Map())
@@ -15,7 +16,7 @@ function handleEvent(convId: string, event: SSEEvent) {
 
   switch (event.type) {
     case 'agent_start':
-      chatStore.startStreaming(convId, event.agent_id, event.agent_name, event.message_id)
+      chatStore.startStreaming(convId, event.agent_id, event.agent_name, event.message_id, event.agent_avatar)
       workflowStore.onAgentStart(convId, {
         agentId: event.agent_id,
         agentName: event.agent_name,
@@ -52,6 +53,30 @@ function handleEvent(convId: string, event: SSEEvent) {
       chatStore.finishBlock(convId, event.block_id, event.final_fields, event.agent_id)
       workflowStore.onBlockStop(convId, event.thread_id, event.block_id,
         typeof event.final_fields?.content === 'string' ? event.final_fields.content : undefined)
+      // 捕获 deploy_app 工具调用结果,落到 deployments store
+      // (主 Agent 调 deploy_app 工具,后端在 final_fields 里带 tool_name + output JSON)
+      if (event.final_fields?.tool_name === 'deploy_app') {
+        try {
+          const out = typeof event.final_fields.output === 'string'
+            ? JSON.parse(event.final_fields.output)
+            : event.final_fields.output
+          const status = (event.final_fields.status === 'completed' && out?.status === 'running')
+            ? 'running' : 'error'
+          useDeploymentsStore().addDeployment({
+            id: event.block_id,
+            conversationId: convId,
+            url: out?.url ?? `/preview/${convId}/`,
+            entryPoint: out?.entry_point ?? 'app.py',
+            status,
+            active: status === 'running',
+            startedAt: Date.now(),
+            logs: out?.logs ?? '',
+            errorMessage: status === 'error' ? (out?.error ?? '部署失败') : undefined,
+          })
+        } catch (e) {
+          console.warn('[SSE] deploy_app result parse failed', e)
+        }
+      }
       break
 
     case 'agent_done':
@@ -72,6 +97,8 @@ function handleEvent(convId: string, event: SSEEvent) {
       // 同步 workflow:把所有还在 running 的 thread 节点标 cancelled
       // (stop 流程下后端不会发 agent_done/agent_error,workflow 节点会永远转圈)
       workflowStore.markActiveAsCancelled(convId)
+      // 把当前轮内存中的 workflow 持久化到后端（最新一份会追加到 historyMap 末尾）
+      void workflowStore.persistCurrent(convId)
       // sync last agent message to conversation list preview
       {
         const conversationsStore = useConversationsStore()

@@ -1,0 +1,11 @@
+{
+  "id": "data_squad",
+  "name": "数据分析小队",
+  "description": "业务调研 + 数据分析 + 结论审查三件套。从一个数据问题到可决策的报告。",
+  "icon": "chart",
+  "agent_ids": [
+    "agent-research-data",
+    "agent-data-analyst-builtin",
+    "agent-reviewer-data"
+  ]
+}

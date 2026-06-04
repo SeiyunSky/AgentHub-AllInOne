@@ -13,7 +13,7 @@ users — 用户表
 
 from sqlalchemy import Column, String, TIMESTAMP
 
-from backend.models.base import Base, TimestampMixin
+from backend.models.base import Base, UTCTimestamp, TimestampMixin
 
 
 class User(Base, TimestampMixin):
@@ -24,4 +24,4 @@ class User(Base, TimestampMixin):
     password_hash = Column(String(255), nullable=False, comment="bcrypt 哈希")
     email = Column(String(100), unique=True, nullable=True, comment="邮箱")
     display_name = Column(String(100), nullable=True, comment="昵称，前端显示用")
-    last_login_at = Column(TIMESTAMP, nullable=True, comment="上次登录时间")
+    last_login_at = Column(UTCTimestamp, nullable=True, comment="上次登录时间")

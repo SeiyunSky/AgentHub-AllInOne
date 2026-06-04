@@ -2,7 +2,7 @@
   <div class="h-full flex flex-col overflow-hidden">
 
     <!-- Empty state -->
-    <div v-if="threads.length === 0" class="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
+    <div v-if="threads.length === 0 && history.length === 0" class="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
       <div class="w-16 h-16 rounded-2xl flex items-center justify-center"
            style="background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08));">
         <el-icon :size="28" class="text-brand/40"><Share /></el-icon>
@@ -13,11 +13,11 @@
       </div>
     </div>
 
-    <!-- Thread list -->
+    <!-- Thread list（历史 + 当前轮，最新在下） -->
     <div v-else class="flex-1 overflow-y-auto custom-scrollbar px-4 py-4 space-y-2">
 
-      <!-- Stats bar -->
-      <div class="flex items-center gap-3 px-1 mb-3">
+      <!-- Stats bar (only for current round) -->
+      <div v-if="threads.length > 0" class="flex items-center gap-3 px-1 mb-3">
         <span class="text-[11px] text-on-surface-variant/60">
           {{ threads.length }} 个 Agent
         </span>
@@ -32,29 +32,26 @@
         </span>
       </div>
 
-      <TransitionGroup name="thread-enter">
-        <div
-          v-for="(thread, idx) in threads"
-          :key="thread.threadId"
+      <!-- 历史 workflow snapshots（按 createdAt 升序，最新在末尾） -->
+      <template v-for="snap in history" :key="snap.id">
+        <div class="flex items-center gap-2 px-2 py-1">
+          <div class="flex-1 h-px bg-outline-variant/40"></div>
+          <span class="text-[10px] text-on-surface-variant/50 font-medium shrink-0">
+            {{ formatSnapshotTime(snap.createdAt) }}
+          </span>
+          <div class="flex-1 h-px bg-outline-variant/40"></div>
+        </div>
+        <div v-for="thread in snap.threads" :key="`${snap.id}-${thread.threadId}`"
           class="workflow-thread-card rounded-2xl border overflow-hidden"
           :class="threadCardClass(thread.status)"
-          :style="{ animationDelay: `${idx * 0.05}s` }"
         >
-          <!-- Card header -->
           <div class="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
                :class="threadHeaderClass(thread.status)"
-               @click="toggleCollapsed(thread.threadId, isCollapsed(thread))">
-            <!-- Agent avatar -->
-            <div
-              class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 relative"
-              :style="{ background: agentGradient(thread.agentName) }"
-            >
+               @click="toggleCollapsed(`${snap.id}-${thread.threadId}`, isCollapsedKey(`${snap.id}-${thread.threadId}`, thread.status))">
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0"
+                 :style="{ background: agentGradient(thread.agentName) }">
               {{ thread.agentName.charAt(0).toUpperCase() }}
-              <!-- init 等待中的脉冲 -->
-              <span v-if="thread.status === 'init'"
-                class="absolute inset-0 rounded-xl border-2 border-white/40 animate-ping" />
             </div>
-
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-[13px] font-semibold text-on-surface truncate">{{ thread.agentName }}</span>
@@ -62,135 +59,193 @@
                   {{ statusLabel(thread.status) }}
                 </span>
               </div>
-              <!-- 耗时 + token -->
               <div class="text-[11px] text-on-surface-variant mt-0.5 flex items-center gap-1.5 flex-wrap">
-                <span v-if="thread.status !== 'init'" class="font-mono">{{ elapsedTime(thread) }}</span>
                 <template v-if="thread.tokensInput != null || thread.tokensOutput != null">
-                  <span class="text-on-surface-variant/40">·</span>
-                  <span class="font-mono">
-                    ↑{{ thread.tokensInput ?? 0 }} ↓{{ thread.tokensOutput ?? 0 }}
-                  </span>
+                  <span class="font-mono">↑{{ thread.tokensInput ?? 0 }} ↓{{ thread.tokensOutput ?? 0 }}</span>
                 </template>
               </div>
             </div>
-
-            <!-- Status indicator + collapse arrow -->
             <div class="shrink-0 flex items-center gap-1.5">
-              <div v-if="thread.status === 'init'" class="w-5 h-5 rounded-full border-2 border-on-surface-variant/30 border-dashed"></div>
-              <div v-else-if="thread.status === 'running'" class="w-5 h-5 rounded-full border-2 border-brand border-t-transparent animate-spin"></div>
-              <div v-else-if="thread.status === 'suspended'" class="w-5 h-5 rounded-full border-2 border-warning flex items-center justify-center">
-                <div class="w-1.5 h-1.5 rounded-full bg-warning"></div>
-              </div>
-              <el-icon v-else-if="thread.status === 'done'" class="text-success" :size="18"><CircleCheckFilled /></el-icon>
+              <el-icon v-if="thread.status === 'done'" class="text-success" :size="18"><CircleCheckFilled /></el-icon>
               <el-icon v-else-if="thread.status === 'error'" class="text-error" :size="18"><CircleCloseFilled /></el-icon>
               <el-icon v-else-if="thread.status === 'cancelled'" class="text-on-surface-variant/40" :size="18"><RemoveFilled /></el-icon>
               <el-icon
                 class="text-on-surface-variant/40 transition-transform duration-200 ml-0.5"
-                :class="{ 'rotate-180': !isCollapsed(thread) }"
+                :class="{ 'rotate-180': !isCollapsedKey(`${snap.id}-${thread.threadId}`, thread.status) }"
                 :size="14"
               ><ArrowDown /></el-icon>
             </div>
           </div>
-
-          <!-- Block timeline -->
           <Transition name="collapse">
-            <div v-show="!isCollapsed(thread)" v-if="thread.blocks.length > 0" class="px-4 py-2 space-y-1 border-t border-outline-variant/30">
-            <div v-for="block in thread.blocks" :key="block.blockId"
-              class="flex items-start gap-2 py-0.5 group"
-            >
-              <!-- dot -->
-              <div class="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" :class="blockDotClass(block)"></div>
-              <!-- icon -->
-              <el-icon :size="12" class="shrink-0 mt-1" :class="blockIconClass(block)">
-                <component :is="blockIcon(block)" />
-              </el-icon>
-              <!-- label + preview -->
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="text-[11px] text-on-surface-variant font-medium">{{ blockLabel(block) }}</span>
-                  <span v-if="block.finishedAt" class="text-[10px] text-on-surface-variant/40 font-mono">
-                    {{ ((block.finishedAt - block.startedAt) / 1000).toFixed(1) }}s
-                  </span>
-                  <div v-else-if="block.status === 'running'" class="w-2.5 h-2.5 rounded-full border border-brand border-t-transparent animate-spin shrink-0"></div>
-                  <!-- code block: 语言 + 文件名 badge -->
-                  <span v-if="block.type === 'code' && block.language"
-                    class="text-[9px] font-mono px-1 py-0.5 rounded bg-sky-400/15 text-sky-400/80">
-                    {{ block.language }}
-                  </span>
-                  <span v-if="block.type === 'code' && block.filename"
-                    class="text-[9px] font-mono text-on-surface-variant/40 truncate max-w-[120px]">
-                    {{ block.filename }}
-                  </span>
-                </div>
-                <!-- text / thinking block 内容预览 -->
-                <p v-if="(block.type === 'text' || block.type === 'thinking') && block.content"
-                  class="text-[10px] text-on-surface-variant/50 mt-0.5 line-clamp-2 leading-relaxed">
-                  {{ block.content }}
-                </p>
-                <!-- tool_use: 工具参数 JSON 预览 -->
-                <div v-if="block.type === 'tool_use' && block.toolInput"
-                  class="mt-0.5 rounded-lg bg-surface-container-low/80 border border-outline-variant/20 overflow-hidden">
-                  <pre class="text-[9px] text-on-surface-variant/50 font-mono px-2 py-1.5 overflow-x-auto leading-relaxed max-h-[80px] overflow-y-auto">{{ formatToolInput(block.toolInput) }}</pre>
-                </div>
-                <!-- code block: 代码预览 -->
-                <div v-if="block.type === 'code' && block.code"
-                  class="mt-0.5 rounded-lg bg-surface-container-low/80 border border-outline-variant/20 overflow-hidden">
-                  <pre class="text-[9px] text-sky-400/70 font-mono px-2 py-1.5 overflow-x-auto leading-relaxed max-h-[100px] overflow-y-auto">{{ block.code }}</pre>
+            <div v-show="!isCollapsedKey(`${snap.id}-${thread.threadId}`, thread.status)" v-if="thread.blocks.length > 0" class="px-4 py-2 space-y-1 border-t border-outline-variant/30">
+              <div v-for="block in thread.blocks" :key="block.blockId" class="flex items-start gap-2 py-0.5 group">
+                <div class="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" :class="blockDotClass(block)"></div>
+                <el-icon :size="12" class="shrink-0 mt-1" :class="blockIconClass(block)">
+                  <component :is="blockIcon(block)" />
+                </el-icon>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[11px] text-on-surface-variant font-medium">{{ blockLabel(block) }}</span>
+                  </div>
+                  <p v-if="(block.type === 'text' || block.type === 'thinking') && block.content"
+                    class="text-[10px] text-on-surface-variant/50 mt-0.5 line-clamp-2 leading-relaxed">
+                    {{ block.content }}
+                  </p>
                 </div>
               </div>
             </div>
-          </div>
-          </Transition>
-
-          <!-- init 占位提示 -->
-          <Transition name="collapse">
-            <div v-show="!isCollapsed(thread)" v-if="thread.status === 'init'" class="px-4 py-2 border-t border-outline-variant/20">
-              <p class="text-[11px] text-on-surface-variant/40 flex items-center gap-1.5">
-                <span class="inline-block w-1 h-1 rounded-full bg-on-surface-variant/30 animate-bounce"></span>
-                等待依赖任务完成后启动
-              </p>
-            </div>
-          </Transition>
-
-          <!-- suspended 提示 -->
-          <Transition name="collapse">
-            <div v-show="!isCollapsed(thread)" v-if="thread.status === 'suspended'" class="px-4 py-2 border-t border-warning/20 bg-warning/5">
-              <p class="text-[11px] text-warning flex items-center gap-1.5">
-                <el-icon :size="11"><WarningFilled /></el-icon>
-                等待用户审批
-              </p>
-            </div>
-          </Transition>
-
-          <!-- Error -->
-          <Transition name="collapse">
-            <div v-show="!isCollapsed(thread)" v-if="thread.error" class="px-4 py-2.5 border-t border-error/20 bg-error/5">
-              <p class="text-[11px] text-error/80 leading-relaxed break-words">{{ thread.error }}</p>
-            </div>
-          </Transition>
-
-          <!-- cancelled -->
-          <Transition name="collapse">
-            <div v-show="!isCollapsed(thread)" v-if="thread.status === 'cancelled'" class="px-4 py-2 border-t border-outline-variant/20">
-              <p class="text-[11px] text-on-surface-variant/40">已取消</p>
-            </div>
           </Transition>
         </div>
-      </TransitionGroup>
+      </template>
 
-      <!-- Round done divider -->
-      <div v-if="isRoundDone" class="flex items-center gap-2 px-2 py-1 mt-2">
-        <div class="flex-1 h-px bg-outline-variant/60"></div>
-        <span class="text-[10px] text-on-surface-variant/40 font-medium shrink-0">本轮完成</span>
-        <div class="flex-1 h-px bg-outline-variant/60"></div>
-      </div>
+      <!-- 当前轮（streaming 中或刚结束尚未持久化）—— 始终在最下方 -->
+      <template v-if="threads.length > 0">
+        <div v-if="history.length > 0" class="flex items-center gap-2 px-2 py-1">
+          <div class="flex-1 h-px bg-brand/40"></div>
+          <span class="text-[10px] text-brand font-medium shrink-0">本轮</span>
+          <div class="flex-1 h-px bg-brand/40"></div>
+        </div>
+        <TransitionGroup name="thread-enter">
+          <div
+            v-for="(thread, idx) in threads"
+            :key="thread.threadId"
+            class="workflow-thread-card rounded-2xl border overflow-hidden"
+            :class="threadCardClass(thread.status)"
+            :style="{ animationDelay: `${idx * 0.05}s` }"
+          >
+            <!-- Card header -->
+            <div class="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+                 :class="threadHeaderClass(thread.status)"
+                 @click="toggleCollapsed(thread.threadId, isCollapsed(thread))">
+              <div
+                class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 relative"
+                :style="{ background: agentGradient(thread.agentName) }"
+              >
+                {{ thread.agentName.charAt(0).toUpperCase() }}
+                <span v-if="thread.status === 'init'"
+                  class="absolute inset-0 rounded-xl border-2 border-white/40 animate-ping" />
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-[13px] font-semibold text-on-surface truncate">{{ thread.agentName }}</span>
+                  <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0" :class="statusBadgeClass(thread.status)">
+                    {{ statusLabel(thread.status) }}
+                  </span>
+                </div>
+                <div class="text-[11px] text-on-surface-variant mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <span v-if="thread.status !== 'init'" class="font-mono">{{ elapsedTime(thread) }}</span>
+                  <template v-if="thread.tokensInput != null || thread.tokensOutput != null">
+                    <span class="text-on-surface-variant/40">·</span>
+                    <span class="font-mono">↑{{ thread.tokensInput ?? 0 }} ↓{{ thread.tokensOutput ?? 0 }}</span>
+                  </template>
+                </div>
+              </div>
+
+              <div class="shrink-0 flex items-center gap-1.5">
+                <div v-if="thread.status === 'init'" class="w-5 h-5 rounded-full border-2 border-on-surface-variant/30 border-dashed"></div>
+                <div v-else-if="thread.status === 'running'" class="w-5 h-5 rounded-full border-2 border-brand border-t-transparent animate-spin"></div>
+                <div v-else-if="thread.status === 'suspended'" class="w-5 h-5 rounded-full border-2 border-warning flex items-center justify-center">
+                  <div class="w-1.5 h-1.5 rounded-full bg-warning"></div>
+                </div>
+                <el-icon v-else-if="thread.status === 'done'" class="text-success" :size="18"><CircleCheckFilled /></el-icon>
+                <el-icon v-else-if="thread.status === 'error'" class="text-error" :size="18"><CircleCloseFilled /></el-icon>
+                <el-icon v-else-if="thread.status === 'cancelled'" class="text-on-surface-variant/40" :size="18"><RemoveFilled /></el-icon>
+                <el-icon
+                  class="text-on-surface-variant/40 transition-transform duration-200 ml-0.5"
+                  :class="{ 'rotate-180': !isCollapsed(thread) }"
+                  :size="14"
+                ><ArrowDown /></el-icon>
+              </div>
+            </div>
+
+            <Transition name="collapse">
+              <div v-show="!isCollapsed(thread)" v-if="thread.blocks.length > 0" class="px-4 py-2 space-y-1 border-t border-outline-variant/30">
+              <div v-for="block in thread.blocks" :key="block.blockId"
+                class="flex items-start gap-2 py-0.5 group"
+              >
+                <div class="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" :class="blockDotClass(block)"></div>
+                <el-icon :size="12" class="shrink-0 mt-1" :class="blockIconClass(block)">
+                  <component :is="blockIcon(block)" />
+                </el-icon>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[11px] text-on-surface-variant font-medium">{{ blockLabel(block) }}</span>
+                    <span v-if="block.finishedAt" class="text-[10px] text-on-surface-variant/40 font-mono">
+                      {{ ((block.finishedAt - block.startedAt) / 1000).toFixed(1) }}s
+                    </span>
+                    <div v-else-if="block.status === 'running'" class="w-2.5 h-2.5 rounded-full border border-brand border-t-transparent animate-spin shrink-0"></div>
+                    <span v-if="block.type === 'code' && block.language"
+                      class="text-[9px] font-mono px-1 py-0.5 rounded bg-sky-400/15 text-sky-400/80">
+                      {{ block.language }}
+                    </span>
+                    <span v-if="block.type === 'code' && block.filename"
+                      class="text-[9px] font-mono text-on-surface-variant/40 truncate max-w-[120px]">
+                      {{ block.filename }}
+                    </span>
+                  </div>
+                  <p v-if="(block.type === 'text' || block.type === 'thinking') && block.content"
+                    class="text-[10px] text-on-surface-variant/50 mt-0.5 line-clamp-2 leading-relaxed">
+                    {{ block.content }}
+                  </p>
+                  <div v-if="block.type === 'tool_use' && block.toolInput"
+                    class="mt-0.5 rounded-lg bg-surface-container-low/80 border border-outline-variant/20 overflow-hidden">
+                    <pre class="text-[9px] text-on-surface-variant/50 font-mono px-2 py-1.5 overflow-x-auto leading-relaxed max-h-[80px] overflow-y-auto">{{ formatToolInput(block.toolInput) }}</pre>
+                  </div>
+                  <div v-if="block.type === 'code' && block.code"
+                    class="mt-0.5 rounded-lg bg-surface-container-low/80 border border-outline-variant/20 overflow-hidden">
+                    <pre class="text-[9px] text-sky-400/70 font-mono px-2 py-1.5 overflow-x-auto leading-relaxed max-h-[100px] overflow-y-auto">{{ block.code }}</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+            </Transition>
+
+            <Transition name="collapse">
+              <div v-show="!isCollapsed(thread)" v-if="thread.status === 'init'" class="px-4 py-2 border-t border-outline-variant/20">
+                <p class="text-[11px] text-on-surface-variant/40 flex items-center gap-1.5">
+                  <span class="inline-block w-1 h-1 rounded-full bg-on-surface-variant/30 animate-bounce"></span>
+                  等待依赖任务完成后启动
+                </p>
+              </div>
+            </Transition>
+
+            <Transition name="collapse">
+              <div v-show="!isCollapsed(thread)" v-if="thread.status === 'suspended'" class="px-4 py-2 border-t border-warning/20 bg-warning/5">
+                <p class="text-[11px] text-warning flex items-center gap-1.5">
+                  <el-icon :size="11"><WarningFilled /></el-icon>
+                  等待用户审批
+                </p>
+              </div>
+            </Transition>
+
+            <Transition name="collapse">
+              <div v-show="!isCollapsed(thread)" v-if="thread.error" class="px-4 py-2.5 border-t border-error/20 bg-error/5">
+                <p class="text-[11px] text-error/80 leading-relaxed break-words">{{ thread.error }}</p>
+              </div>
+            </Transition>
+
+            <Transition name="collapse">
+              <div v-show="!isCollapsed(thread)" v-if="thread.status === 'cancelled'" class="px-4 py-2 border-t border-outline-variant/20">
+                <p class="text-[11px] text-on-surface-variant/40">已取消</p>
+              </div>
+            </Transition>
+          </div>
+        </TransitionGroup>
+
+        <div v-if="isRoundDone" class="flex items-center gap-2 px-2 py-1 mt-2">
+          <div class="flex-1 h-px bg-outline-variant/60"></div>
+          <span class="text-[10px] text-on-surface-variant/40 font-medium shrink-0">本轮完成</span>
+          <div class="flex-1 h-px bg-outline-variant/60"></div>
+        </div>
+      </template>
     </div>
 
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import {
   Share, CircleCheckFilled, CircleCloseFilled, RemoveFilled,
   WarningFilled, ChatLineRound, Tools, Document, Picture, View, Promotion, ArrowDown,
@@ -210,12 +265,33 @@ function isCollapsed(thread: WorkflowThread): boolean {
   return thread.status !== 'running'
 }
 
-function toggleCollapsed(threadId: string, current: boolean) {
-  collapsed.value = new Map(collapsed.value).set(threadId, !current)
+function isCollapsedKey(key: string, status: string): boolean {
+  if (collapsed.value.has(key)) {
+    return collapsed.value.get(key)!
+  }
+  // 历史卡片默认折叠（除非用户点开）
+  return status !== 'running'
+}
+
+function toggleCollapsed(key: string, current: boolean) {
+  collapsed.value = new Map(collapsed.value).set(key, !current)
 }
 
 const convId = computed(() => conversationsStore.currentId ?? '')
 const threads = computed(() => workflowStore.threadMap.get(convId.value) ?? [])
+const history = computed(() => workflowStore.historyMap.get(convId.value) ?? [])
+
+// 切会话时：清掉离开会话的 streaming 残留 + 加载新会话历史。
+// 离开时若上一会话还在 streaming，threadMap 会被卡在 running 状态没人清——
+// 用户切回时显示陈旧 streaming 气泡。这里在 oldId 上调 clearRound 兜底。
+watch(convId, (newId, oldId) => {
+  if (oldId && oldId !== newId) {
+    workflowStore.clearRound(oldId)
+  }
+  if (newId) {
+    workflowStore.loadHistory(newId)
+  }
+}, { immediate: true })
 
 const isRoundDone = computed(() =>
   threads.value.length > 0 && threads.value.every(t =>
@@ -257,8 +333,14 @@ function formatTokens(n: number): string {
 }
 
 function elapsedTime(thread: WorkflowThread): string {
+  if (thread.startedAt == null) return ''
   const end = thread.finishedAt ?? tick.value
   return ((end - thread.startedAt) / 1000).toFixed(1) + 's'
+}
+
+function formatSnapshotTime(ts: number): string {
+  const d = new Date(ts)
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function statusLabel(s: WorkflowThread['status']) {

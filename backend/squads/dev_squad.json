@@ -1,0 +1,11 @@
+{
+  "id": "dev_squad",
+  "name": "开发小队",
+  "description": "技术调研 + 编码 + 审查三件套。审查 Agent 兼任部署前合规检查,主 Agent 调 deploy_app 工具完成实际部署。",
+  "icon": "code",
+  "agent_ids": [
+    "agent-research-dev",
+    "agent-coder-builtin",
+    "agent-reviewer-dev"
+  ]
+}

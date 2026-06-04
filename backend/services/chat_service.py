@@ -273,21 +273,15 @@ class ChatService:
         agent_id: str,
     ) -> None:
         """@个体特化:resume_or_create 复用历史 Thread,启动调度。"""
-        from backend.repositories.agent_repo import AgentRepository
-
-        # 注入身份锚定 header，防止子 Agent 把自己当主 Agent 响应
-        agent_row = AgentRepository(self.session).get(agent_id)
-        if agent_row:
-            anchor = (
-                f"=== 你的身份 ===\n"
-                f"你在群聊中被用户 @ 直接联系。\n"
-                f"你是「{agent_row.name}」，职责：{agent_row.description or '见 system prompt'}。\n"
-                f"只做你擅长的事，不要扮演主 Agent 或路由消息给其他 Agent。\n"
-                f"================\n\n"
-            )
-            dispatch_prompt = anchor + request.content
-        else:
-            dispatch_prompt = request.content
+        # 注:身份 / 角色 / 群聊成员等基础信息由 thread_service._build_runtime_context_header
+        # 统一注入 system_prompt 顶部,这里不再重复 anchor。
+        # 只保留 @ 个体特化独有的语境信号:让 Agent 知道"是用户在群里 @ 了我",
+        # 而不是"主 Agent 派了个任务给我"——dispatch_prompt 是 Agent message 级语境,
+        # 用前缀提示足够。
+        dispatch_prompt = (
+            "[用户在群聊中直接 @ 了你,这是面向你的请求]\n\n"
+            + request.content
+        )
 
         self.thread_service.resume_or_create(
             conversation_id=request.conversation_id,
