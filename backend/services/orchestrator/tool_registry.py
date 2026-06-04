@@ -99,8 +99,11 @@ def register_tool(
 # 单次工具执行 output 序列化后的最大字节数。超出截断 + 补 "...truncated"
 # 提示，避免单条 tool_result 撑爆 LLM context（Anthropic tools 单 response
 # 内多条 tool_result 会全部进下轮 prompt）。
-# 4KB 是经验值:典型工具输出几百字节,长 read_file 会超;真要读大文件应分批读。
-_TOOL_RESULT_MAX_BYTES = 4 * 1024
+# 16KB:read_conversation_history 等返回多条消息的工具 4KB 经常截断到主 Agent 看
+# 不到关键上下文(原长 30KB+ 直接砍 87%);抬到 16KB 大约能装一二十条短消息,
+# 同时单轮多个 tool_result 累加进 prompt 还在 Claude 200K context 的合理范围。
+# 真要读超大文件仍应分批读。
+_TOOL_RESULT_MAX_BYTES = 16 * 1024
 
 
 def pydantic_to_json_schema(model: type[BaseModel]) -> dict[str, Any]:

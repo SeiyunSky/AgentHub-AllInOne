@@ -909,11 +909,14 @@ async def create_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[s
     # newline='' + content 不带 CR 保证 LF 行尾,避免 Windows 上写出 CRLF
     abs_path.write_text(parsed.content, encoding="utf-8", newline="")
 
+    # tool_result 不带 new_content:LLM 看到自己刚写出去的文件原文会误判
+    # "我得再 read_file 验证下" / "再继续做点啥" 陷入循环。
+    # 只返回路径 + 字节数 + ok,LLM 看到"成功"就会自然 end_turn。
+    # 文件内容已经在 PostExecutionHook 里推 CodeBlock SSE 给前端,前端能看到完整内容。
     return {
+        "ok": True,
         "path": _relative_to_sandbox(ctx, abs_path),
         "size": len(parsed.content.encode("utf-8")),
-        "old_content": "",
-        "new_content": parsed.content,
     }
 
 
@@ -980,11 +983,12 @@ async def edit_file(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str
     new_content = content.replace(parsed.old_text, parsed.new_text, 1)
     abs_path.write_text(new_content, encoding="utf-8", newline="")
 
+    # 同 create_file:不带 old/new_content 给 LLM,避免 LLM 看到原文陷入"再校验一次"循环。
+    # 完整内容由 PostExecutionHook 推 CodeBlock 给前端,前端可见。
     return {
+        "ok": True,
         "path": _relative_to_sandbox(ctx, abs_path),
         "replaced": True,
-        "old_content": content,
-        "new_content": new_content,
     }
 
 
