@@ -23,6 +23,7 @@ export interface WorkflowThread {
   threadId: string
   agentId: string
   agentName: string
+  agentAvatar?: string
   messageId: string
   status: ThreadStatus
   blocks: WorkflowBlock[]
@@ -75,6 +76,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
   function onAgentStart(convId: string, payload: {
     agentId: string
     agentName: string
+    agentAvatar?: string
     threadId: string
     messageId: string
   }) {
@@ -91,6 +93,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       threadId: payload.threadId,
       agentId: payload.agentId,
       agentName: payload.agentName,
+      agentAvatar: payload.agentAvatar,
       messageId: payload.messageId,
       status: 'running',
       blocks: [],

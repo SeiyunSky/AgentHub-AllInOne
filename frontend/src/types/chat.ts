@@ -44,6 +44,7 @@ export interface ChatAgent {
   name: string
   role: string
   status: 'active' | 'processing' | 'idle' | 'error'
+  avatar?: string
 }
 
 export interface ReplyPreview {

@@ -15,8 +15,9 @@
       @click="onSelect(agent)"
       @mouseenter="activeIndex = i"
     >
-      <div class="w-6 h-6 rounded-md bg-brand-light flex items-center justify-center text-brand text-[10px] font-bold shrink-0">
-        {{ agent.name.charAt(0) }}
+      <div class="w-8 h-8 rounded-md shrink-0 overflow-hidden bg-brand-light flex items-center justify-center">
+        <img v-if="agent.avatar" :src="agent.avatar" :alt="agent.name" class="w-full h-full object-cover" />
+        <span v-else class="text-brand text-[10px] font-bold">{{ agent.name.charAt(0) }}</span>
       </div>
       <div class="min-w-0">
         <p class="font-medium truncate">{{ agent.name }}</p>

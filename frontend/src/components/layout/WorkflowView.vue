@@ -48,9 +48,10 @@
           <div class="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
                :class="threadHeaderClass(thread.status)"
                @click="toggleCollapsed(`${snap.id}-${thread.threadId}`, isCollapsedKey(`${snap.id}-${thread.threadId}`, thread.status))">
-            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0"
-                 :style="{ background: agentGradient(thread.agentName) }">
-              {{ thread.agentName.charAt(0).toUpperCase() }}
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 overflow-hidden"
+                 :style="getAgentAvatar(thread) ? {} : { background: agentGradient(thread.agentName) }">
+              <img v-if="getAgentAvatar(thread)" :src="getAgentAvatar(thread)" :alt="thread.agentName" class="w-full h-full object-cover" />
+              <span v-else>{{ thread.agentName.charAt(0).toUpperCase() }}</span>
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
@@ -118,10 +119,11 @@
                  :class="threadHeaderClass(thread.status)"
                  @click="toggleCollapsed(thread.threadId, isCollapsed(thread))">
               <div
-                class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 relative"
-                :style="{ background: agentGradient(thread.agentName) }"
+                class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 relative overflow-hidden"
+                :style="getAgentAvatar(thread) ? {} : { background: agentGradient(thread.agentName) }"
               >
-                {{ thread.agentName.charAt(0).toUpperCase() }}
+                <img v-if="getAgentAvatar(thread)" :src="getAgentAvatar(thread)" :alt="thread.agentName" class="w-full h-full object-cover" />
+                <span v-else>{{ thread.agentName.charAt(0).toUpperCase() }}</span>
                 <span v-if="thread.status === 'init'"
                   class="absolute inset-0 rounded-xl border-2 border-white/40 animate-ping" />
               </div>
@@ -252,9 +254,11 @@ import {
 } from '@element-plus/icons-vue'
 import { useWorkflowStore, type WorkflowThread, type WorkflowBlock } from '@/stores/workflow'
 import { useConversationsStore } from '@/stores/conversations'
+import { useAgentsStore } from '@/stores/agents'
 
 const workflowStore = useWorkflowStore()
 const conversationsStore = useConversationsStore()
+const agentsStore = useAgentsStore()
 
 const collapsed = ref<Map<string, boolean>>(new Map())
 
@@ -309,7 +313,10 @@ const totalTokens = computed(() =>
 // Tick every 100ms to refresh elapsed timers for running threads
 const tick = ref(Date.now())
 let timer: ReturnType<typeof setInterval> | null = null
-onMounted(() => { timer = setInterval(() => { tick.value = Date.now() }, 100) })
+onMounted(() => {
+  agentsStore.loadAgents()
+  timer = setInterval(() => { tick.value = Date.now() }, 100)
+})
 onUnmounted(() => { if (timer) clearInterval(timer) })
 
 // ── Display helpers ──
@@ -325,6 +332,22 @@ function agentGradient(name: string): string {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) & 0xffffffff
   return GRADIENTS[Math.abs(hash) % GRADIENTS.length]
+}
+
+/** 从 agentsStore → conversationStore 逐级 fallback 获取头像 */
+function getAgentAvatar(thread: WorkflowThread): string | undefined {
+  // 1. 优先从 agentsStore 获取（全局 agent 列表）
+  const fromStore = agentsStore.agents.find((a: { id: string; avatar?: string }) => a.id === thread.agentId)?.avatar
+  if (fromStore) return fromStore
+
+  // 2. fallback 到当前会话的 agent 成员列表
+  const conv = conversationsStore.currentConversation
+  if (conv) {
+    const fromConv = conv.agents.find((a: { id: string; avatar?: string }) => a.id === thread.agentId)?.avatar
+    if (fromConv) return fromConv
+  }
+
+  return undefined
 }
 
 function formatTokens(n: number): string {

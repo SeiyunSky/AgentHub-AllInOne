@@ -19,6 +19,7 @@ function handleEvent(convId: string, event: SSEEvent) {
       workflowStore.onAgentStart(convId, {
         agentId: event.agent_id,
         agentName: event.agent_name,
+        agentAvatar: event.agent_avatar,
         threadId: event.thread_id,
         messageId: event.message_id,
       })
