@@ -148,10 +148,10 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
 
     session = SessionLocal()
     try:
-        # 查用户原始消息文本
+        # 查用户原始消息文本(让子 Agent 知道用户原话,不只是主 Agent 改写过的派活指令)
+        # 身份 / 角色 / 群聊成员等基础信息由 thread_service._build_runtime_context_header
+        # 统一注入 system_prompt,这里只补充 dispatch_prompt 级别的"用户原始请求"语境。
         from backend.repositories.message_repo import MessageRepository
-        from backend.repositories.conversation_repo import ConversationRepository
-        from backend.repositories.agent_repo import AgentRepository as _AgentRepo
 
         user_msg_text = ""
         user_msg = MessageRepository(session).get(ctx.user_message_id)
@@ -161,36 +161,11 @@ async def dispatch_to_agent(tool_input: dict[str, Any], *, ctx: ToolContext) -> 
                     user_msg_text = block.get("content", "")
                     break
 
-        # 查群聊成员列表
-        conv = ConversationRepository(session).get(ctx.conversation_id)
-        member_lines: list[str] = []
-        self_agent_name = parsed.agent_id
-        if conv and conv.mode == "group":
-            agent_ids = ConversationRepository(session).list_active_agent_ids(ctx.conversation_id)
-            for aid in agent_ids:
-                agent = _AgentRepo(session).get(aid)
-                if agent is None:
-                    continue
-                if aid == parsed.agent_id:
-                    self_agent_name = agent.name
-                # 取 system_prompt 第一行作简介，截断到 60 字符
-                brief = ""
-                if agent.system_prompt:
-                    first_line = agent.system_prompt.strip().splitlines()[0]
-                    brief = first_line[:60] + ("…" if len(first_line) > 60 else "")
-                member_lines.append(f"- {agent.name}（{brief}）" if brief else f"- {agent.name}")
-
-        # 仅群聊且能拿到有效信息时注入 context header
-        if conv and conv.mode == "group" and (user_msg_text or member_lines):
-            header_parts = ["=== 群聊上下文 ==="]
-            if user_msg_text:
-                header_parts.append(f"用户原始请求：{user_msg_text}")
-            if member_lines:
-                header_parts.append("当前群聊成员：")
-                header_parts.extend(member_lines)
-            header_parts.append(f"你的角色：{self_agent_name}")
-            header_parts.append("==================")
-            final_prompt = "\n".join(header_parts) + "\n\n" + final_prompt
+        if user_msg_text:
+            final_prompt = (
+                f"[用户原始请求]\n{user_msg_text}\n\n"
+                f"[主 Agent 派给你的具体任务]\n{final_prompt}"
+            )
 
         ts = ThreadService(session)
         thread = ts.create_thread(
