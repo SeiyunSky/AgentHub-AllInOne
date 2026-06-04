@@ -4,6 +4,7 @@ import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useSandboxFilesStore } from '@/stores/sandboxFiles'
+import { useDeploymentsStore } from '@/stores/deployments'
 import type { SSEEvent } from '@/types/api'
 
 const controllers = ref<Map<string, AbortController>>(new Map())
@@ -52,6 +53,30 @@ function handleEvent(convId: string, event: SSEEvent) {
       chatStore.finishBlock(convId, event.block_id, event.final_fields, event.agent_id)
       workflowStore.onBlockStop(convId, event.thread_id, event.block_id,
         typeof event.final_fields?.content === 'string' ? event.final_fields.content : undefined)
+      // 捕获 deploy_app 工具调用结果,落到 deployments store
+      // (主 Agent 调 deploy_app 工具,后端在 final_fields 里带 tool_name + output JSON)
+      if (event.final_fields?.tool_name === 'deploy_app') {
+        try {
+          const out = typeof event.final_fields.output === 'string'
+            ? JSON.parse(event.final_fields.output)
+            : event.final_fields.output
+          const status = (event.final_fields.status === 'completed' && out?.status === 'running')
+            ? 'running' : 'error'
+          useDeploymentsStore().addDeployment({
+            id: event.block_id,
+            conversationId: convId,
+            url: out?.url ?? `/preview/${convId}/`,
+            entryPoint: out?.entry_point ?? 'app.py',
+            status,
+            active: status === 'running',
+            startedAt: Date.now(),
+            logs: out?.logs ?? '',
+            errorMessage: status === 'error' ? (out?.error ?? '部署失败') : undefined,
+          })
+        } catch (e) {
+          console.warn('[SSE] deploy_app result parse failed', e)
+        }
+      }
       break
 
     case 'agent_done':

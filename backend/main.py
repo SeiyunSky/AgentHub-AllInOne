@@ -131,9 +131,70 @@ async def lifespan(app: FastAPI):
         "POST_TOOL_USE=[PostExecutionHook]"
     )
 
+    # ---- Docker runtime: 镜像准备 + 闲置容器周期回收 ----
+    # 整段包在 try 外层:任何失败(SDK 没装 / Docker daemon 不通 / 镜像 build 失败)
+    # 都不阻塞 AgentHub 主流程,只让 deploy_app 工具在被调用时才报错。
+    # 第一次 ensure_image 可能耗时 3-5 分钟(下载 base + pip install)。
+    docker_runtime = None
+    idle_cleanup_task = None
+    try:
+        from backend.services.docker_runtime import get_docker_runtime
+        docker_runtime = get_docker_runtime()
+        try:
+            await docker_runtime.ensure_image()
+        except RuntimeError as exc:
+            # Docker daemon 不通是预期场景 (Docker Desktop 没启动),
+            # 不打全栈,只 warning 提示用户启 Docker
+            logger.warning(
+                "docker_runtime.ensure_image skipped: %s "
+                "(deploy_app 工具暂时不可用,启动 Docker Desktop 后自动恢复)", exc,
+            )
+        except Exception:
+            logger.exception(
+                "docker_runtime.ensure_image failed (non-fatal); "
+                "deploy_app will fail until image is available"
+            )
+
+        # 后台 task: 每 5 分钟扫一次,30 分钟无流量的容器停掉
+        async def _idle_cleanup_loop():
+            while True:
+                try:
+                    await asyncio.sleep(300)
+                    n = await docker_runtime.stop_idle(idle_minutes=30)
+                    if n:
+                        logger.info("docker_runtime: reaped %d idle container(s)", n)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    logger.exception("docker_runtime idle cleanup iteration failed")
+
+        idle_cleanup_task = asyncio.create_task(_idle_cleanup_loop())
+    except ImportError:
+        logger.warning(
+            "docker SDK 未安装 (pip install docker==7.1.0),deploy_app 工具不可用"
+        )
+    except Exception:
+        logger.exception("Docker runtime 初始化失败 (non-fatal),deploy_app 工具不可用")
+
     yield
 
     logger.info("AgentHub backend shutting down...")
+
+    # ---- 取消 idle cleanup ----
+    if idle_cleanup_task is not None:
+        idle_cleanup_task.cancel()
+        try:
+            await idle_cleanup_task
+        except (asyncio.CancelledError, Exception):
+            pass
+
+    # ---- 停所有 agenthub-* 容器 ----
+    if docker_runtime is not None:
+        try:
+            await docker_runtime.shutdown()
+        except Exception:
+            logger.exception("docker_runtime.shutdown failed")
+
     # ---- adapter registry shutdown ----
     try:
         await adapter_registry.shutdown()
@@ -194,6 +255,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     from backend.api.v1 import approvals as approvals_router
     from backend.api.v1 import squads as squads_router
     from backend.api.v1 import sandbox as sandbox_router
+    from backend.api.v1 import preview as preview_router
 
     app.include_router(auth_router.router, prefix="/api/v1", tags=["auth"])
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
@@ -209,6 +271,9 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app.include_router(approvals_router.router, prefix="/api/v1", tags=["approvals"])
     app.include_router(squads_router.router, prefix="/api/v1", tags=["squads"])
     app.include_router(sandbox_router.router, prefix="/api/v1", tags=["sandbox"])
+    # preview 不带 /api/v1 前缀:用户分享的 URL 是 http://host/preview/{conv_id}/,
+    # 浏览器直接访问的 deploy 应用,不属于 API 范畴
+    app.include_router(preview_router.router, tags=["preview"])
 
     # 静态资源：头像等图片文件
     _static_dir = Path(__file__).parent / "static"

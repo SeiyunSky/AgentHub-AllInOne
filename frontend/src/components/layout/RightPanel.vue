@@ -6,45 +6,10 @@
     :status="workflowStatus"
     :status-dot="activeTab === 'workflow'"
   >
-    <!-- 三 Tab 同级内容 -->
-    <WorkflowView v-if="activeTab === 'workflow'" />
-    <SandboxFilesView v-else-if="activeTab === 'files'" />
-    <ArtifactRouter v-else :mode="previewMode" />
-
-    <!-- 头部 Tab 切换 chips + 上下文按钮 -->
+    <!-- 头部右侧:Preview 模式专属操作(View / Edit / Close) -->
     <template #headerActions>
-      <div class="flex items-center gap-1 px-1 py-0.5 rounded-lg bg-surface-container">
-        <button
-          class="px-2 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1"
-          :class="activeTab === 'workflow' ? 'bg-brand text-white' : 'text-on-surface-variant hover:text-on-surface'"
-          @click="uiStore.setRightPanelTab('workflow')"
-        >
-          <el-icon :size="12"><Share /></el-icon>
-          Workflow
-        </button>
-        <button
-          class="px-2 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1"
-          :class="activeTab === 'files' ? 'bg-brand text-white' : 'text-on-surface-variant hover:text-on-surface'"
-          @click="uiStore.setRightPanelTab('files')"
-        >
-          <el-icon :size="12"><FolderOpened /></el-icon>
-          Files
-        </button>
-        <button
-          class="px-2 py-1 rounded text-[11px] font-medium transition-colors flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-          :class="activeTab === 'preview' ? 'bg-brand text-white' : 'text-on-surface-variant hover:text-on-surface'"
-          :disabled="!activeArtifact"
-          :title="activeArtifact ? 'Preview the selected artifact' : 'Select a file or artifact to preview'"
-          @click="activeArtifact && uiStore.setRightPanelTab('preview')"
-        >
-          <el-icon :size="12"><View /></el-icon>
-          Preview
-        </button>
-      </div>
-
-      <!-- Preview Tab 专属:Preview/Edit 模式切换 + 关闭 -->
       <template v-if="activeTab === 'preview'">
-        <div class="flex items-center gap-1 px-1 py-0.5 rounded-lg bg-surface-container ml-2">
+        <div class="flex items-center gap-1 px-1 py-0.5 rounded-lg bg-surface-container">
           <button
             class="px-2 py-1 rounded text-[11px] font-medium transition-colors"
             :class="previewMode === 'preview' ? 'bg-brand text-white' : 'text-on-surface-variant hover:text-on-surface'"
@@ -73,6 +38,44 @@
       </template>
     </template>
 
+    <!-- 主体:左侧内容 + 右侧竖向 tabs -->
+    <div class="h-full flex">
+      <!-- 内容区 -->
+      <div class="flex-1 min-w-0 overflow-hidden">
+        <WorkflowView v-if="activeTab === 'workflow'" />
+        <SandboxFilesView v-else-if="activeTab === 'files'" />
+        <DeploymentsView v-else-if="activeTab === 'deployments'" />
+        <ArtifactRouter v-else :mode="previewMode" />
+      </div>
+
+      <!-- 竖向 tab 侧栏(放右边,块内容靠左) -->
+      <nav class="shrink-0 w-12 border-l border-outline-variant bg-surface-container-low/50 flex flex-col py-2 gap-1">
+        <button
+          v-for="t in tabs"
+          :key="t.id"
+          :title="t.label"
+          :disabled="t.disabled"
+          class="vertical-tab"
+          :class="[
+            activeTab === t.id ? 'vertical-tab-active' : 'vertical-tab-idle',
+            t.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+          ]"
+          @click="!t.disabled && uiStore.setRightPanelTab(t.id)"
+        >
+          <el-icon :size="16">
+            <component :is="t.icon" />
+          </el-icon>
+          <span class="text-[9px] mt-1 leading-none">{{ t.label }}</span>
+          <!-- badge: 数量 -->
+          <span v-if="t.badge"
+                class="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-brand text-white text-[9px] font-bold flex items-center justify-center"
+          >
+            {{ t.badge }}
+          </span>
+        </button>
+      </nav>
+    </div>
+
     <!-- Workflow Tab 专属:工具栏(放大缩小等) -->
     <template v-if="activeTab === 'workflow'" #toolbar>
       <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors">
@@ -99,9 +102,11 @@ import { useUIStore } from '@/stores/ui'
 import { useArtifactPreview } from '@/composables/useArtifactPreview'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
+import { useDeploymentsStore } from '@/stores/deployments'
 import PanelContainer from './PanelContainer.vue'
 import WorkflowView from './WorkflowView.vue'
 import SandboxFilesView from './SandboxFilesView.vue'
+import DeploymentsView from './DeploymentsView.vue'
 import ArtifactRouter from '@/components/chat/artifacts/ArtifactRouter.vue'
 import {
   Share,
@@ -113,11 +118,13 @@ import {
   Edit,
   Close,
   FolderOpened,
+  Promotion,
 } from '@element-plus/icons-vue'
 
 const uiStore = useUIStore()
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
+const deploymentsStore = useDeploymentsStore()
 const { activeArtifact, closeArtifact, setMode } = useArtifactPreview()
 
 const activeTab = computed(() => uiStore.rightPanelActiveTab)
@@ -134,21 +141,75 @@ const isEditable = computed(() => {
   return !!item && (!!item.filePath || (!!item.convId && !!item.path))
 })
 
+const deploymentCount = computed(() => deploymentsStore.getCount(convId.value))
+
+// 4 个 tab,Preview 在选中 artifact 时可用
+const tabs = computed(() => [
+  { id: 'workflow' as const, label: 'Workflow', icon: Share, disabled: false, badge: 0 },
+  { id: 'files' as const, label: 'Files', icon: FolderOpened, disabled: false, badge: 0 },
+  {
+    id: 'deployments' as const,
+    label: 'Deploy',
+    icon: Promotion,
+    disabled: false,
+    badge: deploymentCount.value,
+  },
+  {
+    id: 'preview' as const,
+    label: 'Preview',
+    icon: View,
+    disabled: !activeArtifact.value,
+    badge: 0,
+  },
+])
+
 const panelTitle = computed(() => {
   if (activeTab.value === 'preview') return activeArtifact.value?.item.name ?? 'Preview'
   if (activeTab.value === 'files') return 'Files'
+  if (activeTab.value === 'deployments') return 'Deployments'
   return 'Workflow'
 })
 
 const panelIcon = computed(() => {
   if (activeTab.value === 'preview') return View
   if (activeTab.value === 'files') return FolderOpened
+  if (activeTab.value === 'deployments') return Promotion
   return Share
 })
 
 const panelVariant = computed(() => {
   if (activeTab.value === 'preview') return 'neutral'
   if (activeTab.value === 'files') return 'neutral'
+  if (activeTab.value === 'deployments') return 'success'
   return 'brand'
 })
 </script>
+
+<style scoped>
+.vertical-tab {
+  position: relative;
+  width: 40px;
+  height: 52px;
+  margin: 0 auto;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+.vertical-tab-idle {
+  color: var(--color-on-surface-variant);
+}
+.vertical-tab-idle:hover {
+  background: var(--color-surface-container);
+  color: var(--color-on-surface);
+}
+.vertical-tab-active {
+  background: var(--color-brand);
+  color: white;
+}
+</style>

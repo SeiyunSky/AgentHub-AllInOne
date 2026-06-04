@@ -214,3 +214,17 @@ class ListDirectoryInput(BaseModel):
     """列目录(探索记忆目录 / 浏览子 Agent 产出)"""
 
     path: str = Field(description="目录路径")
+
+
+# ============================================================
+# F. 部署
+# ============================================================
+
+class DeployAppInput(BaseModel):
+    """部署沙箱里的 Python 应用到 AgentHub 内置 Docker 容器,返回可访问 URL"""
+
+    entry_point: str = Field(
+        default="app.py",
+        description="入口文件名(沙箱根目录下相对路径),默认 app.py。容器内会跑 "
+                    "uvicorn {entry_module}:app --host 0.0.0.0 --port 8000",
+    )
