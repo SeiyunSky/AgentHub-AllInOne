@@ -310,8 +310,32 @@ class ApprovalHook(SyncHook):
         # 与主 Agent streaming 气泡完全解耦。
         try:
             from backend.adapters.events import MessageAppendedEvent
-            from backend.schemas.message import MessageResponse
-            msg_payload = MessageResponse.model_validate(msg, from_attributes=True).model_dump(mode="json")
+            # ORM Message.content 在 schema 里叫 blocks(DB 列叫 content,API 字段叫 blocks),
+            # 所以不能用 model_validate(msg, from_attributes=True) — 那会去找 msg.blocks
+            # 属性,ORM 没有,导致 blocks=[] 前端拿到空消息,审批气泡里啥都没有。
+            # 手动构造 dict,字段映射照 conversations.py:_message_orm_to_response
+            msg_payload = {
+                "id": msg.id,
+                "conversation_id": msg.conversation_id,
+                "thread_id": msg.thread_id,
+                "parent_id": getattr(msg, "parent_id", None),
+                "user_id": msg.user_id,
+                "agent_id": msg.agent_id,
+                "agent_avatar": None,
+                "role": msg.role,
+                "blocks": msg.content or [],  # DB 列叫 content,API 字段叫 blocks
+                "status": msg.status,
+                "error_message": msg.error_message,
+                "model": msg.model,
+                "sender": msg.sender,
+                "tokens_input": msg.tokens_input,
+                "tokens_output": msg.tokens_output,
+                "latency_ms": msg.latency_ms,
+                "feedback": msg.feedback,
+                "selected_range": msg.selected_range,
+                "is_deleted": bool(msg.is_deleted),
+                "created_at": msg.created_at.isoformat() if msg.created_at else None,
+            }
             event = MessageAppendedEvent(
                 conversation_id=ctx.conversation_id or "",
                 message=msg_payload,

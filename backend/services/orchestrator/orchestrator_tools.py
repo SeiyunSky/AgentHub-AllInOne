@@ -732,8 +732,31 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
         # 气泡,前端 ApprovalBlock 拿到的 message_id 是 streaming 占位 thread_id 而非
         # 真 msg.id, resolveApproval 在 messageMap 里找不到 → "审批了还是 Waiting"。
         from backend.adapters.events import MessageAppendedEvent
-        from backend.schemas.message import MessageResponse
-        msg_payload = MessageResponse.model_validate(msg, from_attributes=True).model_dump(mode="json")
+        # ORM Message.content 在 schema 里叫 blocks,不能用 from_attributes=True
+        # (那会找 msg.blocks 属性,ORM 没有,导致前端拿到空消息)。
+        # 手动 dict 构造,字段映射照 api/v1/conversations.py:_message_orm_to_response
+        msg_payload = {
+            "id": msg.id,
+            "conversation_id": msg.conversation_id,
+            "thread_id": msg.thread_id,
+            "parent_id": getattr(msg, "parent_id", None),
+            "user_id": msg.user_id,
+            "agent_id": msg.agent_id,
+            "agent_avatar": None,
+            "role": msg.role,
+            "blocks": msg.content or [],  # DB 列叫 content,API 字段叫 blocks
+            "status": msg.status,
+            "error_message": msg.error_message,
+            "model": msg.model,
+            "sender": msg.sender,
+            "tokens_input": msg.tokens_input,
+            "tokens_output": msg.tokens_output,
+            "latency_ms": msg.latency_ms,
+            "feedback": msg.feedback,
+            "selected_range": msg.selected_range,
+            "is_deleted": bool(msg.is_deleted),
+            "created_at": msg.created_at.isoformat() if msg.created_at else None,
+        }
         await stream_service.push_event(
             ctx.conversation_id,
             MessageAppendedEvent(
