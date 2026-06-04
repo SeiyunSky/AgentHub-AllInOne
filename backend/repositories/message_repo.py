@@ -169,3 +169,44 @@ class MessageRepository(BaseRepository[Message]):
             msg.error_message = error_message
         self.session.flush()
         return msg
+
+    def update_approval_block(
+        self,
+        message_id: str,
+        block_id: str,
+        *,
+        status: str,
+        decided_at: Optional[str] = None,
+        reject_reason: Optional[str] = None,
+    ) -> Optional[Message]:
+        """
+        把 messages.content JSON 数组里指定 block_id 的 ApprovalBlock 字段就地更新。
+
+        用户审批后调用,持久化决策结果,刷新页面后能看到正确状态。
+        block 不存在 / 不是 approval 类型时返回 None,调用方决定告警还是忽略。
+
+        Message.content 是 JSON 列(list[dict]),SQLAlchemy 默认值类型不会感知
+        嵌套字段变化,必须重新赋值整个 list 才会触发 UPDATE。
+        """
+        msg = self.get(id=message_id)
+        if msg is None or not msg.content:
+            return None
+        blocks = list(msg.content)
+        target_idx = -1
+        for i, b in enumerate(blocks):
+            if isinstance(b, dict) and b.get("block_id") == block_id and b.get("type") == "approval":
+                target_idx = i
+                break
+        if target_idx < 0:
+            return None
+        block = dict(blocks[target_idx])
+        block["status"] = status
+        if decided_at is not None:
+            block["decided_at"] = decided_at
+        if reject_reason is not None:
+            block["reject_reason"] = reject_reason
+        blocks[target_idx] = block
+        # 整列重新赋值才能让 SQLAlchemy 感知到 JSON 内部变化
+        msg.content = blocks
+        self.session.flush()
+        return msg

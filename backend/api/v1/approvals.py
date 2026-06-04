@@ -24,7 +24,7 @@ class ApprovalDecisionBody(BaseModel):
 
 @router.post("/approvals/{block_id}/decide")
 async def decide_approval(block_id: str, body: ApprovalDecisionBody) -> dict:
-    ok = approval_decide(
+    ok = await approval_decide(
         block_id=block_id,
         decision=body.decision,
         reject_reason=body.reason,

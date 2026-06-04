@@ -295,6 +295,36 @@ class MessageService:
         finally:
             session.close()
 
+    async def update_approval_block(
+        self,
+        message_id: str,
+        block_id: str,
+        *,
+        status: str,
+        decided_at: Optional[str] = None,
+        reject_reason: Optional[str] = None,
+    ) -> Optional[Message]:
+        """
+        审批决策回写:把 message.content 里某个 ApprovalBlock 的 status / decided_at /
+        reject_reason 持久化,使刷新页面后能看到正确状态(approved / rejected)。
+        """
+        session = SessionLocal()
+        try:
+            result = MessageRepository(session).update_approval_block(
+                message_id,
+                block_id,
+                status=status,
+                decided_at=decided_at,
+                reject_reason=reject_reason,
+            )
+            session.commit()
+            return result
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
     async def soft_delete(self, message_id: str) -> bool:
         """软删除消息。"""
         session = SessionLocal()

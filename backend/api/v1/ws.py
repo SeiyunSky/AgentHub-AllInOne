@@ -50,7 +50,7 @@ async def websocket_endpoint(
                     await websocket.send_json({"type": "error", "detail": f"消息格式错误: {e}"})
                     continue
 
-                ok = approval_decide(
+                ok = await approval_decide(
                     block_id=req.block_id,
                     decision=req.decision,
                     reject_reason=req.reason,
