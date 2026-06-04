@@ -502,6 +502,9 @@ export const useChatStore = defineStore('chat', () => {
     streamingConvIds.value.delete(convId)
     streamingConvIds.value = new Set(streamingConvIds.value)
     pendingApprovals.value.delete(convId)
+    // 同步清掉 thread 调度卡片，否则 workflow 面板会一直显示 running
+    threadActivitiesMap.value.delete(convId)
+    threadActivitiesMap.value = new Map(threadActivitiesMap.value)
   }
 
   // ── Thread 调度卡片管理 ──
