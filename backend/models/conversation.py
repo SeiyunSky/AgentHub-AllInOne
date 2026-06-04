@@ -16,7 +16,7 @@ conversations — 会话表
 
 from sqlalchemy import Column, String, Enum, SmallInteger, Integer, TIMESTAMP, Index
 
-from backend.models.base import Base, TimestampMixin
+from backend.models.base import Base, UTCTimestamp, TimestampMixin
 
 
 class Conversation(Base, TimestampMixin):
@@ -49,8 +49,7 @@ class Conversation(Base, TimestampMixin):
         nullable=True,
         comment="最后一条消息摘要，会话列表展示",
     )
-    last_message_at = Column(
-        TIMESTAMP,
+    last_message_at = Column(UTCTimestamp,
         nullable=True,
         comment="最后一条消息时间，比 updated_at 更精确",
     )

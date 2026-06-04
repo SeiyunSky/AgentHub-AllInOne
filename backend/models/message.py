@@ -36,7 +36,7 @@ from sqlalchemy import (
     func,
 )
 
-from backend.models.base import Base
+from backend.models.base import Base, UTCTimestamp
 
 
 class Message(Base):
@@ -98,8 +98,7 @@ class Message(Base):
         server_default="0",
         comment="软删除",
     )
-    created_at = Column(
-        TIMESTAMP,
+    created_at = Column(UTCTimestamp,
         nullable=False,
         server_default=func.current_timestamp(),
     )

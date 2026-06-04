@@ -15,7 +15,7 @@ audit_logs — 审计日志表
 
 from sqlalchemy import Column, String, JSON, TIMESTAMP, Index, func
 
-from backend.models.base import Base
+from backend.models.base import Base, UTCTimestamp
 
 
 class AuditLog(Base):
@@ -38,8 +38,7 @@ class AuditLog(Base):
     ip = Column(String(45), nullable=True, comment="客户端 IP（IPv6 最长 45）")
     user_agent = Column(String(255), nullable=True, comment="浏览器 UA")
     trace_id = Column(String(36), nullable=True, comment="关联运行日志 trace_id")
-    created_at = Column(
-        TIMESTAMP,
+    created_at = Column(UTCTimestamp,
         nullable=False,
         server_default=func.current_timestamp(),
     )
