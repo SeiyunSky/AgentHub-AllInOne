@@ -108,6 +108,65 @@ def _orm_message_to_history(orm_msg) -> "MessageInHistory":
 
 
 # ============================================================
+# 辅助:运行环境 header(注入子 Agent system_prompt 顶部)
+# ============================================================
+#
+# 所有子 Agent (单聊 / 群聊普通派活 / @个体) 都需要知道自己在 AgentHub 平台
+# 运行的最基本事实:身份 / 会话 / 工作方式。这些是**事实**而不是人格,所以由后端
+# 注入,不应靠每个 Agent 提示词自己声明(容易漂、容易遗漏)。
+#
+# 架构事实(写进 header 让 Agent 明白):
+# - 子 Agent 没有任何工具权限,只输出文本
+# - 真实操作(写文件 / 部署 / 改数据库)由主 Agent 调工具走 ApprovalHook
+# - 单聊场景表面上"用户直接对子 Agent 说话",底层仍走主 Agent loop
+
+def _build_runtime_context_header(
+    *,
+    agent_id: str,
+    agent_name: str,
+    agent_description: Optional[str],
+    conversation_id: str,
+    conversation_mode: str,           # "single" | "group"
+    member_lines: list[str],          # 群聊时的成员简介列表;单聊为空
+) -> str:
+    """组装注入子 Agent system_prompt 顶部的运行环境 header。"""
+    role_line = f"- 角色: {agent_description}" if agent_description else ""
+
+    members_section = ""
+    if conversation_mode == "group" and member_lines:
+        members_section = "\n【群聊成员】\n" + "\n".join(member_lines)
+
+    return f"""=== 运行环境 ===
+你在 AgentHub 平台运行,身份是子 Agent。
+
+【你是谁】
+- Agent ID: {agent_id}
+- 名字: {agent_name}
+{role_line}
+
+【当前会话】
+- 会话 ID: {conversation_id}
+- 模式: {conversation_mode}{members_section}
+
+【工作方式】
+你是无工具的子 Agent。所有真实操作(写文件、改代码、部署等)都由主 Agent 执行。
+你的产出是**文本** —— 主 Agent 读你的回答后,决定调什么工具、怎么落地、是否找用户审批。
+
+需要文件落地时:在回答里给出完整内容(代码块,首行 filepath 注释),
+主 Agent 会通过 create_file / edit_file 工具写入,触发用户审批流程。
+
+【沙箱】
+你的"工作目录"概念上是会话级沙箱: sandbox/{conversation_id}/
+涉及文件路径时用相对路径(基于沙箱根),不要写绝对路径。
+
+【协作】
+- 单聊场景: 整个会话只有你和主 Agent,完成用户的事即可
+- 群聊场景: 主 Agent 已决定派给你,专注做你擅长的部分;
+  需要其他 Agent 配合时,在回答里说"还需要 X 处理 Y",主 Agent 决定是否再派
+================"""
+
+
+# ============================================================
 # ThreadService
 # ============================================================
 
@@ -566,7 +625,29 @@ class ThreadService:
                 agent_row = AgentRepository(s).get(thread.agent_id)
                 # 解耦 ORM:把后续要用的字段当场抠出来当纯数据
                 agent_name = agent_row.name if agent_row else thread.agent_id
-                agent_system_prompt: Optional[str] = agent_row.system_prompt if agent_row else None
+                agent_description: Optional[str] = agent_row.description if agent_row else None
+                agent_system_prompt_raw: Optional[str] = agent_row.system_prompt if agent_row else None
+
+                # 查会话 + 群聊成员,组装运行环境 header
+                from backend.repositories.conversation_repo import ConversationRepository
+                conv_row = ConversationRepository(s).get(thread.conversation_id)
+                conv_mode = (conv_row.mode if conv_row else "single") or "single"
+                member_lines: list[str] = []
+                if conv_mode == "group" and conv_row is not None:
+                    other_agent_ids = ConversationRepository(s).list_active_agent_ids(thread.conversation_id)
+                    for aid in other_agent_ids:
+                        # 自己不放进成员列表(避免"你是 X,成员有 X")
+                        if aid == thread.agent_id:
+                            continue
+                        member = AgentRepository(s).get(aid)
+                        if member is None:
+                            continue
+                        # 简介取 description,没有就 fallback agent name
+                        brief = (member.description or "").strip()
+                        if brief:
+                            member_lines.append(f"- {member.name}: {brief}")
+                        else:
+                            member_lines.append(f"- {member.name}")
 
                 msg_repo = MessageRepository(s)
                 raw_history = msg_repo.list_recent(thread.conversation_id, limit=20)
@@ -587,6 +668,22 @@ class ThreadService:
                     )
                     agent_skills = []
                 # 只读 session,db_session() finally 会兜底 rollback + close
+
+            # 拼接最终 system_prompt:运行环境 header + Agent 自身人格 prompt
+            # header 在前,确保 Agent 第一眼看到的是"自己是谁、在哪、能干啥"这些事实;
+            # 人格 prompt 在后,叠加专业职责。
+            runtime_header = _build_runtime_context_header(
+                agent_id=thread.agent_id,
+                agent_name=agent_name,
+                agent_description=agent_description,
+                conversation_id=thread.conversation_id,
+                conversation_mode=conv_mode,
+                member_lines=member_lines,
+            )
+            if agent_system_prompt_raw:
+                agent_system_prompt: Optional[str] = runtime_header + "\n\n" + agent_system_prompt_raw
+            else:
+                agent_system_prompt = runtime_header
 
             # 把 agent_row 的关键字段拷到 dict,后续 _persist_assistant_message 不依赖 ORM
             # (它原签名收 agent_row,内部读 agent_row.name / model 等;改后只用 dict 兼容)
