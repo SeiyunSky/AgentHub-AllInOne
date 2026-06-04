@@ -59,8 +59,11 @@ export function useChat() {
 
     try {
       await chatApi.stop({ conversation_id: id })
-    } catch {
+    } catch (e) {
       // 失败时也强制断开 SSE,避免连接挂死
+      console.warn('[stop] request failed', e)
+    } finally {
+      // 不论后端是否成功，断 SSE 防止后续 token 继续到达
       sse.disconnect(id)
     }
   }
