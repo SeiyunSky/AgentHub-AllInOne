@@ -239,6 +239,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     from backend.api.v1 import approvals as approvals_router
     from backend.api.v1 import squads as squads_router
     from backend.api.v1 import sandbox as sandbox_router
+    from backend.api.v1 import workflows as workflows_router
 
     app.include_router(auth_router.router, prefix="/api/v1", tags=["auth"])
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
@@ -254,6 +255,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app.include_router(approvals_router.router, prefix="/api/v1", tags=["approvals"])
     app.include_router(squads_router.router, prefix="/api/v1", tags=["squads"])
     app.include_router(sandbox_router.router, prefix="/api/v1", tags=["sandbox"])
+    app.include_router(workflows_router.router, prefix="/api/v1", tags=["workflows"])
 
     # 静态资源：头像等图片文件
     _static_dir = Path(__file__).parent / "static"

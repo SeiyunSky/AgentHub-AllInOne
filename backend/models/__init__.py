@@ -19,6 +19,7 @@ from backend.models.conversation_agent import ConversationAgent
 from backend.models.message import Message
 from backend.models.thread import Thread
 from backend.models.audit_log import AuditLog
+from backend.models.workflow import Workflow
 
 __all__ = [
     "Base",
@@ -31,4 +32,5 @@ __all__ = [
     "Message",
     "Thread",
     "AuditLog",
+    "Workflow",
 ]
