@@ -83,7 +83,7 @@ logger = logging.getLogger(__name__)
 
 # 主 Agent 在 SSE 中的 agent_id 约定 —— 复用 Step 3 service.py 里的常量
 _ORCHESTRATOR_AGENT_ID = "orchestrator"
-_ORCHESTRATOR_AGENT_NAME = "主 Agent"
+_ORCHESTRATOR_AGENT_NAME = "Orchestrator"
 
 
 # ============================================================

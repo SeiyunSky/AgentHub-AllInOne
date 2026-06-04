@@ -100,7 +100,7 @@ class PostExecutionHook(AsyncHook):
                 agent_id=ctx.agent_id,
                 content_blocks=[code_block],
                 thread_id=ctx.thread_id,
-                sender="主 Agent" if ctx.agent_id == "orchestrator" else None,
+                sender="Orchestrator" if ctx.agent_id == "orchestrator" else None,
             )
 
             # 推 message_appended 事件：前端直接把这条已落库的消息追加到列表，
