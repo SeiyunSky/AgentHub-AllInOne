@@ -24,6 +24,7 @@ ApprovalHook —— 高危工具审批闭环
 from __future__ import annotations
 
 import asyncio
+import json as _json
 import logging
 from dataclasses import dataclass
 from typing import Literal, Optional
@@ -60,6 +61,7 @@ ApprovalDecision = Literal["approve", "reject"]
 class _PendingApproval:
     """单个待审批请求的状态。"""
     block_id: str
+    message_id: str            # ApprovalBlock 落库所在的 message id,decide 时用来回写持久化字段
     event: asyncio.Event
     decision: Optional[ApprovalDecision] = None
     reject_reason: Optional[str] = None
@@ -74,20 +76,48 @@ _pending_approvals: dict[str, _PendingApproval] = {}
 # WS handler 入口
 # ============================================================
 
-def decide(
+async def decide(
     block_id: str,
     decision: ApprovalDecision,
     reject_reason: Optional[str] = None,
 ) -> bool:
     """
-    WS handler 收到 ApprovalDecisionRequest 后调用：按 block_id 写入决策并唤醒 hook。
+    审批决策入口。HTTP / WS handler 收到用户决策后调用:
 
-    返回 True 表示成功投递；False 表示该 block_id 已不存在（超时清理 / 重复决策）。
+    1. 写库 —— 把 ApprovalBlock 的 status / decided_at / reject_reason 持久化
+       (修复"刷新页面 ApprovalBlock 又变 pending"的 bug,DB 是真相源)
+    2. 唤醒 hook —— set asyncio.Event,让 ApprovalHook 拿决策决定 continue / block
+
+    返回 True 表示成功投递;False 表示该 block_id 已不存在(超时清理 / 重复决策)。
+
+    顺序约束:必须**先写库再 set event**。否则 hook 醒来后立即让主 Agent loop 继续,
+    用户刷新页面的瞬间可能恰好读到旧的 pending 状态(虽然窗口很短,但语义不正确)。
     """
     pending = _pending_approvals.get(block_id)
     if pending is None:
         logger.warning("approval.decide: block_id=%s 不存在或已被清理", block_id)
         return False
+
+    # 写库:状态 + 决策时间 + 拒绝原因(approve 时 reject_reason 为 None)
+    from datetime import datetime, timezone
+    from backend.services.message_service import message_service
+    persisted_status = "approved" if decision == "approve" else "rejected"
+    decided_at_iso = datetime.now(timezone.utc).isoformat()
+    try:
+        await message_service.update_approval_block(
+            pending.message_id,
+            block_id,
+            status=persisted_status,
+            decided_at=decided_at_iso,
+            reject_reason=reject_reason if decision == "reject" else None,
+        )
+    except Exception:
+        # 写库失败不阻塞唤醒——hook 仍要继续工具执行决策。
+        # 只是刷新页面会看到旧 pending 状态,记日志让人能查。
+        logger.exception(
+            "approval.decide 写库失败 block_id=%s message_id=%s",
+            block_id, pending.message_id,
+        )
 
     pending.decision = decision
     pending.reject_reason = reject_reason
@@ -124,16 +154,34 @@ class ApprovalHook(SyncHook):
             )
             return HookResult(decision="continue")
 
-        # 1. 生成 block_id + 注册待审批
+        # 1. 生成 block_id + 推 ApprovalBlock(消息落库 → 拿到 message_id) → 注册待审批
         block_id = gen_uuid()
-        pending = _PendingApproval(block_id=block_id, event=asyncio.Event())
+        try:
+            persisted_message_id = await self._publish_approval_block(ctx, block_id, tool_name)
+        except Exception:
+            logger.exception(
+                "ApprovalBlock 创建失败 block_id=%s tool=%s, 直接放行",
+                block_id, tool_name,
+            )
+            return HookResult(decision="continue")
+
+        if not persisted_message_id:
+            # 落库失败时也直接放行,避免主 Agent loop 卡死等永远不会到来的决策
+            logger.warning(
+                "ApprovalBlock 未落库 block_id=%s tool=%s, 直接放行",
+                block_id, tool_name,
+            )
+            return HookResult(decision="continue")
+
+        pending = _PendingApproval(
+            block_id=block_id,
+            message_id=persisted_message_id,
+            event=asyncio.Event(),
+        )
         _pending_approvals[block_id] = pending
 
         try:
-            # 2. 推送 ApprovalBlock 给前端（创建消息 + SSE 广播）
-            await self._publish_approval_block(ctx, block_id, tool_name)
-
-            # 3. fire APPROVAL_REQUESTED（异步 hook 监听做审计；避免循环 import 用本地 import）
+            # 2. fire APPROVAL_REQUESTED（异步 hook 监听做审计；避免循环 import 用本地 import）
             from backend.hooks.manager import hook_manager
             approval_ctx = ctx.model_copy(update={
                 "event": HookEvent.APPROVAL_REQUESTED,
@@ -146,7 +194,7 @@ class ApprovalHook(SyncHook):
                 tool_name, block_id, ctx.user_id, ctx.conversation_id,
             )
 
-            # 4. 阻塞等待用户决策，带超时
+            # 3. 阻塞等待用户决策，带超时
             try:
                 await asyncio.wait_for(
                     pending.event.wait(),
@@ -158,12 +206,28 @@ class ApprovalHook(SyncHook):
                     tool_name, block_id,
                 )
                 self._fire_decided(ctx, block_id, "reject", "timeout")
+                # 超时也持久化(否则刷新页面 ApprovalBlock 仍是 pending)
+                from datetime import datetime, timezone
+                from backend.services.message_service import message_service
+                try:
+                    await message_service.update_approval_block(
+                        pending.message_id,
+                        block_id,
+                        status="rejected",
+                        decided_at=datetime.now(timezone.utc).isoformat(),
+                        reject_reason="timeout",
+                    )
+                except Exception:
+                    logger.exception(
+                        "approval timeout 写库失败 block_id=%s message_id=%s",
+                        block_id, pending.message_id,
+                    )
                 return HookResult(
                     decision="block",
                     block_reason=f"工具 '{tool_name}' 审批超时（{_APPROVAL_TIMEOUT_SECONDS}s 未决策），已自动拒绝",
                 )
 
-            # 5. 处理决策结果
+            # 4. 处理决策结果(decide() 已经写库,这里只 fire audit hook + 决定 continue/block)
             self._fire_decided(ctx, block_id, pending.decision or "reject", pending.reject_reason)
 
             if pending.decision == "approve":
@@ -196,38 +260,50 @@ class ApprovalHook(SyncHook):
         ctx: HookContext,
         block_id: str,
         tool_name: str,
-    ) -> None:
+    ) -> Optional[str]:
         """
         创建 ApprovalBlock 落库 + 推送 SSE。
+        返回创建的 message_id(供 _PendingApproval 记录,decide 时回写持久化字段);
+        落库失败返回 None,调用方自行兜底。
         """
         from backend.adapters.events import BlockStartEvent
         from backend.domain.message import ApprovalBlock
         from backend.services.message_service import message_service
         from backend.services.stream_service import stream_service
 
+        # detail 用 JSON 序列化 tool_input,前端可解析后按 tool_name 结构化渲染
+        # (例如 create_file 显示 path / size / 折叠的 content)。
+        # 不可序列化的字段(罕见)兜底用 default=str,保证 detail 永远是合法 JSON。
+        try:
+            detail_json = _json.dumps(ctx.tool_input or {}, ensure_ascii=False, default=str)
+        except Exception:
+            detail_json = str(ctx.tool_input or {})
+
         approval_block = ApprovalBlock(
             block_id=block_id,
             action=tool_name,
-            detail=str(ctx.tool_input or {}),
+            detail=detail_json,
         )
 
         try:
-            await message_service.create_assistant_message(
+            msg = await message_service.create_assistant_message(
                 conversation_id=ctx.conversation_id or "",
                 agent_id=ctx.agent_id or "",
                 content_blocks=[approval_block],
                 thread_id=ctx.thread_id,
             )
+            message_id = getattr(msg, "id", None)
         except Exception:
             logger.exception(
                 "ApprovalBlock 落库失败 block_id=%s tool=%s", block_id, tool_name
             )
+            return None
 
         try:
             event = BlockStartEvent(
                 agent_id=ctx.agent_id or "",
                 thread_id=ctx.thread_id or "",
-                message_id="",
+                message_id=message_id or "",
                 block=approval_block,
             )
             await stream_service.push_event(ctx.conversation_id or "", event)
@@ -235,6 +311,8 @@ class ApprovalHook(SyncHook):
             logger.exception(
                 "ApprovalBlock SSE 推送失败 block_id=%s tool=%s", block_id, tool_name
             )
+
+        return message_id
 
     @staticmethod
     def _fire_decided(
