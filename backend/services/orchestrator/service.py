@@ -649,6 +649,7 @@ class OrchestratorService:
                                 **base_kwargs,
                                 block_id=call.id,
                                 final_fields={
+                                    "tool_name": call.name,
                                     "status": final_status,
                                     "output": output_text,
                                 },

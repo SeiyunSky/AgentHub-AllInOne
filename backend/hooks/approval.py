@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 _HIGH_RISK_TOOLS: frozenset[str] = frozenset({
     "create_file",
     "edit_file",
+    "deploy_app",          # 启 Docker 容器跑用户代码,对外暴露 URL,必须用户审批
     # TODO: 等以下工具实装后加入
     #   "web_search"  网页查找类工具
     #   "run_command" / "bash"  shell 命令执行类工具

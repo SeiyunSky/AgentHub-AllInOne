@@ -53,6 +53,7 @@ from backend.schemas.orchestrator_tools import (
     CreateTaskPlanInput,
     DispatchToAgentInput,
     EditFileInput,
+    DeployAppInput,
     GetAgentCapabilitiesInput,
     ListAvailableAgentsInput,
     ListDirectoryInput,
@@ -688,7 +689,23 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
     前端展示 Approve/Reject 按钮，用户决策后通过 POST /api/v1/approvals/{block_id}/decide 回流。
     """
     import asyncio
+    import json as _json_inner
     from backend.hooks.approval import _pending_approvals, _PendingApproval, _APPROVAL_TIMEOUT_SECONDS
+
+    # LLM 经常把嵌套对象字段当 string 传(Anthropic API 在嵌套 schema 上的概率性行为):
+    # plan 应该是 dict 但实际收到 '{"tasks": [...]}' string,直接 model_validate 会
+    # 抛 ValidationError 让函数早退,审批气泡推不出来。
+    # 这里宽容兜底:遇到 string 就 json.loads 一次再喂给 pydantic。
+    if isinstance(tool_input, dict):
+        plan_field = tool_input.get("plan")
+        if isinstance(plan_field, str):
+            try:
+                tool_input = {**tool_input, "plan": _json_inner.loads(plan_field)}
+            except Exception:
+                logger.warning(
+                    "present_task_plan_for_review: plan 字段是 string 但 json.loads 失败,"
+                    "原样交给 pydantic 报错"
+                )
 
     parsed = PresentTaskPlanForReviewInput.model_validate(tool_input)
 
@@ -1037,4 +1054,179 @@ async def list_directory(tool_input: dict[str, Any], *, ctx: ToolContext) -> dic
     return {
         "path": _relative_to_sandbox(ctx, abs_path),
         "entries": entries,
+    }
+
+
+# ============================================================
+# F. 部署 (1)
+# ============================================================
+
+@register_tool(
+    name="deploy_app",
+    description=(
+        "部署沙箱里的 Python 应用到 AgentHub 内置 Docker 容器,返回可访问 URL。"
+        "调用前应该先让审查 Agent 做部署前合规检查(见 deployment_workflow skill)。"
+        "高危工具,会触发用户审批。"
+    ),
+    input_model=DeployAppInput,
+)
+async def deploy_app(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
+    """
+    部署流程:
+    1. 检查沙箱有 entry_point 文件
+    2. ensure_image() 确保 agenthub-runtime 镜像已就绪
+    3. 复用已有容器(同 conv_id)或起新容器(挂载沙箱目录到 /app)
+    4. 容器内 pkill -f uvicorn 杀旧进程(支持重 deploy)
+    5. 容器内 pip install -r requirements.txt(如有)
+    6. 容器内后台启 uvicorn {entry_module}:app --host 0.0.0.0 --port 8000
+    7. 健康检查:5 秒内 curl localhost:8000/ 返回 200
+    8. 返回 { url, status, logs }
+
+    返回 url 是 AgentHub reverse proxy 路径(/preview/{conv_id}/),需要 Phase 2.D
+    路由实装后才能真访问。
+    """
+    import asyncio as _asyncio
+    from backend.services.docker_runtime import get_docker_runtime
+
+    parsed = DeployAppInput.model_validate(tool_input)
+
+    # Step 1: entry 文件存在?
+    entry_abs = _resolve_sandbox_path(ctx, parsed.entry_point)
+    if not entry_abs.exists() or not entry_abs.is_file():
+        return {
+            "status": "error",
+            "error": f"entry_point {parsed.entry_point!r} 不存在或不是文件",
+            "logs": "",
+        }
+
+    # entry 模块名:app.py → "app", path/to/main.py → "path.to.main"
+    sandbox_root = _resolve_sandbox_path(ctx, "")
+    entry_rel = entry_abs.relative_to(sandbox_root)
+    entry_module = ".".join(entry_rel.with_suffix("").parts)
+
+    runtime = get_docker_runtime()
+
+    # Step 2: 镜像就绪
+    try:
+        await runtime.ensure_image()
+    except Exception as exc:
+        logger.exception("deploy_app: ensure_image failed conv=%s", ctx.conversation_id)
+        return {
+            "status": "error",
+            "error": f"Docker 运行时不可用: {exc}",
+            "logs": "",
+        }
+
+    # Step 3: 拿 / 起容器
+    try:
+        handle = await runtime.get_container(ctx.conversation_id)
+        if handle is None:
+            handle = await runtime.start_container(ctx.conversation_id, sandbox_root)
+    except Exception as exc:
+        logger.exception("deploy_app: start_container failed conv=%s", ctx.conversation_id)
+        return {
+            "status": "error",
+            "error": f"容器启动失败: {exc}",
+            "logs": "",
+        }
+
+    container_id = handle.container_id
+    accumulated_logs: list[str] = []
+
+    # Step 4: 杀旧 uvicorn (重 deploy 支持) —— 失败也无所谓,可能本来就没旧的
+    try:
+        await runtime.exec_in_container(container_id, "pkill -f uvicorn || true")
+    except Exception:
+        pass
+
+    # Step 5: pip install requirements (如有)
+    req_file = sandbox_root / "requirements.txt"
+    if req_file.exists():
+        try:
+            install_result = await runtime.exec_in_container(
+                container_id,
+                "pip install --no-cache-dir -r requirements.txt 2>&1 | tail -20",
+            )
+            accumulated_logs.append(f"[pip install]\n{install_result.output}")
+            if install_result.exit_code != 0:
+                return {
+                    "status": "error",
+                    "error": "pip install 失败,可能引用了清单外的依赖",
+                    "logs": "\n".join(accumulated_logs),
+                }
+        except Exception as exc:
+            logger.exception("deploy_app: pip install failed")
+            return {
+                "status": "error",
+                "error": f"pip install 异常: {exc}",
+                "logs": "\n".join(accumulated_logs),
+            }
+
+    # Step 6: 启 uvicorn (后台)
+    # nohup + 重定向 log 到 /app/.deploy.log,出错时方便看
+    # 使用 detach=True,exec 立即返回不阻塞
+    uvicorn_cmd = (
+        f"nohup uvicorn {entry_module}:app --host 0.0.0.0 --port 8000 "
+        f"> /app/.deploy.log 2>&1 &"
+    )
+    try:
+        await runtime.exec_in_container(container_id, uvicorn_cmd, detach=True)
+    except Exception as exc:
+        logger.exception("deploy_app: uvicorn start failed")
+        return {
+            "status": "error",
+            "error": f"uvicorn 启动失败: {exc}",
+            "logs": "\n".join(accumulated_logs),
+        }
+
+    # Step 7: 健康检查 —— 等容器内 8000 端口响应
+    healthy = False
+    last_check_output = ""
+    for _ in range(10):  # 最多等 5 秒
+        await _asyncio.sleep(0.5)
+        try:
+            # curl 在镜像里有装(Dockerfile 里 apt install curl)
+            # -s 静默,-o /dev/null 不输出 body,-w "%{http_code}" 只输出状态码
+            check = await runtime.exec_in_container(
+                container_id,
+                'curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/ || echo "000"',
+            )
+            last_check_output = check.output.strip()
+            # 任何 2xx / 3xx / 4xx 都算"服务起来了" (404 也是有 server 在响应)
+            # 5xx / 000 (curl 失败) 才算 unhealthy
+            if last_check_output and last_check_output[0] in ("2", "3", "4"):
+                healthy = True
+                break
+        except Exception:
+            pass
+
+    if not healthy:
+        # 抓最后部署日志返回给 LLM 排错
+        try:
+            log_result = await runtime.exec_in_container(
+                container_id,
+                "tail -30 /app/.deploy.log 2>/dev/null || true",
+            )
+            accumulated_logs.append(f"[uvicorn .deploy.log tail]\n{log_result.output}")
+        except Exception:
+            pass
+        return {
+            "status": "error",
+            "error": f"应用启动后健康检查失败 (last_http_code={last_check_output!r})",
+            "logs": "\n".join(accumulated_logs),
+        }
+
+    # Step 8: 成功 —— 返回 URL
+    # URL 是 AgentHub reverse proxy 路径,需要 Phase 2.D 接通才能真访问
+    url = f"/preview/{ctx.conversation_id}/"
+    accumulated_logs.append(f"[deploy_app] healthy at {url}")
+    logger.info(
+        "deploy_app success conv=%s entry=%s url=%s",
+        ctx.conversation_id, parsed.entry_point, url,
+    )
+    return {
+        "status": "running",
+        "url": url,
+        "entry_point": parsed.entry_point,
+        "logs": "\n".join(accumulated_logs),
     }

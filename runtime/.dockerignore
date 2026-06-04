@@ -1,0 +1,12 @@
+# Build context should be minimal.
+# runtime/ only contains the Dockerfile - this is defensive.
+
+*.swp
+*.tmp
+.DS_Store
+Thumbs.db
+
+*.pyc
+__pycache__/
+.git/
+node_modules/

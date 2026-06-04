@@ -33,6 +33,11 @@ export default defineConfig({
         target: 'ws://localhost:18888',
         ws: true,
       },
+      // 部署应用反向代理:把 /preview/{conv_id}/* 转给后端,后端再转给容器
+      '/preview': {
+        target: 'http://localhost:18888',
+        changeOrigin: true,
+      },
     },
   },
 })

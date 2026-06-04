@@ -15,10 +15,10 @@ export const useUIStore = defineStore('ui', () => {
   const chatPanePercent = ref(55)
 
   // Right panel
-  const rightPanelActiveTab = ref<'workflow' | 'files' | 'preview'>('workflow')
+  const rightPanelActiveTab = ref<'workflow' | 'files' | 'preview' | 'deployments'>('workflow')
   const rightPanelVisible = ref(false)
-  // 进入 preview tab 之前的 tab(workflow / files),关闭预览后回到这里
-  const lastNonPreviewTab = ref<'workflow' | 'files'>('workflow')
+  // 进入 preview tab 之前的 tab(非 preview),关闭预览后回到这里
+  const lastNonPreviewTab = ref<'workflow' | 'files' | 'deployments'>('workflow')
 
   // Artifact preview
   const activeArtifact = ref<ActiveArtifact | null>(null)
@@ -55,7 +55,7 @@ export const useUIStore = defineStore('ui', () => {
     rightPanelActiveTab.value = lastNonPreviewTab.value
   }
 
-  function setRightPanelTab(tab: 'workflow' | 'files' | 'preview') {
+  function setRightPanelTab(tab: 'workflow' | 'files' | 'preview' | 'deployments') {
     if (tab !== 'preview') {
       lastNonPreviewTab.value = tab
     }
