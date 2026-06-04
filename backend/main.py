@@ -44,6 +44,7 @@ from backend.hooks.manager import hook_manager
 from backend.hooks.post_execution import PostExecutionHook
 from backend.hooks.pre_execution import PreExecutionHook
 from backend.seeds.agents import seed_agents
+from backend.seeds.users import seed_users
 
 
 logger = logging.getLogger(__name__)
@@ -148,8 +149,13 @@ async def lifespan(app: FastAPI):
                 result.rowcount,
             )
 
-        # 顺序约束:必须先 scan_builtin 让 skills 表填好,seed_agents 再写 agent_skills
-        # 关联(seed_agents 内部按 default_skills 配置查 skills 表挂载)
+        # 顺序约束:必须先 seed_users(GUGA 系统用户)→ scan_builtin 让 skills 表填好
+        # → seed_agents 再写 agent_skills 关联(seed_agents 内部按 default_skills
+        # 配置查 skills 表挂载,且 agents.user_id='GUGA' 必须先存在)
+        n_users = seed_users(db)
+        if n_users:
+            logger.info("seed_users: %d rows affected", n_users)
+
         n_skills = SkillService(db).scan_builtin()
         logger.info("skill_service.scan_builtin: %d rows affected", n_skills)
 
