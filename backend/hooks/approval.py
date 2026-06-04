@@ -266,7 +266,6 @@ class ApprovalHook(SyncHook):
         返回创建的 message_id(供 _PendingApproval 记录,decide 时回写持久化字段);
         落库失败返回 None,调用方自行兜底。
         """
-        from backend.adapters.events import BlockStartEvent
         from backend.domain.message import ApprovalBlock
         from backend.services.message_service import message_service
         from backend.services.stream_service import stream_service
@@ -299,12 +298,23 @@ class ApprovalHook(SyncHook):
             )
             return None
 
+        # 关键:用 MessageAppendedEvent 推送(独立消息),不要用 BlockStartEvent。
+        # BlockStartEvent 会被 chatStore.appendBlock 错塞到主 Agent 当前的 streaming
+        # 气泡里(approval message 是 hook 新建的独立消息,有自己的 message_id),
+        # 导致:
+        # 1) ApprovalBlock 组件拿到的 message_id 是 streaming 占位的 thread_id,
+        #    resolveApproval 在 messageMap 里找不到 → UI 不更新 → "审批了还是 Waiting"
+        # 2) approve 后主 Agent loop 继续推后续 block 事件,前端 streaming 状态错位
+        #    → 用户必须刷新才看到完整结果
+        # MessageAppendedEvent 走非 streaming 路径,前端直接 append 一条完整消息,
+        # 与主 Agent streaming 气泡完全解耦。
         try:
-            event = BlockStartEvent(
-                agent_id=ctx.agent_id or "",
-                thread_id=ctx.thread_id or "",
-                message_id=message_id or "",
-                block=approval_block,
+            from backend.adapters.events import MessageAppendedEvent
+            from backend.schemas.message import MessageResponse
+            msg_payload = MessageResponse.model_validate(msg, from_attributes=True).model_dump(mode="json")
+            event = MessageAppendedEvent(
+                conversation_id=ctx.conversation_id or "",
+                message=msg_payload,
             )
             await stream_service.push_event(ctx.conversation_id or "", event)
         except Exception:

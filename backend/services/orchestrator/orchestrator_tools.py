@@ -726,13 +726,11 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
         plan_text_lines.append(f"{i}. **{task.agent_id}**{deps}\n   {task.prompt}")
     plan_detail = "\n".join(plan_text_lines)
 
-    # 2. 生成 block_id，注册待审批
+    # 2. 生成 block_id(消息 + _PendingApproval 都用同一个)
     block_id = gen_uuid()
-    pending = _PendingApproval(block_id=block_id, event=asyncio.Event())
-    _pending_approvals[block_id] = pending
 
     try:
-        # 3. 落 ApprovalBlock 消息
+        # 3. 落 ApprovalBlock 消息(独立消息,不混进主 Agent streaming 气泡)
         approval_block = ApprovalBlock(
             block_id=block_id,
             action="present_task_plan_for_review",
@@ -745,15 +743,28 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
             sender=_ORCHESTRATOR_AGENT_NAME,
         )
 
-        # 4. 推 SSE ApprovalBlock
-        base = {
-            "agent_id": _ORCHESTRATOR_AGENT_ID,
-            "thread_id": ctx.thread_id,
-            "message_id": msg.id,
-        }
+        # 4. 用拿到的真 message_id 注册 pending —— 必须在推 SSE 之前完成,
+        # 否则用户秒点 Approve 时 decide() 写库会拿不到 message_id
+        pending = _PendingApproval(
+            block_id=block_id,
+            message_id=msg.id,
+            event=asyncio.Event(),
+        )
+        _pending_approvals[block_id] = pending
+
+        # 5. 推 MessageAppendedEvent(独立消息走非 streaming 路径)
+        # 不能用 BlockStartEvent: 那会让前端把 approval 块塞进主 Agent streaming
+        # 气泡,前端 ApprovalBlock 拿到的 message_id 是 streaming 占位 thread_id 而非
+        # 真 msg.id, resolveApproval 在 messageMap 里找不到 → "审批了还是 Waiting"。
+        from backend.adapters.events import MessageAppendedEvent
+        from backend.schemas.message import MessageResponse
+        msg_payload = MessageResponse.model_validate(msg, from_attributes=True).model_dump(mode="json")
         await stream_service.push_event(
             ctx.conversation_id,
-            BlockStartEvent(**base, block=approval_block),
+            MessageAppendedEvent(
+                conversation_id=ctx.conversation_id,
+                message=msg_payload,
+            ),
         )
 
         logger.info(
@@ -761,7 +772,7 @@ async def present_task_plan_for_review(tool_input: dict[str, Any], *, ctx: ToolC
             block_id, ctx.conversation_id,
         )
 
-        # 5. 阻塞等待用户审批
+        # 6. 阻塞等待用户审批
         try:
             await asyncio.wait_for(
                 pending.event.wait(),
