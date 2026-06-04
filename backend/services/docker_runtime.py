@@ -73,7 +73,8 @@ class ContainerHandle:
     conv_id: str
     container_id: str
     container_name: str
-    internal_ip: str        # 容器在 docker bridge 上的 IP,reverse proxy 用
+    internal_ip: str        # 容器在 docker bridge 上的 IP(Linux host 可达,Windows Docker Desktop 不可达)
+    host_port: int          # 容器 8000 端口映射到 host 的实际端口 — reverse proxy 用这个,跨平台稳定
     started_at: float       # epoch seconds
 
 
@@ -217,8 +218,12 @@ class DockerRuntimeService:
             return None
 
         ip = self._extract_ip(container)
-        if not ip:
-            logger.warning("Container %s 无 IP,不可用", name)
+        host_port = self._extract_host_port(container)
+        if not ip or not host_port:
+            logger.warning(
+                "Container %s 缺少 ip/host_port (ip=%s,port=%s),不可用",
+                name, ip, host_port,
+            )
             return None
 
         return ContainerHandle(
@@ -226,6 +231,7 @@ class DockerRuntimeService:
             container_id=container.id,
             container_name=name,
             internal_ip=ip,
+            host_port=host_port,
             started_at=self._last_seen.get(conv_id, time.time()),
         )
 
@@ -237,6 +243,23 @@ class DockerRuntimeService:
             ip = net_info.get("IPAddress")
             if ip:
                 return ip
+        return None
+
+    @staticmethod
+    def _extract_host_port(container: Container) -> Optional[int]:
+        """从容器 NetworkSettings.Ports 取 8000/tcp 映射到 host 的端口"""
+        ports = container.attrs.get("NetworkSettings", {}).get("Ports") or {}
+        binding = ports.get(f"{CONTAINER_INTERNAL_PORT}/tcp")
+        if not binding:
+            return None
+        # binding 是 list[{"HostIp": "0.0.0.0", "HostPort": "12345"}]
+        for entry in binding:
+            host_port_str = entry.get("HostPort")
+            if host_port_str:
+                try:
+                    return int(host_port_str)
+                except ValueError:
+                    continue
         return None
 
     # ----------------------------------------------------------
@@ -296,10 +319,14 @@ class DockerRuntimeService:
                 mem_limit=MEMORY_LIMIT,
                 cpu_period=CPU_PERIOD,
                 cpu_quota=CPU_QUOTA,
+                # 端口映射:容器 8000 → host 随机可用端口。
+                # 必须做端口映射的原因:Windows Docker Desktop 上 host 直连
+                # 容器 bridge IP (172.x.x.x) 不通(容器跑在 WSL2 / Hyper-V 虚拟机
+                # 网络隔离),只有通过端口映射经 vEthernet 才能访问。
+                # Linux host 也用同样配置,跨平台行为一致。
+                # None 表示让 Docker 自动选可用 host 端口,避免端口冲突 / 自己维护池
+                ports={f"{CONTAINER_INTERNAL_PORT}/tcp": None},
                 # 网络:default bridge,容器之间隔离
-                # network=None  # 用默认 bridge,不强制专用 network 避免初始化失败
-                # 安全
-                # read_only=True 暂不开 — pip install 会写 /usr/local/lib,先用默认
                 # 标识便于 docker ps 过滤
                 labels={"agenthub.role": "runtime", "agenthub.conv_id": conv_id},
                 # 不自动重启
@@ -309,33 +336,44 @@ class DockerRuntimeService:
             logger.exception("Container start 失败 conv=%s: %s", conv_id, exc)
             raise
 
-        # 等待容器拿到 IP(刚启动可能还在分配)
+        # 等待容器拿到 IP + host_port (刚启动 Docker 还在分配)
         ip: Optional[str] = None
+        host_port: Optional[int] = None
         for _ in range(20):  # 最多等 2 秒
             container.reload()
             ip = self._extract_ip(container)
-            if ip:
+            host_port = self._extract_host_port(container)
+            if ip and host_port:
                 break
             time.sleep(0.1)
 
-        if not ip:
-            logger.error("Container %s 启动后无 IP", name)
+        if not ip or not host_port:
+            logger.error(
+                "Container %s 启动后缺 ip/host_port (ip=%s,port=%s)",
+                name, ip, host_port,
+            )
             try:
                 container.stop(timeout=2)
                 container.remove(force=True)
             except Exception:
                 pass
-            raise RuntimeError(f"Container {name} 启动后无法获取 IP")
+            raise RuntimeError(
+                f"Container {name} 启动后缺少 IP 或 host 端口映射"
+            )
 
         now = time.time()
         self._last_seen[conv_id] = now
-        logger.info("Container %s started, ip=%s", name, ip)
+        logger.info(
+            "Container %s started, ip=%s host_port=%d",
+            name, ip, host_port,
+        )
 
         return ContainerHandle(
             conv_id=conv_id,
             container_id=container.id,
             container_name=name,
             internal_ip=ip,
+            host_port=host_port,
             started_at=now,
         )
 
