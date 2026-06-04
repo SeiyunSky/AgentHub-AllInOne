@@ -303,6 +303,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     from backend.api.v1 import squads as squads_router
     from backend.api.v1 import sandbox as sandbox_router
     from backend.api.v1 import preview as preview_router
+    from backend.api.v1 import workflows as workflows_router
 
     app.include_router(auth_router.router, prefix="/api/v1", tags=["auth"])
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
@@ -321,6 +322,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     # preview 不带 /api/v1 前缀:用户分享的 URL 是 http://host/preview/{conv_id}/,
     # 浏览器直接访问的 deploy 应用,不属于 API 范畴
     app.include_router(preview_router.router, tags=["preview"])
+    app.include_router(workflows_router.router, prefix="/api/v1", tags=["workflows"])
 
     # 静态资源：头像等图片文件
     _static_dir = Path(__file__).parent / "static"

@@ -42,6 +42,8 @@ export function useChat() {
     // 后端返回真实 user_message_id 后，替换本地临时 ID，使反馈等操作能正常工作
     if (response && 'user_message_id' in response && response.user_message_id) {
       chatStore.confirmUserMessage(id, tempId, response.user_message_id)
+      // 关联本轮 workflow 与触发它的用户消息（round_done 持久化时取出）
+      workflowStore.setCurrentTrigger(id, response.user_message_id)
     }
 
     return response
@@ -56,6 +58,9 @@ export function useChat() {
     // 等响应再清 UI 用户会感觉卡死。后端推的 round_done 是兜底确认。
     chatStore.finishStreaming(id)
     workflowStore.markActiveAsCancelled(id)
+    // 标记下一次 round_done 触发的 persistCurrent 跳过：cancelled 的轮次不入库,
+    // 用户回会话不应该看到一份全是 cancelled 的历史 workflow
+    workflowStore.skipNextPersistFor(id)
 
     try {
       await chatApi.stop({ conversation_id: id })

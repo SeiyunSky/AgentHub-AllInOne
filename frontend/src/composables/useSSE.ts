@@ -97,6 +97,8 @@ function handleEvent(convId: string, event: SSEEvent) {
       // 同步 workflow:把所有还在 running 的 thread 节点标 cancelled
       // (stop 流程下后端不会发 agent_done/agent_error,workflow 节点会永远转圈)
       workflowStore.markActiveAsCancelled(convId)
+      // 把当前轮内存中的 workflow 持久化到后端（最新一份会追加到 historyMap 末尾）
+      void workflowStore.persistCurrent(convId)
       // sync last agent message to conversation list preview
       {
         const conversationsStore = useConversationsStore()
