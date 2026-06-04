@@ -1,7 +1,8 @@
 <template>
   <nav class="w-[160px] h-full flex flex-col py-4 shrink-0 border-r border-rail-border relative overflow-hidden"
-       style="background: linear-gradient(180deg, #1a1040 0%, #2d1b69 60%, #1a1040 100%);">
-    <!-- subtle grid texture -->
+       :style="{
+         background: `linear-gradient(180deg, var(--color-rail-bg) 0%, var(--color-rail-surface) 60%, var(--color-rail-bg) 100%)`
+       }">    <!-- subtle grid texture -->
     <div class="absolute inset-0 pointer-events-none" style="background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 20px 20px;"></div>
     <!-- Logo -->
     <div class="flex items-center gap-2.5 px-4 mb-4">
@@ -40,7 +41,7 @@
     <!-- Bottom Icons -->
     <div class="flex flex-col gap-1 w-full px-2 border-t border-rail-border pt-3 mt-3">
       <NavRailItem :icon="QuestionFilled" label="Support" @click="showSupportDialog" />
-      <NavRailItem :icon="Setting" label="Settings" />
+      <NavRailItem :icon="Setting" label="Settings" @click="settingsVisible = true" />
       <NavRailItem :icon="DArrowLeft" label="Collapse" @click="uiStore.toggleNavRail" />
     </div>
 
@@ -77,6 +78,9 @@
         <el-icon :size="15"><SwitchButton /></el-icon>
       </button>
     </div>
+
+    <!-- ── Settings Dialog ── -->
+    <SettingsDialog v-model:visible="settingsVisible" />
 
     <!-- ── Contributors Dialog ── -->
     <Teleport to="body">
@@ -224,6 +228,7 @@ import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import NavRailItem from './NavRailItem.vue'
+import SettingsDialog from '@/components/settings/SettingsDialog.vue'
 import { ChatDotRound, User, MagicStick, QuestionFilled, Setting, Search, DArrowLeft, SwitchButton } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
@@ -259,6 +264,7 @@ const avatarGradient = computed(() => {
 })
 
 const supportVisible = ref(false)
+const settingsVisible = ref(false)
 const activeContributor = ref<(typeof contributors)[number] | null>(null)
 const penguinWiggling = ref(false)
 let penguinTimer: ReturnType<typeof setTimeout> | null = null
@@ -586,7 +592,7 @@ async function handleLogout() {
   font-family: 'Orbitron', 'Exo 2', 'Rajdhani', system-ui, sans-serif;
   font-weight: 700;
   letter-spacing: 0.06em;
-  background: linear-gradient(135deg, #e0d7ff 0%, #a78bfa 60%, #7c3aed 100%);
+  background: var(--color-logo-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

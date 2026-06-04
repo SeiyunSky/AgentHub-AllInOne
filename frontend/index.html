@@ -10,6 +10,21 @@
     <title>AgentHub</title>
   </head>
   <body>
+    <!-- Anti-flash: apply saved theme + accent tokens before Vue mounts -->
+    <script>
+      (function(){
+        var m = localStorage.getItem('agenthub-theme')
+        var dark = m === 'dark' || ((!m || m === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        if (dark) document.documentElement.classList.add('dark')
+        try {
+          var tokens = JSON.parse(localStorage.getItem('agenthub-tokens') || 'null')
+          if (tokens) {
+            var root = document.documentElement
+            for (var k in tokens) root.style.setProperty(k, tokens[k])
+          }
+        } catch(e) {}
+      })()
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
