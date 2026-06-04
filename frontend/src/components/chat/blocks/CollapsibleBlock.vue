@@ -25,7 +25,7 @@
     </div>
 
     <!-- Content -->
-    <div v-show="expanded" class="border-t" :class="borderClass">
+    <div v-show="expanded" class="border-t overflow-auto max-h-[640px]" :class="borderClass">
       <slot />
     </div>
   </div>

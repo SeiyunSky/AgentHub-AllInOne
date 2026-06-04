@@ -1,7 +1,7 @@
 <template>
   <div class="relative flex items-center gap-3">
     <!-- Agent avatars container (fixed size, flex-wrap layout like WeChat) -->
-    <div class="relative shrink-0 w-10 h-10 rounded-lg overflow-hidden">
+    <div class="relative shrink-0 w-10 h-10 rounded-lg">
       <div
         class="w-full h-full p-[3%] flex flex-wrap justify-center content-center items-center gap-[3%]"
       >

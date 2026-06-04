@@ -8,7 +8,7 @@
   >
     <div class="px-3 py-2 space-y-2">
       <!-- Detail -->
-      <p class="text-[12px] text-on-surface whitespace-pre-wrap">{{ detail }}</p>
+      <p class="text-[12px] text-on-surface whitespace-pre-wrap max-h-[240px] overflow-auto">{{ detail }}</p>
 
       <!-- Status indicators -->
       <div v-if="status === 'approved'" class="flex items-center gap-1.5 text-[11px] text-emerald-600">

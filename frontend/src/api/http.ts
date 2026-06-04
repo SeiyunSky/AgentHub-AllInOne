@@ -10,13 +10,6 @@ const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// 裸 axios:用于 refresh 时不再走拦截器,避免递归。
-const rawAxios = axios.create({
-  baseURL: BASE_URL,
-  timeout: 30000,
-  headers: { 'Content-Type': 'application/json' },
-})
-
 // localStorage key (与 stores/auth.ts 保持一致;不直接 import store,避免循环依赖)
 const LS_ACCESS = 'auth.access_token'
 const LS_REFRESH = 'auth.refresh_token'
@@ -43,32 +36,7 @@ http.interceptors.request.use((config) => {
   return config
 })
 
-// ---------------- Refresh 单飞 (并发 401 共用一次 refresh) ----------------
-let refreshing: Promise<string | null> | null = null
-
-async function tryRefresh(): Promise<string | null> {
-  const refreshToken = localStorage.getItem(LS_REFRESH)
-  if (!refreshToken) return null
-  try {
-    const resp = await rawAxios.post<ApiResponse<{ access_token: string; refresh_token: string }>>(
-      '/auth/refresh',
-      { refresh_token: refreshToken },
-    )
-    const envelope = resp.data
-    if (!envelope || envelope.code !== 200 || !envelope.data) return null
-    const newAccess = envelope.data.access_token
-    localStorage.setItem(LS_ACCESS, newAccess)
-    // refresh_token 沿用原值,后端不会轮换;但若返回了新值就更新
-    if (envelope.data.refresh_token) {
-      localStorage.setItem(LS_REFRESH, envelope.data.refresh_token)
-    }
-    return newAccess
-  } catch {
-    return null
-  }
-}
-
-// ---------------- Response: 拆 envelope + 401 自动 refresh ----------------
+// ---------------- Response: 拆 envelope + 401 清除会话 ----------------
 http.interceptors.response.use(
   (res: AxiosResponse<ApiResponse<unknown>>) => {
     const envelope = res.data
@@ -79,38 +47,10 @@ http.interceptors.response.use(
   },
   async (error) => {
     const status = error.response?.status
-    const config = error.config as InternalAxiosRequestConfig & { _retried?: boolean }
+    const config = error.config as InternalAxiosRequestConfig
 
-    // 401 且不是 auth 端点本身,尝试用 refresh token 续期一次
-    if (
-      status === 401 &&
-      config &&
-      !config._retried &&
-      !isSkipAuthUrl(config.url)
-    ) {
-      config._retried = true
-
-      // 单飞:并发 401 共享同一次 refresh 请求
-      if (!refreshing) {
-        refreshing = tryRefresh().finally(() => {
-          refreshing = null
-        })
-      }
-      const newAccess = await refreshing
-
-      if (newAccess) {
-        config.headers = config.headers ?? {}
-        // 兼容两种 headers 形态
-        if (typeof (config.headers as { set?: unknown }).set === 'function') {
-          (config.headers as unknown as { set: (k: string, v: string) => void })
-            .set('Authorization', `Bearer ${newAccess}`)
-        } else {
-          (config.headers as Record<string, string>)['Authorization'] = `Bearer ${newAccess}`
-        }
-        return http.request(config)
-      }
-
-      // refresh 也失败:清状态 + 通知应用层跳登录
+    // 401 且不是 auth 端点本身:直接清除本地会话并通知应用层跳登录
+    if (status === 401 && config && !isSkipAuthUrl(config.url)) {
       localStorage.removeItem(LS_ACCESS)
       localStorage.removeItem(LS_REFRESH)
       localStorage.removeItem('auth.user')
