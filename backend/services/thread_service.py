@@ -388,10 +388,26 @@ class ThreadService:
         return started
 
     async def cancel_thread(self, thread_id: str) -> Optional[Thread]:
-        """主动取消单个 Thread。"""
+        """
+        主动取消单个 Thread。
+
+        策略：只 task.cancel() 触发 _run_thread 内部 CancelledError 路径，
+        让那里统一负责 mark_cancelled + push agent_error('cancelled')。
+        本方法不再写库，避免与 _run_thread 争同一行触发 MySQL 1205。
+
+        如果 thread 没有对应 task（已终态 / 未启动），则直接 mark_cancelled 兜底。
+        """
         task = _running_tasks.pop(thread_id, None)
         if task and not task.done():
             task.cancel()
+            # 等 task 走完 CancelledError 分支再返回，确保数据库已落 cancelled 终态
+            try:
+                await asyncio.wait_for(asyncio.shield(task), timeout=5.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
+                pass
+            # 重新读取最新状态
+            return self.repo.get(thread_id)
+        # 没有 task 在跑 → 自己写终态
         return await self.mark_cancelled(thread_id)
 
     async def cancel_all_in_conversation(self, conversation_id: str) -> list[Thread]:
@@ -773,6 +789,19 @@ class ThreadService:
 
         except asyncio.CancelledError:
             t = _mark(ThreadStatus.CANCELLED)
+            # 推 agent_error('cancelled')，前端 workflow store 据此把 thread 状态切到 cancelled
+            try:
+                await stream_service.push_event(
+                    thread.conversation_id,
+                    AgentErrorEvent(
+                        agent_id=thread.agent_id,
+                        thread_id=thread.id,
+                        message_id=thread.message_id,
+                        error="cancelled",
+                    ),
+                )
+            except Exception:
+                logger.exception("Thread %s push cancelled event failed", thread.id)
             if t:
                 await self._on_thread_terminal(t, f"Thread {thread.id} 已取消", success=False)
             raise

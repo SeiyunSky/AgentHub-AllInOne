@@ -13,7 +13,7 @@ conversation_agents — 会话参与的 Agent（多对多）
 
 from sqlalchemy import Column, String, TIMESTAMP, SmallInteger, func
 
-from backend.models.base import Base
+from backend.models.base import Base, UTCTimestamp
 
 
 class ConversationAgent(Base):
@@ -21,8 +21,7 @@ class ConversationAgent(Base):
 
     conversation_id = Column(String(36), primary_key=True, comment="conversations.id")
     agent_id = Column(String(36), primary_key=True, comment="agents.id")
-    joined_at = Column(
-        TIMESTAMP,
+    joined_at = Column(UTCTimestamp,
         nullable=False,
         server_default=func.current_timestamp(),
         comment="加入时间，群成员按加入顺序展示",

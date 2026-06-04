@@ -52,7 +52,7 @@ PRESET_AGENTS: list[dict] = [
         # system_prompt 从 prompts/orchestrator.md 加载。
         "id": "orchestrator",
         "user_id": "GUGA",
-        "name": "主 Agent",
+        "name": "Orchestrator",
         "description": "多 Agent 协作调度中心，理解用户意图、拆解任务、派发给合适的子 Agent",
         "type": "claude",
         "prompt_key": None,  # orchestrator prompt 不走 agents 目录，由 prompt_builder 加载

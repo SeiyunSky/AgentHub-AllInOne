@@ -3,13 +3,13 @@
     <div
       class="w-9 h-9 rounded-[20%] flex items-center justify-center shrink-0 overflow-hidden"
     >
-      <img v-if="agentAvatar" :src="agentAvatar" :alt="message.agentName" class="w-full h-full object-cover" />
+      <img v-if="agentAvatar" :src="agentAvatar" :alt="displayAgentName" class="w-full h-full object-cover" />
     </div>
 
     <div class="flex-1 min-w-0 relative pb-3">
       <!-- Header -->
       <div class="flex items-center gap-2 mb-1.5">
-        <span class="text-[12px] font-semibold text-on-surface">{{ message.agentName }}</span>
+        <span class="text-[12px] font-semibold text-on-surface">{{ displayAgentName }}</span>
         <span
           v-if="message.agentRole"
           class="text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase"
@@ -181,9 +181,19 @@ defineEmits<{
 }>()
 
 const agentsStore = useAgentsStore()
+// 进入气泡时确保 agents store 已加载（幂等，重复调直接返回）
+agentsStore.loadAgents()
+
 const agentAvatar = computed(() =>
   agentsStore.agents.find(a => a.id === props.message.agentId)?.avatar ?? props.message.avatar
 )
+
+const displayAgentName = computed(() => {
+  // 数据库 agent.name 是真相源；message.agentName 是 SSE 事件携带的快照值，
+  // 两者不一致时优先用 store 里的 name（避免 streaming 期"主 Agent" → commit 后"Orchestrator"切换）
+  const stored = agentsStore.agents.find(a => a.id === props.message.agentId)?.name
+  return stored ?? props.message.agentName
+})
 
 const messageContent = computed(() => {
   if (props.message.blocks && props.message.blocks.length > 0) {

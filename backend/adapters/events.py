@@ -64,6 +64,10 @@ class AgentStartEvent(_BaseAgentEvent):
 
     type: Literal["agent_start"] = "agent_start"
     agent_name: str = Field(description="Agent 显示名(联系人列表展示用)")
+    agent_avatar: Optional[str] = Field(
+        default=None,
+        description="Agent 头像 URL,前端 streaming 气泡立即显示;空时前端用首字母色块兜底",
+    )
 
 
 class AgentDoneEvent(_BaseAgentEvent):

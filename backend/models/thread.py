@@ -19,7 +19,7 @@ threads — Thread 执行状态表
 
 from sqlalchemy import Column, String, Text, Enum, JSON, Integer, TIMESTAMP, Index
 
-from backend.models.base import Base, TimestampMixin
+from backend.models.base import Base, UTCTimestamp, TimestampMixin
 
 
 class Thread(Base, TimestampMixin):
@@ -49,8 +49,8 @@ class Thread(Base, TimestampMixin):
         nullable=True,
         comment="主 Agent 派活时给子 Agent 的指令，_run_thread 启动 Adapter 时塞进 StreamInput.prompt",
     )
-    started_at = Column(TIMESTAMP, nullable=True, comment="进入 running 时间")
-    finished_at = Column(TIMESTAMP, nullable=True, comment="进入 done/error 时间")
+    started_at = Column(UTCTimestamp, nullable=True, comment="进入 running 时间")
+    finished_at = Column(UTCTimestamp, nullable=True, comment="进入 done/error 时间")
     error_message = Column(String(500), nullable=True)
     tokens_total = Column(
         Integer,
