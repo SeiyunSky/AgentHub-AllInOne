@@ -124,7 +124,11 @@ async def proxy_to_container(
             media_type="application/json",
         )
 
-    target_url = f"http://{handle.internal_ip}:{CONTAINER_INTERNAL_PORT}/{path}"
+    # 走 host 端口映射,不走容器内部 IP。
+    # 原因:Windows Docker Desktop 上容器 bridge IP (172.x) 从 host 不可达
+    # (容器跑在 WSL2/Hyper-V 虚拟机网络隔离),必须走 host 端口映射。
+    # Linux host 也走同样路径,跨平台一致。
+    target_url = f"http://127.0.0.1:{handle.host_port}/{path}"
     forward_headers = _filter_request_headers(request.headers)
     body = await request.body()
 
