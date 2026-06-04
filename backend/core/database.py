@@ -8,6 +8,7 @@ SQLAlchemy 引擎 + session 工厂
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from datetime import datetime, timezone
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine

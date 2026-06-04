@@ -18,7 +18,7 @@ workflows — 前端 workflow 视图持久化表
 
 from sqlalchemy import Column, String, JSON, TIMESTAMP, Index, func
 
-from backend.models.base import Base
+from backend.models.base import Base, UTCTimestamp
 
 
 class Workflow(Base):
@@ -29,8 +29,7 @@ class Workflow(Base):
     user_id = Column(String(36), nullable=False)
     trigger_message_id = Column(String(36), nullable=True)
     threads = Column(JSON, nullable=False, comment="WorkflowThread[] 的 JSON 序列化")
-    created_at = Column(
-        TIMESTAMP,
+    created_at = Column(UTCTimestamp,
         nullable=False,
         server_default=func.current_timestamp(),
     )
