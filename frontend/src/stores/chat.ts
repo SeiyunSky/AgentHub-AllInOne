@@ -454,11 +454,11 @@ export const useChatStore = defineStore('chat', () => {
     // 空 streaming(blocks=[],被 stop 中断时主 Agent 还没产出任何块)直接丢弃,
     // 不留下空气泡占着列表("主 Agent · just now" 但内容为空的怪现象)。
     // 同样丢弃纯 sentinel 内容（broadcast 模式已读回执，已由 ReadReceiptEvent 处理）。
-    const SENTINEL = '__READ_RECEIPT__'
     const isSentinelOnly = streaming.blocks.length > 0 && streaming.blocks.every(b => {
       if ((b as any).type !== 'text') return false
       const content: string = ((b as any).content ?? '').trim()
-      return content === SENTINEL || content.includes(SENTINEL)
+      return content === '__READ_RECEIPT__' || content.includes('__READ_RECEIPT__') ||
+             content === 'READ_RECEIPT' || content.includes('READ_RECEIPT')
     })
     if (streaming.blocks.length > 0 && !isSentinelOnly) {
       const msgs = [...getMessages(convId)]

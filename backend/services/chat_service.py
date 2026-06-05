@@ -86,11 +86,8 @@ _pending: dict[str, list["_PendingItem"]] = defaultdict(list)
 _orchestrator_tasks: dict[str, asyncio.Task] = {}  # conversation_id → 当前主 Agent loop task
 
 # broadcast 互聊状态：记录本轮有哪些 agent 实际回复了，以及当前轮次深度
-# 结构: { conv_id: {"depth": int, "replies": [{"agent_id": str, "agent_name": str, "content": str}]} }
+# 结构: { conv_id: {"depth": int, "pending": int, "replies": [...]} }
 _broadcast_state: dict[str, dict] = {}
-
-# on_round_done 防重入：同一 conversation 同时只允许一个 on_round_done 执行
-_round_done_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
 
 @dataclass
@@ -334,7 +331,7 @@ class ChatService:
             return
 
         # 初始化本轮 broadcast 互聊状态（depth=0 表示这是用户消息触发的第 0 轮）
-        _broadcast_state[conv_id] = {"depth": 0, "replies": []}
+        _broadcast_state[conv_id] = {"depth": 0, "replies": [], "pending": len(agents)}
 
         forced_ids = set(request.mention_ids or [])
         msg_id = self._msg_id(user_msg)
@@ -378,8 +375,8 @@ class ChatService:
             await _drain_pending_messages(conversation_id)
             return
 
-        # 初始化本轮 broadcast_state，记录深度
-        _broadcast_state[conversation_id] = {"depth": depth, "replies": []}
+        # 初始化本轮 broadcast_state，记录深度和本轮 Thread 总数
+        _broadcast_state[conversation_id] = {"depth": depth, "replies": [], "pending": len(agents)}
 
         # 生成一个虚拟 message_id（agent-to-agent 续话不产生真实用户消息）
         from backend.core.utils import gen_uuid
@@ -512,24 +509,17 @@ class ChatService:
 
 async def on_round_done(conversation_id: str) -> None:
     """
-    主 Agent loop 整轮结束时调:
-    1. 检查是否需要触发 broadcast 下一轮互聊（在 round_done 之前，SSE 仍开着）
-    2. 如果触发了下一轮，直接返回（不推 round_done，下一轮结束时再走）
-    3. 否则推 round_done，取出排队消息，全部完成推 queue_drained
-
-    防重入：broadcast 模式下多个 Thread 并发完成会同时调本函数，
-    用 _round_done_locks 确保同一 conversation 串行执行，重复调用直接跳过。
+    本轮所有 Thread 完成后由 on_broadcast_thread_done 串行触发（broadcast 模式），
+    或由 orchestrator start_loop finally 直接调（群聊主 Agent 路径）。
+    1. 检查是否需要触发 broadcast 下一轮互聊
+    2. 如果触发了下一轮，直接返回（SSE 保持开着）
+    3. 否则推 round_done，取出排队消息
     """
-    lock = _round_done_locks[conversation_id]
-    if lock.locked():
-        # 已有一个 on_round_done 在执行，跳过重复调用
+    triggered = await _maybe_trigger_broadcast_next_round(conversation_id)
+    if triggered:
         return
-    async with lock:
-        triggered = await _maybe_trigger_broadcast_next_round(conversation_id)
-        if triggered:
-            return
-        await stream_service.push_round_done(conversation_id)
-        await _drain_pending_messages(conversation_id)
+    await stream_service.push_round_done(conversation_id)
+    await _drain_pending_messages(conversation_id)
 
 
 def record_broadcast_reply(
@@ -540,7 +530,6 @@ def record_broadcast_reply(
 ) -> None:
     """
     thread_service 落库 broadcast 回复后调本方法，记录本轮回复信息。
-    on_round_done 时据此判断是否触发下一轮互聊。
     只记录 _broadcast_state 里已有的会话（由 _broadcast_flow 初始化），
     非 broadcast 模式下不写入，避免误触发。
     """
@@ -548,6 +537,21 @@ def record_broadcast_reply(
     if state is None:
         return
     state["replies"].append({"agent_id": agent_id, "agent_name": agent_name, "content": content})
+
+
+async def on_broadcast_thread_done(conversation_id: str) -> None:
+    """
+    broadcast 模式下每个 Thread（含已读回执）完成时调本方法。
+    递减本轮 pending 计数；减到 0 时串行触发 on_round_done，其余直接返回。
+    非 broadcast 模式（_broadcast_state 里没有记录）直接跳过。
+    """
+    state = _broadcast_state.get(conversation_id)
+    if state is None:
+        return
+    state["pending"] = state.get("pending", 1) - 1
+    if state["pending"] > 0:
+        return
+    await on_round_done(conversation_id)
 
 
 async def _maybe_trigger_broadcast_next_round(conversation_id: str) -> bool:
@@ -564,7 +568,7 @@ async def _maybe_trigger_broadcast_next_round(conversation_id: str) -> bool:
         return False
 
     depth: int = state.get("depth", 0)
-    if depth >= 2:
+    if depth >= 1:
         logger.debug("broadcast conv=%s depth=%d 已达上限，不触发下一轮", conversation_id, depth)
         _broadcast_state.pop(conversation_id, None)
         return False

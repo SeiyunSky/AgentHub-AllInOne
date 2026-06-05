@@ -684,9 +684,12 @@ class ThreadService:
         # 此时若会话里再无活跃 Thread,必须主动推 round_done,否则前端 SSE 永远等不到关闭信号。
         # 群聊主 Agent 路径不走这里,start_loop finally 自己调 chat_service.on_round_done。
         if parent_thread_id is None and thread.agent_id != "orchestrator":
-            if not self._has_active_threads(thread.conversation_id):
-                # lazy import 防循环依赖
-                from backend.services.chat_service import on_round_done
+            from backend.services.chat_service import _broadcast_state, on_broadcast_thread_done, on_round_done
+            if thread.conversation_id in _broadcast_state:
+                # broadcast 模式：每个 Thread 完成都递减计数器，减到 0 才触发 on_round_done
+                await on_broadcast_thread_done(thread.conversation_id)
+            elif not self._has_active_threads(thread.conversation_id):
+                # 单聊 / @个体特化：没有活跃 Thread 了才触发
                 await on_round_done(thread.conversation_id)
 
     def _has_active_threads(self, conversation_id: str) -> bool:
@@ -1124,11 +1127,9 @@ class ThreadService:
     ) -> bool:
         """
         判断 LLM 输出内容是否是已读回执 sentinel。
-        只收集所有 text 类型块的 content，拼起来去首尾空白后：
-        - 精确等于 sentinel，或
-        - 去掉标点/空白后包含 sentinel（兼容 LLM 在前后加换行/引号的情况）
+        兼容 LLM 输出格式不严格的情况：__READ_RECEIPT__ / READ_RECEIPT 均识别。
         """
-        from backend.services.chat_service import BROADCAST_NO_REPLY_SENTINEL
+        _SENTINELS = ("__READ_RECEIPT__", "READ_RECEIPT")
         parts: list[str] = []
         for block_id in block_order:
             state = block_states.get(block_id, {})
@@ -1136,7 +1137,7 @@ class ThreadService:
                 parts.append(state.get("content", ""))
         full_text = "".join(parts).strip()
         logger.debug("broadcast sentinel check: full_text=%r", full_text)
-        return BROADCAST_NO_REPLY_SENTINEL in full_text
+        return any(s in full_text for s in _SENTINELS)
 
     async def _handle_read_receipt(self, thread: Thread, agent_name: str) -> None:
         """
