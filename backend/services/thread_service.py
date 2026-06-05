@@ -1073,7 +1073,7 @@ class ThreadService:
             if msg is not None and any(getattr(b, "type", None) == "meme" for b in blocks):
                 try:
                     msg_dict = {
-                        "id": thread.message_id,
+                        "id": thread.message_id,  # 与 streaming 气泡的 messageId 一致，确保前端能找到并替换
                         "conversation_id": thread.conversation_id,
                         "thread_id": thread.id,
                         "agent_id": thread.agent_id,

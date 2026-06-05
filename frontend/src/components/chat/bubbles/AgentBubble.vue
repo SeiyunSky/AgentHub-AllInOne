@@ -203,6 +203,7 @@ agentsStore.loadAgents()
 // ── broadcast 打字流动画 ──
 // displayBlocks 是实际渲染用的 blocks 副本；typewriterDone 控制是否显示全文
 const displayBlocks = ref<typeof props.message.blocks>(props.message.blocks)
+}
 const typewriterDone = ref(true)
 
 function startTypewriter() {
