@@ -232,3 +232,14 @@ class DeployAppInput(BaseModel):
 
 class StopAppInput(BaseModel):
     """停止本会话已部署的应用并销毁容器"""
+
+
+class ReadAppLogsInput(BaseModel):
+    """读取本会话部署应用的运行日志"""
+
+    lines: int = Field(
+        default=50,
+        ge=1,
+        le=500,
+        description="从日志末尾读取的行数,默认 50,最多 500。",
+    )

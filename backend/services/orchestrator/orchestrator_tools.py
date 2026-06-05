@@ -1,5 +1,5 @@
 """
-orchestrator_tools —— 主 Agent 20 个内置工具的 Handler 注册
+orchestrator_tools —— 主 Agent 21 个内置工具的 Handler 注册
 
 Input Schema 唯一真相源在 backend.schemas.orchestrator_tools(A 阶段定的契约),
 本文件负责把每个 schema 挂上 @register_tool 装饰器并实装 handler。
@@ -17,7 +17,7 @@ Input Schema 唯一真相源在 backend.schemas.orchestrator_tools(A 阶段定�
 - D. 上下文检索 (3) read_conversation_history / list_available_agents /
                     get_agent_capabilities
 - E. 文件 (4)       create_file / read_file / edit_file / list_directory
-- F. 部署 (2)       deploy_app / stop_app
+- F. 部署 (3)       deploy_app / stop_app / read_app_logs
 
 约定:
 - 每个 handler 第一行 model_validate 把 LLM dict 校验成 Pydantic input
@@ -56,6 +56,7 @@ from backend.schemas.orchestrator_tools import (
     EditFileInput,
     DeployAppInput,
     StopAppInput,
+    ReadAppLogsInput,
     GetAgentCapabilitiesInput,
     ListAvailableAgentsInput,
     ListDirectoryInput,
@@ -1260,3 +1261,37 @@ async def stop_app(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str,
 
     logger.info("stop_app success conv=%s", ctx.conversation_id)
     return {"status": "stopped"}
+
+
+@register_tool(
+    name="read_app_logs",
+    description=(
+        "读取本会话已部署应用的运行日志(/app/.deploy.log)。"
+        "应用报错、crash、请求异常时用这个工具排查。"
+    ),
+    input_model=ReadAppLogsInput,
+)
+async def read_app_logs(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
+    """
+    从容器内读取 /app/.deploy.log 末尾 N 行。
+    容器不存在时返回 not_running。
+    """
+    from backend.services.docker_runtime import get_docker_runtime
+
+    parsed = ReadAppLogsInput.model_validate(tool_input)
+
+    runtime = get_docker_runtime()
+    handle = await runtime.get_container(ctx.conversation_id)
+    if handle is None:
+        return {"status": "not_running", "logs": ""}
+
+    try:
+        result = await runtime.exec_in_container(
+            handle.container_id,
+            f"tail -{parsed.lines} /app/.deploy.log 2>/dev/null || echo '(日志文件不存在)'",
+        )
+    except Exception as exc:
+        logger.exception("read_app_logs failed conv=%s", ctx.conversation_id)
+        return {"status": "error", "error": str(exc), "logs": ""}
+
+    return {"status": "ok", "lines": parsed.lines, "logs": result.output}
