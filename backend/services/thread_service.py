@@ -926,6 +926,15 @@ class ThreadService:
                     # 说明 Agent 决定不回复：跳过落消息，写 read_receipt + 推 SSE。
                     if self._is_read_receipt_sentinel(block_order, block_states):
                         await self._handle_read_receipt(thread, agent_name)
+                        # 推 agent_done 让前端关闭 streaming bubble（bubble 内含 sentinel，前端会丢弃）
+                        await stream_service.push_event(
+                            thread.conversation_id,
+                            AgentDoneEvent(
+                                agent_id=thread.agent_id,
+                                thread_id=thread.id,
+                                message_id=thread.message_id,
+                            ),
+                        )
                         break
 
                     await self._persist_assistant_message(
