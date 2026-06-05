@@ -1,25 +1,21 @@
 """
 skills 相关 Pydantic DTO
 
-Skill 的特殊性:元数据入库(skills 表),正文存文件。所以 DTO 分两种:
-- 列表 / 挂载选择场景 → SkillSummary(不含正文)
-- 加载正文 / 编辑器场景 → SkillWithContent(SkillSummary + content)
+Skill 元数据 + 正文都存 skills 表（content 列）。
 
 涵盖五类 DTO:
-1. 内部 / 列表 DTO —— SkillSummary(精简,不含正文)
-2. 加载正文 DTO —— SkillWithContent(给 Adapter / 编辑器用)
+1. 内部 / 列表 DTO —— SkillSummary（精简，不含正文）
+2. 加载正文 DTO —— SkillWithContent（给 Adapter / 编辑器用）
 3. API DTO —— SkillCreate / SkillUpdate / SkillResponse
 
 关键约定:
-- name 是英文唯一标识(同一作者下唯一,UNIQUE KEY (author_id, name)),对应 .md 文件名。
-- content 字段(正文)在 DTO 层接收完整 markdown 字符串;skill_service 落地时
-  写文件 skills/{name}.md + 写 skills 表元数据。
-- file_path 由 skill_service 内部生成,不暴露给 API 调用方填写。
+- name 是英文唯一标识（同一作者下唯一，UNIQUE KEY (author_id, name)）。
+- content 字段（正文）是完整 markdown 字符串，service 直接写 DB content 列。
 - SkillUpdate 所有字段 Optional 默认 None,partial update 模式。
 
 队伍:咕嘎一辈子队
-修改者:Adam Zhang
-修改日期:2026-05-22
+修改者:Musuyin
+修改日期:2026-06-05
 """
 
 from datetime import datetime
