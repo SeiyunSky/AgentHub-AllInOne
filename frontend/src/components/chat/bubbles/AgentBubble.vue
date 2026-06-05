@@ -29,102 +29,104 @@
         <span class="text-[10px] text-on-surface-variant">{{ timeAgo }}</span>
       </div>
 
-      <!-- Blocks mode -->
-      <div v-if="message.blocks && message.blocks.length > 0" class="space-y-2">
-        <!-- Text block -->
-        <div v-for="(block, i) in message.blocks" :key="i">
-          <div v-if="block.type === 'text'" class="text-block">
-            <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="block.content" />
-            <StreamingCursor v-if="streaming && i === message.blocks.length - 1" />
+      <CollapsibleContent :streaming="streaming">
+        <!-- Blocks mode -->
+        <div v-if="message.blocks && message.blocks.length > 0" class="space-y-2">
+          <!-- Text block -->
+          <div v-for="(block, i) in message.blocks" :key="i">
+            <div v-if="block.type === 'text'" class="text-block">
+              <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="block.content" />
+              <StreamingCursor v-if="streaming && i === message.blocks.length - 1" />
+            </div>
+
+            <!-- Thinking block -->
+            <ThinkingBlock
+              v-else-if="block.type === 'thinking'"
+              :content="block.content"
+              :duration="block.duration"
+            />
+
+            <!-- Tool use block -->
+            <ToolUseBlock
+              v-else-if="block.type === 'tool_use'"
+              :tool-name="block.toolName"
+              :input="block.input"
+              :output="block.output"
+              :status="block.status"
+            />
+
+            <!-- Code block -->
+            <CodeBlockWrapper
+              v-else-if="block.type === 'code'"
+              :code="block.code"
+              :filename="block.filename"
+              :language="block.language"
+              :old-code="block.oldCode"
+              :message-id="message.id"
+            />
+
+            <!-- Deployment block -->
+            <DeploymentBlock
+              v-else-if="block.type === 'deployment'"
+              :title="block.title"
+              :status="block.status"
+              :url="block.url"
+              :logs="block.logs"
+              :progress="block.progress"
+            />
+
+            <!-- Image block -->
+            <ImageBlock
+              v-else-if="block.type === 'image'"
+              :src="block.src"
+              :alt="block.alt"
+              :caption="block.caption"
+            />
+
+            <!-- Artifacts block -->
+            <ArtifactsBlock
+              v-else-if="block.type === 'artifacts'"
+              :message-id="message.id"
+              :artifact="block.item"
+            />
+
+            <!-- Approval block -->
+            <ApprovalBlock
+              v-else-if="block.type === 'approval'"
+              :message-id="message.id"
+              :block-id="(block as any).blockId"
+              :action="(block as any).action"
+              :detail="(block as any).detail"
+              :status="(block as any).status"
+              :decided-at="(block as any).decidedAt"
+              :reject-reason="(block as any).rejectReason"
+            />
           </div>
-
-          <!-- Thinking block -->
-          <ThinkingBlock
-            v-else-if="block.type === 'thinking'"
-            :content="block.content"
-            :duration="block.duration"
-          />
-
-          <!-- Tool use block -->
-          <ToolUseBlock
-            v-else-if="block.type === 'tool_use'"
-            :tool-name="block.toolName"
-            :input="block.input"
-            :output="block.output"
-            :status="block.status"
-          />
-
-          <!-- Code block -->
-          <CodeBlockWrapper
-            v-else-if="block.type === 'code'"
-            :code="block.code"
-            :filename="block.filename"
-            :language="block.language"
-            :old-code="block.oldCode"
-            :message-id="message.id"
-          />
-
-          <!-- Deployment block -->
-          <DeploymentBlock
-            v-else-if="block.type === 'deployment'"
-            :title="block.title"
-            :status="block.status"
-            :url="block.url"
-            :logs="block.logs"
-            :progress="block.progress"
-          />
-
-          <!-- Image block -->
-          <ImageBlock
-            v-else-if="block.type === 'image'"
-            :src="block.src"
-            :alt="block.alt"
-            :caption="block.caption"
-          />
-
-          <!-- Artifacts block -->
-          <ArtifactsBlock
-            v-else-if="block.type === 'artifacts'"
-            :message-id="message.id"
-            :artifact="block.item"
-          />
-
-          <!-- Approval block -->
-          <ApprovalBlock
-            v-else-if="block.type === 'approval'"
-            :message-id="message.id"
-            :block-id="(block as any).blockId"
-            :action="(block as any).action"
-            :detail="(block as any).detail"
-            :status="(block as any).status"
-            :decided-at="(block as any).decidedAt"
-            :reject-reason="(block as any).rejectReason"
-          />
         </div>
-      </div>
 
-      <!-- Streaming: blocks empty, show typing indicator -->
-      <div v-else-if="streaming" class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft inline-flex items-center gap-1.5">
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
-      </div>
-
-      <!-- Legacy mode: single content + optional codeBlock -->
-      <template v-else>
-        <div class="text-block">
-          <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="message.content" />
-
-          <CodeBlock
-            v-if="message.codeBlock"
-            class="mt-3"
-            :code="message.codeBlock.code"
-            :filename="message.codeBlock.filename"
-            :language="message.codeBlock.language"
-            :old-code="message.codeBlock.oldCode"
-          />
+        <!-- Streaming: blocks empty, show typing indicator -->
+        <div v-else-if="streaming" class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft inline-flex items-center gap-1.5">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
         </div>
-      </template>
+
+        <!-- Legacy mode: single content + optional codeBlock -->
+        <template v-else>
+          <div class="text-block">
+            <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="message.content" />
+
+            <CodeBlock
+              v-if="message.codeBlock"
+              class="mt-3"
+              :code="message.codeBlock.code"
+              :filename="message.codeBlock.filename"
+              :language="message.codeBlock.language"
+              :old-code="message.codeBlock.oldCode"
+            />
+          </div>
+        </template>
+      </CollapsibleContent>
 
       <!-- Actions -->
       <MessageActions
@@ -162,6 +164,7 @@ import DeploymentBlock from '../blocks/DeploymentBlock.vue'
 import ImageBlock from '../blocks/ImageBlock.vue'
 import ArtifactsBlock from '../blocks/ArtifactsBlock.vue'
 import ApprovalBlock from '../blocks/ApprovalBlock.vue'
+import CollapsibleContent from '../CollapsibleContent.vue'
 
 const props = defineProps<{
   message: AgentMessage
