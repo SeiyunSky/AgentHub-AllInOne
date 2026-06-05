@@ -15,13 +15,14 @@ applicable_agents: [claude, custom]
 
 ## 第一步：读取项目上下文
 
-**在看任何代码之前，先读以下文档，建立对项目的完整理解。**
+**在看任何代码之前，先理解以下文档的内容，建立对项目的完整理解。**
 
-```
-read_file("All_Things_YOU_NEED_TO_KNOW/主Agent设计.md")
-read_file("All_Things_YOU_NEED_TO_KNOW/开发日志 - 后端架构设计.md")
-read_file("All_Things_YOU_NEED_TO_KNOW/数据结构设计-MVP草案v1.md")
-```
+这些文档应由主 Agent 在 dispatch_prompt 的"背景"段里提供。如果主 Agent 没有提供，先回报"缺少项目设计文档，无法做一致性审查，请主 Agent 补充以下内容后重派"，不要在没有上下文的情况下硬审。
+
+需要的文档：
+- `All_Things_YOU_NEED_TO_KNOW/主Agent设计.md`
+- `All_Things_YOU_NEED_TO_KNOW/开发日志 - 后端架构设计.md`
+- `All_Things_YOU_NEED_TO_KNOW/数据结构设计-MVP草案v1.md`
 
 重点理解：
 - 后端分层结构（api / service / adapter / repository / domain）及各层职责边界
@@ -31,7 +32,7 @@ read_file("All_Things_YOU_NEED_TO_KNOW/数据结构设计-MVP草案v1.md")
 - MySQL 表结构与 Redis Key 设计
 - Thread 状态机（init → running → suspended → done/error/cancelled）
 
-**读完文档后再开始审查。如果某段代码的行为与文档描述不一致，这是需要重点标记的问题。**
+**如果某段代码的行为与文档描述不一致，这是需要重点标记的问题。**
 
 ---
 

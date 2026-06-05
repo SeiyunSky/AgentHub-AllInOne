@@ -127,6 +127,25 @@ from fastapi.staticfiles import StaticFiles
 app.mount("/static", StaticFiles(directory="static"), name="static")
 ```
 
+### 前端路径必须用相对路径
+
+AgentHub 通过 `/preview/{conv_id}/` 子路径反代容器。前端代码里**所有路径不能以 `/` 开头**:
+
+```javascript
+// ❌ 绝对路径 — 请求打到 AgentHub 后端,容器收不到
+fetch('/api/data', ...)
+
+// ✅ 相对路径 — 自动拼在当前页面路径后面
+fetch('api/data', ...)
+```
+
+```html
+<!-- ❌ -->  <script src="/static/main.js"></script>
+<!-- ✅ -->  <script src="static/main.js"></script>
+```
+
+同样适用于 `<link href>` / `<img src>` / `XMLHttpRequest` / `axios` 等所有网络请求。
+
 ## 端口
 
 容器内**必须**监听 `0.0.0.0:8000`。AgentHub 反向代理只转发这个端口。

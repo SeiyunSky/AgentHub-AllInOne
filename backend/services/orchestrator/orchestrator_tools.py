@@ -1,5 +1,5 @@
 """
-orchestrator_tools —— 主 Agent 19 个内置工具的 Handler 注册
+orchestrator_tools —— 主 Agent 22 个内置工具的 Handler 注册
 
 Input Schema 唯一真相源在 backend.schemas.orchestrator_tools(A 阶段定的契约),
 本文件负责把每个 schema 挂上 @register_tool 装饰器并实装 handler。
@@ -17,6 +17,8 @@ Input Schema 唯一真相源在 backend.schemas.orchestrator_tools(A 阶段定�
 - D. 上下文检索 (3) read_conversation_history / list_available_agents /
                     get_agent_capabilities
 - E. 文件 (4)       create_file / read_file / edit_file / list_directory
+- F. 部署 (3)       deploy_app / stop_app / read_app_logs
+- G. 网络 (1)       fetch_url
 
 约定:
 - 每个 handler 第一行 model_validate 把 LLM dict 校验成 Pydantic input
@@ -54,6 +56,9 @@ from backend.schemas.orchestrator_tools import (
     DispatchToAgentInput,
     EditFileInput,
     DeployAppInput,
+    StopAppInput,
+    ReadAppLogsInput,
+    FetchUrlInput,
     GetAgentCapabilitiesInput,
     ListAvailableAgentsInput,
     ListDirectoryInput,
@@ -1229,4 +1234,133 @@ async def deploy_app(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[st
         "url": url,
         "entry_point": parsed.entry_point,
         "logs": "\n".join(accumulated_logs),
+    }
+
+
+@register_tool(
+    name="stop_app",
+    description="停止本会话已部署的应用并销毁容器。部署的 URL 立即失效。",
+    input_model=StopAppInput,
+)
+async def stop_app(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
+    """
+    停止本会话的 Docker 容器(stop + remove)。
+    容器销毁后沙箱目录保留,下次 deploy_app 会重建容器。
+    """
+    from backend.services.docker_runtime import get_docker_runtime
+
+    StopAppInput.model_validate(tool_input)
+
+    runtime = get_docker_runtime()
+    try:
+        stopped = await runtime.stop_container(ctx.conversation_id)
+    except Exception as exc:
+        logger.exception("stop_app failed conv=%s", ctx.conversation_id)
+        return {"status": "error", "error": str(exc)}
+
+    if not stopped:
+        return {"status": "not_running", "message": "本会话没有运行中的容器"}
+
+    logger.info("stop_app success conv=%s", ctx.conversation_id)
+    return {"status": "stopped"}
+
+
+@register_tool(
+    name="read_app_logs",
+    description=(
+        "读取本会话已部署应用的运行日志(/app/.deploy.log)。"
+        "应用报错、crash、请求异常时用这个工具排查。"
+    ),
+    input_model=ReadAppLogsInput,
+)
+async def read_app_logs(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
+    """
+    从容器内读取 /app/.deploy.log 末尾 N 行。
+    容器不存在时返回 not_running。
+    """
+    from backend.services.docker_runtime import get_docker_runtime
+
+    parsed = ReadAppLogsInput.model_validate(tool_input)
+
+    runtime = get_docker_runtime()
+    handle = await runtime.get_container(ctx.conversation_id)
+    if handle is None:
+        return {"status": "not_running", "logs": ""}
+
+    try:
+        result = await runtime.exec_in_container(
+            handle.container_id,
+            f"tail -{parsed.lines} /app/.deploy.log 2>/dev/null || echo '(日志文件不存在)'",
+        )
+    except Exception as exc:
+        logger.exception("read_app_logs failed conv=%s", ctx.conversation_id)
+        return {"status": "error", "error": str(exc), "logs": ""}
+
+    return {"status": "ok", "lines": parsed.lines, "logs": result.output}
+
+
+# ============================================================
+# G. 网络 (1)
+# ============================================================
+
+@register_tool(
+    name="fetch_url",
+    description=(
+        "向指定 URL 发 HTTP GET 请求,返回响应状态码和正文内容。"
+        "用于读取网页、调用公开 API、抓取文本数据等场景。"
+    ),
+    input_model=FetchUrlInput,
+)
+async def fetch_url(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
+    """
+    HTTP GET 请求。
+
+    - 自动跟随重定向(最多 5 次)
+    - 响应正文超过 max_chars 时截断,并在返回值里标注 truncated=True
+    - Content-Type 不是 text/* 或 application/json 时,正文以十六进制摘要返回,不强行解码
+    - 连接超时 / DNS 失败 / SSL 错误都返回 status="error",不抛异常
+    """
+    import httpx
+
+    parsed = FetchUrlInput.model_validate(tool_input)
+
+    if not parsed.url.startswith(("http://", "https://")):
+        return {"status": "error", "error": "url 必须以 http:// 或 https:// 开头"}
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=parsed.timeout,
+            follow_redirects=True,
+            max_redirects=5,
+        ) as client:
+            resp = await client.get(parsed.url)
+    except httpx.TimeoutException:
+        return {"status": "error", "error": f"请求超时 (>{parsed.timeout}s)"}
+    except httpx.RequestError as exc:
+        return {"status": "error", "error": f"请求失败: {exc}"}
+
+    content_type = resp.headers.get("content-type", "")
+    is_text = any(t in content_type for t in ("text/", "application/json", "application/xml", "application/javascript"))
+
+    if is_text:
+        try:
+            body = resp.text
+        except Exception:
+            body = resp.content.hex()
+            is_text = False
+    else:
+        # 二进制内容只返回摘要,不把几 MB 的图片塞进上下文
+        body = f"[binary content, {len(resp.content)} bytes, content-type={content_type}]"
+
+    truncated = False
+    if is_text and len(body) > parsed.max_chars:
+        body = body[: parsed.max_chars]
+        truncated = True
+
+    return {
+        "status_code": resp.status_code,
+        "content_type": content_type,
+        "body": body,
+        "truncated": truncated,
+        "url": str(resp.url),  # 跟随重定向后的最终 URL
     }

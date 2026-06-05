@@ -63,6 +63,32 @@ sandbox/{conv_id}/
 - 不分 `routers/` / `services/` / `repositories/`(单文件足够 demo,过度分层)
 - 不加 `tests/`(部署验证就够了)
 
+### 前端路径规则(部署必须遵守)
+
+AgentHub 把应用挂在 `/preview/{conv_id}/` 子路径下。前端所有 fetch 和资源引用**不能用 `/` 开头的绝对路径**,否则浏览器把请求发到 AgentHub 后端,容器永远收不到:
+
+```javascript
+// ❌ 错误 — 绝对路径
+fetch('/api/calculate', ...)
+fetch('/todos', ...)
+
+// ✅ 正确 — 相对路径
+fetch('api/calculate', ...)
+fetch('todos', ...)
+```
+
+```html
+<!-- ❌ 错误 -->
+<script src="/static/main.js"></script>
+<link rel="stylesheet" href="/static/style.css">
+
+<!-- ✅ 正确 -->
+<script src="static/main.js"></script>
+<link rel="stylesheet" href="static/style.css">
+```
+
+**规则**:写前端代码时,所有 `fetch()`、`<script src>`、`<link href>`、`<img src>` 的路径一律去掉开头的 `/`。
+
 ## Step 4: 实现(代码 Agent)
 
 按功能点逐个实现,每个功能 1-2 个 endpoint:
