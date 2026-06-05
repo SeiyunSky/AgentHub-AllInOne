@@ -65,6 +65,7 @@ class ClaudeAdapter(AgentAdapter):
         yield AgentStartEvent(
             **_base(),
             agent_name=inp.agent_name or inp.agent_id,
+            agent_avatar=inp.agent_avatar,
         )
 
         bin_path = shutil.which(self._bin_path) or self._bin_path

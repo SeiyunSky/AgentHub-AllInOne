@@ -15,7 +15,8 @@
       <div v-else-if="msg.type === 'typing'" class="flex gap-3 message-enter">
         <div
           class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-gradient-to-br from-brand-light to-brand-subtle border border-brand/20">
-          <span class="text-xs font-bold text-brand">{{ getInitials(msg.agentName) }}</span>
+          <img v-if="resolveTypingAvatar(msg)" :src="resolveTypingAvatar(msg)!" :alt="msg.agentName" class="w-full h-full object-cover" />
+          <span v-else class="text-xs font-bold text-brand">{{ getInitials(msg.agentName) }}</span>
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1.5">
@@ -40,6 +41,7 @@ import { Loading } from '@element-plus/icons-vue'
 import type { Message, AgentMessage } from '@/types/chat'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
+import { useAgentsStore } from '@/stores/agents'
 import AgentBubble from './bubbles/AgentBubble.vue'
 import UserBubble from './bubbles/UserBubble.vue'
 
@@ -88,6 +90,12 @@ function getInitials(name: string) {
   const words = name.trim().split(/\s+/)
   if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
   return name[0]?.toUpperCase() ?? ''
+}
+
+// typing 气泡的头像兜底：消息自带 → store 查 → null
+const agentsStore = useAgentsStore()
+function resolveTypingAvatar(msg: { agentId: string; avatar?: string }): string | undefined {
+  return msg.avatar ?? agentsStore.agents.find(a => a.id === msg.agentId)?.avatar ?? undefined
 }
 
 const listRef = ref<HTMLElement>()

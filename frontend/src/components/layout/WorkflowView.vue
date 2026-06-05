@@ -48,9 +48,10 @@
           <div class="flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
                :class="threadHeaderClass(thread.status)"
                @click="toggleCollapsed(`${snap.id}-${thread.threadId}`, isCollapsedKey(`${snap.id}-${thread.threadId}`, thread.status))">
-            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0"
-                 :style="{ background: agentGradient(thread.agentName) }">
-              {{ thread.agentName.charAt(0).toUpperCase() }}
+            <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 overflow-hidden"
+                 :style="thread.avatar ? undefined : { background: agentGradient(thread.agentName) }">
+              <img v-if="thread.avatar" :src="thread.avatar" :alt="thread.agentName" class="w-full h-full object-cover" />
+              <template v-else>{{ thread.agentName.charAt(0).toUpperCase() }}</template>
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
@@ -118,10 +119,11 @@
                  :class="threadHeaderClass(thread.status)"
                  @click="toggleCollapsed(thread.threadId, isCollapsed(thread))">
               <div
-                class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 relative"
-                :style="{ background: agentGradient(thread.agentName) }"
+                class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 relative overflow-hidden"
+                :style="thread.avatar ? undefined : { background: agentGradient(thread.agentName) }"
               >
-                {{ thread.agentName.charAt(0).toUpperCase() }}
+                <img v-if="thread.avatar" :src="thread.avatar" :alt="thread.agentName" class="w-full h-full object-cover" />
+                <template v-else>{{ thread.agentName.charAt(0).toUpperCase() }}</template>
                 <span v-if="thread.status === 'init'"
                   class="absolute inset-0 rounded-xl border-2 border-white/40 animate-ping" />
               </div>

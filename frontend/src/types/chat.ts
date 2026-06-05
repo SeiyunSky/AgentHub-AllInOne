@@ -43,6 +43,7 @@ export interface ChatAgent {
   id: string
   name: string
   role: string
+  avatar?: string
   status: 'active' | 'processing' | 'idle' | 'error'
 }
 
@@ -98,6 +99,7 @@ export interface TypingMessage {
   type: 'typing'
   agentId: string
   agentName: string
+  avatar?: string
   timestamp: Date
 }
 
