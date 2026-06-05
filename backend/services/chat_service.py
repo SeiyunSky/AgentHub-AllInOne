@@ -330,6 +330,8 @@ class ChatService:
             logger.warning("broadcast conversation %s has no active agents", conv_id)
             return
 
+        import random
+
         # 初始化本轮 broadcast 互聊状态（depth=0 表示这是用户消息触发的第 0 轮）
         _broadcast_state[conv_id] = {"depth": 0, "replies": [], "pending": len(agents)}
 
@@ -338,11 +340,18 @@ class ChatService:
 
         for agent in agents:
             if agent.id in forced_ids:
+                # @ 强制回复
                 prefix = "[用户在群聊中直接 @ 了你，你必须回复]\n\n"
-            else:
+            elif random.random() < 0.7:
+                # 70% 概率：鼓励回复，但仍可自决
                 prefix = (
-                    f"[broadcast 消息，你自己决定要不要回复。"
-                    f"如果这条消息与你无关或你不想参与，只回 {BROADCAST_NO_REPLY_SENTINEL}，不要说其他任何话。]\n\n"
+                    f"[broadcast 消息，你可以用你的角色身份回复。"
+                    f"如果回不回复都无所谓，只回 {BROADCAST_NO_REPLY_SENTINEL}，不要说其他任何话。]\n\n"
+                )
+            else:
+                # 30% 概率：倾向已读不回
+                prefix = (
+                    f"[broadcast 消息，你此刻不太想开口。除非内容强烈触动你，否则只回 {BROADCAST_NO_REPLY_SENTINEL}，不要说其他任何话。]\n\n"
                 )
             dispatch_prompt = prefix + request.content
 
@@ -362,27 +371,25 @@ class ChatService:
         conversation_id: str,
         prompt: str,
         depth: int,
+        selected_agents: list,
     ) -> None:
         """
-        broadcast 互聊下一轮：把本轮的回复摘要广播给所有 agent，让大家都有机会接话。
-        depth 已经是新一轮的深度值（1 或 2），写入 _broadcast_state 供 on_round_done 检查。
+        broadcast 互聊下一轮：只给 selected_agents 创建 Thread。
+        selected_agents 由调用方（_maybe_trigger_broadcast_next_round）按概率筛选好传入。
         """
-        conv_repo = ConversationRepository(self.session)
-        agents = conv_repo.list_active_agents(conversation_id)
-        if not agents:
-            logger.info("broadcast conv=%s depth=%d 没有 agent，终止互聊", conversation_id, depth)
+        if not selected_agents:
+            logger.info("broadcast conv=%s depth=%d selected_agents 为空，终止互聊", conversation_id, depth)
             await stream_service.push_round_done(conversation_id)
             await _drain_pending_messages(conversation_id)
             return
 
-        # 初始化本轮 broadcast_state，记录深度和本轮 Thread 总数
-        _broadcast_state[conversation_id] = {"depth": depth, "replies": [], "pending": len(agents)}
+        # 初始化本轮 broadcast_state，pending 只计命中的 agent 数
+        _broadcast_state[conversation_id] = {"depth": depth, "replies": [], "pending": len(selected_agents)}
 
-        # 生成一个虚拟 message_id（agent-to-agent 续话不产生真实用户消息）
         from backend.core.utils import gen_uuid
         virtual_msg_id = gen_uuid()
 
-        for agent in agents:
+        for agent in selected_agents:
             agent_prompt = (
                 f"[broadcast 续话，你自己决定要不要回复。"
                 f"如果你没有什么要说的，只回 {BROADCAST_NO_REPLY_SENTINEL}，不要说其他任何话。]\n\n"
@@ -558,10 +565,13 @@ async def _maybe_trigger_broadcast_next_round(conversation_id: str) -> bool:
     """
     broadcast 互聊触发逻辑：
     - 本轮有 agent 回复（replies 非空）
-    - 当前深度 < 2（最多 2 轮 agent-to-agent）
-    - 触发下一轮：把本轮所有回复拼成对话摘要，广播给其余 agent
+    - 当前深度 < 1
+    - 对每个 agent 独立做 30% 概率判定，命中的才进下一轮
+    - 命中 0 个则不触发
     返回 True 表示触发了下一轮（调用方不应推 round_done），False 表示没有触发。
     """
+    import random
+
     state = _broadcast_state.get(conversation_id)
     if not state or not state.get("replies"):
         _broadcast_state.pop(conversation_id, None)
@@ -574,7 +584,24 @@ async def _maybe_trigger_broadcast_next_round(conversation_id: str) -> bool:
         return False
 
     replies: list[dict] = state["replies"]
-    _broadcast_state.pop(conversation_id, None)  # 清理，新一轮由 _broadcast_agent_reply_flow 重建
+    _broadcast_state.pop(conversation_id, None)
+
+    # 对每个 agent 单独 30% 概率判定，收集命中的
+    from backend.core.database import SessionLocal
+    session = SessionLocal()
+    try:
+        from backend.repositories.conversation_repo import ConversationRepository as _ConvRepo
+        all_agents = _ConvRepo(session).list_active_agents(conversation_id)
+    finally:
+        session.close()
+
+    selected = [a for a in all_agents if random.random() < 0.3]
+    logger.info(
+        "broadcast conv=%s 互聊概率判定：%d/%d 个 agent 命中",
+        conversation_id, len(selected), len(all_agents),
+    )
+    if not selected:
+        return False
 
     # 组装对话摘要
     summary_lines = []
@@ -585,11 +612,10 @@ async def _maybe_trigger_broadcast_next_round(conversation_id: str) -> bool:
     next_prompt = f"[群聊续话，其他成员刚刚说了以下内容，你可以自然地接话或保持沉默]\n\n{summary}"
 
     logger.info(
-        "broadcast conv=%s 触发第 %d 轮互聊，本轮回复数=%d",
-        conversation_id, depth + 1, len(replies),
+        "broadcast conv=%s 触发第 %d 轮互聊，selected_agents=%s",
+        conversation_id, depth + 1, [a.id for a in selected],
     )
 
-    from backend.core.database import SessionLocal
     session = SessionLocal()
     try:
         svc = ChatService(session)
@@ -597,6 +623,7 @@ async def _maybe_trigger_broadcast_next_round(conversation_id: str) -> bool:
             conversation_id=conversation_id,
             prompt=next_prompt,
             depth=depth + 1,
+            selected_agents=selected,
         )
         return True
     except Exception:

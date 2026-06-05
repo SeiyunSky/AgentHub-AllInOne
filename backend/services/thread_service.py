@@ -688,9 +688,15 @@ class ThreadService:
             if thread.conversation_id in _broadcast_state:
                 # broadcast 模式：每个 Thread 完成都递减计数器，减到 0 才触发 on_round_done
                 await on_broadcast_thread_done(thread.conversation_id)
-            elif not self._has_active_threads(thread.conversation_id):
-                # 单聊 / @个体特化：没有活跃 Thread 了才触发
-                await on_round_done(thread.conversation_id)
+            else:
+                # 单聊 / @个体特化走这里；broadcast 模式下 state 已清时不再触发，避免重复
+                from backend.repositories.conversation_repo import ConversationRepository as _CR
+                from backend.core.database import db_session as _dbs
+                with _dbs() as s:
+                    conv = _CR(s).get(thread.conversation_id)
+                    is_broadcast = conv is not None and conv.mode == "broadcast"
+                if not is_broadcast and not self._has_active_threads(thread.conversation_id):
+                    await on_round_done(thread.conversation_id)
 
     def _has_active_threads(self, conversation_id: str) -> bool:
         """会话里是否还有 init/running/suspended 的 Thread。"""
@@ -764,9 +770,9 @@ class ThreadService:
                 return t
 
         try:
+            _mark(ThreadStatus.RUNNING)  # 先标记 running，让 _has_active_threads 能看到
             if delay > 0:
                 await asyncio.sleep(delay)
-            _mark(ThreadStatus.RUNNING)
 
             adapter = adapter_registry.get(thread.agent_id)
             if adapter is None:
