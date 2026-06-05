@@ -7,6 +7,12 @@
       "skillPath": "skills/create-adaptable-composable/SKILL.md",
       "computedHash": "3d044f8c43ddaee6a58ab28acc9d6315775aed150c3a9ab059d2714768be5bec"
     },
+    "git-commit": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/git-commit/SKILL.md",
+      "computedHash": "2607fc60629b82b257136dd2a7a373f0a4466c0b49df7746d845d59313c99b21"
+    },
     "vue-best-practices": {
       "source": "vuejs-ai/skills",
       "sourceType": "github",
