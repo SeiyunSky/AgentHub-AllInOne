@@ -31,6 +31,7 @@ class ConversationMode(str, Enum):
     """会话模式 —— chat_service 路由分支用"""
     SINGLE = "single"
     GROUP = "group"
+    BROADCAST = "broadcast"
 
 
 # ============================================================
@@ -74,8 +75,8 @@ class ConversationCreate(BaseModel):
             raise ValueError(
                 f"single 模式必须挂载恰好 1 个 Agent,实际 {len(self.agent_ids)}"
             )
-        if self.mode == ConversationMode.GROUP and len(self.agent_ids) < 1:
-            raise ValueError("group 模式至少挂载 1 个 Agent")
+        if self.mode in (ConversationMode.GROUP, ConversationMode.BROADCAST) and len(self.agent_ids) < 1:
+            raise ValueError(f"{self.mode.value} 模式至少挂载 1 个 Agent")
         return self
 
 

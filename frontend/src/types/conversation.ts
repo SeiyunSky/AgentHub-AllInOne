@@ -1,6 +1,6 @@
 // Conversation types — aligned with backend schemas/conversation.py
 
-export type ConversationMode = 'single' | 'group'
+export type ConversationMode = 'single' | 'group' | 'broadcast'
 
 export interface AgentMember {
   id: string

@@ -118,6 +118,10 @@ function handleEvent(convId: string, event: SSEEvent) {
       chatStore.appendPersistedMessage(convId, event.message)
       break
 
+    case 'read_receipt':
+      chatStore.addReadReceipt(event.message_id, event.agent_id, event.agent_name, event.agent_avatar)
+      break
+
     case 'queue_drained':
       disconnect(convId)
       break

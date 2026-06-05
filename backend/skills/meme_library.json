@@ -1,0 +1,64 @@
+{
+  "memes": [
+    {
+      "id": "doge",
+      "filename": "doge.svg",
+      "description": "柴犬歪头，表情迷惑，内心OS密密麻麻。用于：表示困惑、看不懂、一脸懵逼的场景。"
+    },
+    {
+      "id": "pepe_cry",
+      "filename": "pepe_cry.svg",
+      "description": "绿蛙Pepe哭泣，表情悲伤委屈。用于：表示难过、失落、心痛或自嘲倒霉。"
+    },
+    {
+      "id": "pepe_laugh",
+      "filename": "pepe_laugh.svg",
+      "description": "绿蛙Pepe大笑，表情开心得意。用于：表示好笑、嘲讽、哈哈哈停不下来。"
+    },
+    {
+      "id": "this_is_fine",
+      "filename": "this_is_fine.svg",
+      "description": "小狗坐在着火的房间里喝咖啡，一副淡定模样。用于：一切都在崩溃但假装没事、摆烂、躺平。"
+    },
+    {
+      "id": "big_brain",
+      "filename": "big_brain.svg",
+      "description": "脑袋越来越大越来越亮，展示'开窍了'的层次递进。用于：表示突然悟了、脑子转开了、天才发言。"
+    },
+    {
+      "id": "cat_stare",
+      "filename": "cat_stare.svg",
+      "description": "猫眯着眼睛盯着你看，表情意味深长。用于：表示审视、怀疑、我已经看穿你了。"
+    },
+    {
+      "id": "bonk",
+      "filename": "bonk.svg",
+      "description": "柴犬举着棒子准备敲人，表情严肃。用于：表示制止、禁止、你给我停一停。"
+    },
+    {
+      "id": "stonks",
+      "filename": "stonks.svg",
+      "description": "股票图表飞涨，配上西装人物形象。用于：表示赚到了、收益拉满、非常赚。"
+    },
+    {
+      "id": "not_stonks",
+      "filename": "not_stonks.svg",
+      "description": "股票图表暴跌，配上同款西装人物表情落寞。用于：表示亏了、翻车、形势一落千丈。"
+    },
+    {
+      "id": "galaxy_brain",
+      "filename": "galaxy_brain.svg",
+      "description": "脑袋变成星系大爆炸，表示思维升华到宇宙级别。用于：表示离谱但又感觉有道理的神论、超级想法。"
+    },
+    {
+      "id": "pikasurprise",
+      "filename": "pikasurprise.svg",
+      "description": "皮卡丘张大嘴巴一脸震惊。用于：表示没想到、原来如此、我被惊到了。"
+    },
+    {
+      "id": "shrug",
+      "filename": "shrug.svg",
+      "description": "人物耸肩摊手，表情无奈。用于：表示我也不知道、随便、无所谓。"
+    }
+  ]
+}

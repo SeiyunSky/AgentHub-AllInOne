@@ -26,7 +26,7 @@ class Conversation(Base, TimestampMixin):
     user_id = Column(String(36), nullable=False, comment="多用户隔离")
     title = Column(String(200), nullable=True, comment="会话标题")
     mode = Column(
-        Enum("single", "group", name="conversation_mode"),
+        Enum("single", "group", "broadcast", name="conversation_mode"),
         nullable=False,
         comment="chat_service 路由分支用",
     )

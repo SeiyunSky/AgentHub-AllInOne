@@ -9,8 +9,27 @@
       <AgentBubble v-if="msg.type === 'agent'" :message="msg" :streaming="isStreamingMessage(msg)"
         :activity="streamingActivityFor(msg)" :current-tool="streamingToolFor(msg)" @reply="$emit('reply', $event)"
         @copy="$emit('copy', $event)" @react="(id, type) => $emit('react', id, type)" />
-      <UserBubble v-else-if="msg.type === 'user'" :message="msg" @reply="$emit('reply', $event)"
-        @copy="$emit('copy', $event)" />
+      <template v-else-if="msg.type === 'user'">
+        <UserBubble :message="msg" @reply="$emit('reply', $event)" @copy="$emit('copy', $event)" />
+        <!-- broadcast 已读回执 -->
+        <div v-if="chatStore.getReadReceipts(msg.id).length > 0" class="flex justify-end items-center gap-2 mt-2 pr-1">
+          <span class="text-[12px] text-on-surface-variant/70">已读</span>
+          <div class="flex items-center gap-1.5">
+            <div
+              v-for="receipt in chatStore.getReadReceipts(msg.id)"
+              :key="receipt.agentId"
+              :title="receipt.agentName"
+            >
+              <div class="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-outline-variant/50">
+                <img v-if="receipt.agentAvatar" :src="receipt.agentAvatar" :alt="receipt.agentName" class="w-full h-full object-cover" />
+                <div v-else class="w-full h-full bg-brand-light flex items-center justify-center text-[10px] font-bold text-brand">
+                  {{ receipt.agentName.charAt(0) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
       <!-- Typing indicator -->
       <div v-else-if="msg.type === 'typing'" class="flex gap-3 message-enter">
         <div

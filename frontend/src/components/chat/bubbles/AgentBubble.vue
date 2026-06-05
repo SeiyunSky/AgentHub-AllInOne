@@ -33,10 +33,10 @@
         <!-- Blocks mode -->
         <div v-if="message.blocks && message.blocks.length > 0" class="space-y-2">
           <!-- Text block -->
-          <div v-for="(block, i) in message.blocks" :key="i">
+          <div v-for="(block, i) in displayBlocks" :key="i">
             <div v-if="block.type === 'text'" class="text-block">
               <MarkdownRenderer class="text-[13px] leading-relaxed text-on-surface" :content="block.content" />
-              <StreamingCursor v-if="streaming && i === message.blocks.length - 1" />
+              <StreamingCursor v-if="(streaming && i === (displayBlocks?.length ?? 0) - 1) || (!typewriterDone && i === (displayBlocks?.length ?? 0) - 1)" />
             </div>
 
             <!-- Thinking block -->
@@ -89,6 +89,19 @@
               :message-id="message.id"
               :artifact="block.item"
             />
+
+            <!-- Meme block -->
+            <div
+              v-else-if="block.type === 'meme'"
+              class="meme-block"
+            >
+              <img
+                :src="(block as any).url"
+                :alt="(block as any).description"
+                class="max-w-[200px] max-h-[200px] rounded-xl object-contain"
+                :title="(block as any).description"
+              />
+            </div>
 
             <!-- Approval block -->
             <ApprovalBlock
@@ -150,9 +163,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { AgentMessage } from '@/types/chat'
 import { useAgentsStore } from '@/stores/agents'
+import { useChatStore } from '@/stores/chat'
 import MarkdownRenderer from '@/components/common/MarkdownRenderer.vue'
 import StreamingCursor from './StreamingCursor.vue'
 import CodeBlock from '../CodeBlock.vue'
@@ -182,8 +196,69 @@ defineEmits<{
 }>()
 
 const agentsStore = useAgentsStore()
+const chatStore = useChatStore()
 // 进入气泡时确保 agents store 已加载（幂等，重复调直接返回）
 agentsStore.loadAgents()
+
+// ── broadcast 打字流动画 ──
+// displayBlocks 是实际渲染用的 blocks 副本；typewriterDone 控制是否显示全文
+const displayBlocks = ref<typeof props.message.blocks>(props.message.blocks)
+const typewriterDone = ref(true)
+
+function startTypewriter() {
+  const textBlockIdx = props.message.blocks?.findIndex(b => b.type === 'text') ?? -1
+  if (textBlockIdx === -1 || !props.message.blocks) return
+
+  const fullText = (props.message.blocks[textBlockIdx] as { content: string }).content
+  if (!fullText) return
+
+  typewriterDone.value = false
+
+  // 克隆 blocks，把 text block 内容先清空
+  const cloned = props.message.blocks.map((b, i) =>
+    i === textBlockIdx ? { ...b, content: '' } : { ...b }
+  )
+  displayBlocks.value = cloned as typeof props.message.blocks
+
+  let pos = 0
+  const CHARS_PER_TICK = 2
+  const TICK_MS = 40
+
+  const timer = setInterval(() => {
+    pos += CHARS_PER_TICK
+    ;(cloned[textBlockIdx] as { content: string }).content = fullText.slice(0, pos)
+    displayBlocks.value = [...cloned] as typeof props.message.blocks
+
+    if (pos >= fullText.length) {
+      clearInterval(timer)
+      ;(cloned[textBlockIdx] as { content: string }).content = fullText
+      displayBlocks.value = props.message.blocks
+      typewriterDone.value = true
+    }
+  }, TICK_MS)
+}
+
+// 用 watch 代替 onMounted：streaming bubble 被复用时 onMounted 不会再触发，
+// 而 commitAgentStreaming 写入 newBroadcastMessageIds 后 watch 能检测到变化。
+watch(
+  () => chatStore.newBroadcastMessageIds.has(props.message.id),
+  (isNew) => {
+    if (!isNew) return
+    chatStore.consumeNewBroadcastMessage(props.message.id)
+    startTypewriter()
+  },
+  { immediate: true },
+)
+
+// 非动画状态下跟随 props 更新 displayBlocks（streaming 期间 blocks 实时增量）
+watch(
+  () => props.message.blocks,
+  (blocks) => {
+    if (typewriterDone.value) {
+      displayBlocks.value = blocks
+    }
+  },
+)
 
 const agentAvatar = computed(() =>
   agentsStore.agents.find(a => a.id === props.message.agentId)?.avatar ?? props.message.avatar

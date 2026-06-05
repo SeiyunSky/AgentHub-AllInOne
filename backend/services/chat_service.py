@@ -70,6 +70,10 @@ logger = logging.getLogger(__name__)
 
 ORCHESTRATOR_AGENT_ID = "orchestrator"
 
+# broadcast 模式下，Agent 不回复时在 dispatch_prompt 里发这个 sentinel；
+# Adapter 层识别后跳过 streaming，直接写 read_receipts 表 + 推 ReadReceiptEvent。
+BROADCAST_NO_REPLY_SENTINEL = "__READ_RECEIPT__"
+
 
 # ============================================================
 # 模块级全局状态
@@ -80,6 +84,10 @@ ORCHESTRATOR_AGENT_ID = "orchestrator"
 _locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 _pending: dict[str, list["_PendingItem"]] = defaultdict(list)
 _orchestrator_tasks: dict[str, asyncio.Task] = {}  # conversation_id → 当前主 Agent loop task
+
+# broadcast 互聊状态：记录本轮有哪些 agent 实际回复了，以及当前轮次深度
+# 结构: { conv_id: {"depth": int, "replies": [{"agent_id": str, "agent_name": str, "content": str}]} }
+_broadcast_state: dict[str, dict] = {}
 
 
 @dataclass
@@ -231,6 +239,8 @@ class ChatService:
             await self._local_edit_flow(request, user_msg, conversation, user_id)
         elif self._conversation_mode(conversation) == "single":
             await self._single_chat_flow(request, user_msg, conversation)
+        elif self._conversation_mode(conversation) == "broadcast":
+            await self._broadcast_flow(request, user_msg, conversation)
         elif (
             self._conversation_mode(conversation) == "group"
             and len(request.mention_ids) == 1
@@ -294,6 +304,99 @@ class ChatService:
         # 同 _single_chat_flow:commit 让后台 Task 能看到
         self.session.commit()
         await self.thread_service.schedule_conversation(request.conversation_id)
+
+    async def _broadcast_flow(
+        self,
+        request,
+        user_msg,
+        conversation,
+    ) -> None:
+        """
+        broadcast 模式：把消息广播给所有挂载的 Agent，各自独立决定回不回。
+
+        规则：
+        - mention_ids 里的 Agent → dispatch_prompt 加"[你被@了，必须回复]"前缀，强制回复。
+        - 其余 Agent → dispatch_prompt 加自决前缀：
+            若这条消息与你无关或你不想参与，只回 BROADCAST_NO_REPLY_SENTINEL，不要说其他任何话。
+          Adapter 层检测到 sentinel 后跳过 streaming，写 read_receipts + 推 ReadReceiptEvent。
+
+        每个 Agent 各自创建独立 Thread，全部 schedule 后并行跑。
+        broadcast 模式下不走 orchestrator，不做任务拆解。
+        """
+        conv_id = request.conversation_id
+        conv_repo = ConversationRepository(self.session)
+        agents = conv_repo.list_active_agents(conv_id)
+        if not agents:
+            logger.warning("broadcast conversation %s has no active agents", conv_id)
+            return
+
+        # 初始化本轮 broadcast 互聊状态（depth=0 表示这是用户消息触发的第 0 轮）
+        _broadcast_state[conv_id] = {"depth": 0, "replies": []}
+
+        forced_ids = set(request.mention_ids or [])
+        msg_id = self._msg_id(user_msg)
+
+        for agent in agents:
+            if agent.id in forced_ids:
+                prefix = "[用户在群聊中直接 @ 了你，你必须回复]\n\n"
+            else:
+                prefix = (
+                    f"[broadcast 消息，你自己决定要不要回复。"
+                    f"如果这条消息与你无关或你不想参与，只回 {BROADCAST_NO_REPLY_SENTINEL}，不要说其他任何话。]\n\n"
+                )
+            dispatch_prompt = prefix + request.content
+
+            self.thread_service.resume_or_create(
+                conversation_id=conv_id,
+                agent_id=agent.id,
+                message_id=msg_id,
+                dispatch_prompt=dispatch_prompt,
+            )
+
+        self.session.commit()
+        await self.thread_service.schedule_conversation_staggered(conv_id)
+
+    async def _broadcast_agent_reply_flow(
+        self,
+        *,
+        conversation_id: str,
+        prompt: str,
+        depth: int,
+    ) -> None:
+        """
+        broadcast 互聊下一轮：把本轮的回复摘要广播给所有 agent，让大家都有机会接话。
+        depth 已经是新一轮的深度值（1 或 2），写入 _broadcast_state 供 on_round_done 检查。
+        """
+        conv_repo = ConversationRepository(self.session)
+        agents = conv_repo.list_active_agents(conversation_id)
+        if not agents:
+            logger.info("broadcast conv=%s depth=%d 没有 agent，终止互聊", conversation_id, depth)
+            await stream_service.push_round_done(conversation_id)
+            await _drain_pending_messages(conversation_id)
+            return
+
+        # 初始化本轮 broadcast_state，记录深度
+        _broadcast_state[conversation_id] = {"depth": depth, "replies": []}
+
+        # 生成一个虚拟 message_id（agent-to-agent 续话不产生真实用户消息）
+        from backend.core.utils import gen_uuid
+        virtual_msg_id = gen_uuid()
+
+        for agent in agents:
+            agent_prompt = (
+                f"[broadcast 续话，你自己决定要不要回复。"
+                f"如果你没有什么要说的，只回 {BROADCAST_NO_REPLY_SENTINEL}，不要说其他任何话。]\n\n"
+                + prompt
+            )
+            self.thread_service.resume_or_create(
+                conversation_id=conversation_id,
+                agent_id=agent.id,
+                message_id=virtual_msg_id,
+                dispatch_prompt=agent_prompt,
+            )
+
+        self.session.commit()
+        await self.thread_service.schedule_conversation_staggered(conversation_id)
 
     async def _group_orchestrate_flow(
         self,
@@ -407,12 +510,86 @@ class ChatService:
 async def on_round_done(conversation_id: str) -> None:
     """
     主 Agent loop 整轮结束时调:
-    1. 推 round_done 给前端 SSE
-    2. 取出排队消息依次处理
-    3. 全部处理完推 queue_drained
+    1. 检查是否需要触发 broadcast 下一轮互聊（在 round_done 之前，SSE 仍开着）
+    2. 如果触发了下一轮，直接返回（不推 round_done，下一轮结束时再走）
+    3. 否则推 round_done，取出排队消息，全部完成推 queue_drained
     """
+    triggered = await _maybe_trigger_broadcast_next_round(conversation_id)
+    if triggered:
+        # 下一轮已启动，SSE 保持开着，等那一轮的 on_round_done 收尾
+        return
     await stream_service.push_round_done(conversation_id)
     await _drain_pending_messages(conversation_id)
+
+
+def record_broadcast_reply(
+    conversation_id: str,
+    agent_id: str,
+    agent_name: str,
+    content: str,
+) -> None:
+    """
+    thread_service 落库 broadcast 回复后调本方法，记录本轮回复信息。
+    on_round_done 时据此判断是否触发下一轮互聊。
+    只记录 _broadcast_state 里已有的会话（由 _broadcast_flow 初始化），
+    非 broadcast 模式下不写入，避免误触发。
+    """
+    state = _broadcast_state.get(conversation_id)
+    if state is None:
+        return
+    state["replies"].append({"agent_id": agent_id, "agent_name": agent_name, "content": content})
+
+
+async def _maybe_trigger_broadcast_next_round(conversation_id: str) -> bool:
+    """
+    broadcast 互聊触发逻辑：
+    - 本轮有 agent 回复（replies 非空）
+    - 当前深度 < 2（最多 2 轮 agent-to-agent）
+    - 触发下一轮：把本轮所有回复拼成对话摘要，广播给其余 agent
+    返回 True 表示触发了下一轮（调用方不应推 round_done），False 表示没有触发。
+    """
+    state = _broadcast_state.get(conversation_id)
+    if not state or not state.get("replies"):
+        _broadcast_state.pop(conversation_id, None)
+        return False
+
+    depth: int = state.get("depth", 0)
+    if depth >= 2:
+        logger.debug("broadcast conv=%s depth=%d 已达上限，不触发下一轮", conversation_id, depth)
+        _broadcast_state.pop(conversation_id, None)
+        return False
+
+    replies: list[dict] = state["replies"]
+    _broadcast_state.pop(conversation_id, None)  # 清理，新一轮由 _broadcast_agent_reply_flow 重建
+
+    # 组装对话摘要
+    summary_lines = []
+    for r in replies:
+        snippet = r["content"][:200] + ("…" if len(r["content"]) > 200 else "")
+        summary_lines.append(f"{r['agent_name']}: {snippet}")
+    summary = "\n".join(summary_lines)
+    next_prompt = f"[群聊续话，其他成员刚刚说了以下内容，你可以自然地接话或保持沉默]\n\n{summary}"
+
+    logger.info(
+        "broadcast conv=%s 触发第 %d 轮互聊，本轮回复数=%d",
+        conversation_id, depth + 1, len(replies),
+    )
+
+    from backend.core.database import SessionLocal
+    session = SessionLocal()
+    try:
+        svc = ChatService(session)
+        await svc._broadcast_agent_reply_flow(
+            conversation_id=conversation_id,
+            prompt=next_prompt,
+            depth=depth + 1,
+        )
+        return True
+    except Exception:
+        logger.exception("broadcast conv=%s 第 %d 轮互聊触发失败", conversation_id, depth + 1)
+        return False
+    finally:
+        session.close()
 
 
 async def _drain_pending_messages(conversation_id: str) -> None:

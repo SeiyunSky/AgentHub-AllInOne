@@ -20,6 +20,7 @@ from backend.models.message import Message
 from backend.models.thread import Thread
 from backend.models.audit_log import AuditLog
 from backend.models.workflow import Workflow
+from backend.models.read_receipt import ReadReceipt
 
 __all__ = [
     "Base",
@@ -33,4 +34,5 @@ __all__ = [
     "Thread",
     "AuditLog",
     "Workflow",
+    "ReadReceipt",
 ]

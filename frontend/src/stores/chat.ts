@@ -89,6 +89,8 @@ function apiBlockToUI(block: ContentBlock): StreamingBlock {
       return { block_id: id, type: 'image', src: block.src, alt: block.alt, caption: block.caption }
     case 'artifacts':
       return { block_id: id, type: 'artifacts', item: block.items[0] }
+    case 'meme':
+      return { block_id: id, type: 'meme', memeId: block.meme_id, url: block.url, description: block.description }
     case 'approval':
       return {
         block_id: id,
@@ -163,6 +165,12 @@ export const useChatStore = defineStore('chat', () => {
 
   // 等待用户决策的审批
   const pendingApprovals = ref<Map<string, { messageId: string; blockId: string; action: string; detail: string }>>(new Map())
+
+  // broadcast 模式已读回执：message_id → [{ agentId, agentName, agentAvatar }]
+  const readReceiptsMap = ref<Map<string, { agentId: string; agentName: string; agentAvatar?: string }[]>>(new Map())
+
+  // broadcast 模式本轮新收到的消息 ID 集合（用于打字流动画，播放完后清除）
+  const newBroadcastMessageIds = ref<Set<string>>(new Set())
 
   // 输入草稿、回复引用
   const inputDrafts = ref<Map<string, string>>(new Map())
@@ -298,10 +306,16 @@ export const useChatStore = defineStore('chat', () => {
   /** SSE message_appended：把已落库的完整消息直接 append 进列表，不走 streaming */
   function appendPersistedMessage(convId: string, msg: MessageResponse) {
     const msgs = getMessages(convId)
-    // 防止重复（streaming commit 后又收到 message_appended，或重连重复推）
-    if (msgs.some(m => m.id === msg.id)) return
     const ui = toUIMessage(msg)
-    setMessages(convId, [...msgs, ui])
+    // 已存在相同 id 时替换（例如 meme 后处理后的覆盖更新）
+    const existingIdx = msgs.findIndex(m => m.id === msg.id)
+    if (existingIdx !== -1) {
+      const updated = [...msgs]
+      updated[existingIdx] = ui
+      setMessages(convId, updated)
+    } else {
+      setMessages(convId, [...msgs, ui])
+    }
   }
 
   /** SSE agent_start:为该 agent 起一条新的 streaming 气泡(若已存在则刷新) */
@@ -439,7 +453,14 @@ export const useChatStore = defineStore('chat', () => {
     if (!streaming) return
     // 空 streaming(blocks=[],被 stop 中断时主 Agent 还没产出任何块)直接丢弃,
     // 不留下空气泡占着列表("主 Agent · just now" 但内容为空的怪现象)。
-    if (streaming.blocks.length > 0) {
+    // 同样丢弃纯 sentinel 内容（broadcast 模式已读回执，已由 ReadReceiptEvent 处理）。
+    const SENTINEL = '__READ_RECEIPT__'
+    const isSentinelOnly = streaming.blocks.length > 0 && streaming.blocks.every(b => {
+      if ((b as any).type !== 'text') return false
+      const content: string = ((b as any).content ?? '').trim()
+      return content === SENTINEL || content.includes(SENTINEL)
+    })
+    if (streaming.blocks.length > 0 && !isSentinelOnly) {
       const msgs = [...getMessages(convId)]
       // 从当前会话的 agent 列表中查找头像和名称作为兜底（数据库是真相源）
       const conversationsStore = useConversationsStore()
@@ -459,6 +480,10 @@ export const useChatStore = defineStore('chat', () => {
         blocks: streaming.blocks,
       })
       setMessages(convId, msgs)
+      // broadcast 会话的新消息标记打字流动画
+      if (conv?.mode === 'broadcast') {
+        newBroadcastMessageIds.value = new Set([...newBroadcastMessageIds.value, streaming.messageId])
+      }
     }
     inner.delete(agentId)
     if (inner.size === 0) {
@@ -698,6 +723,25 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  function addReadReceipt(messageId: string, agentId: string, agentName: string, agentAvatar?: string) {
+    const existing = readReceiptsMap.value.get(messageId) ?? []
+    if (existing.some(r => r.agentId === agentId)) return
+    readReceiptsMap.value.set(messageId, [...existing, { agentId, agentName, agentAvatar }])
+    readReceiptsMap.value = new Map(readReceiptsMap.value)
+  }
+
+  function getReadReceipts(messageId: string) {
+    return readReceiptsMap.value.get(messageId) ?? []
+  }
+
+  function consumeNewBroadcastMessage(messageId: string) {
+    if (!newBroadcastMessageIds.value.has(messageId)) return false
+    const next = new Set(newBroadcastMessageIds.value)
+    next.delete(messageId)
+    newBroadcastMessageIds.value = next
+    return true
+  }
+
   return {
     // State
     messageMap,
@@ -705,6 +749,8 @@ export const useChatStore = defineStore('chat', () => {
     streamingConvIds,
     threadActivitiesMap,
     pendingApprovals,
+    readReceiptsMap,
+    newBroadcastMessageIds,
 
     // Getters
     getMessages,
@@ -722,6 +768,7 @@ export const useChatStore = defineStore('chat', () => {
     setReplyPreview,
     currentMessages,
     isAnyStreaming,
+    getReadReceipts,
 
     // Actions
     loadFromAPI,
@@ -739,5 +786,7 @@ export const useChatStore = defineStore('chat', () => {
     clearRound,
     resolveApproval,
     updateReaction,
+    addReadReceipt,
+    consumeNewBroadcastMessage,
   }
 })

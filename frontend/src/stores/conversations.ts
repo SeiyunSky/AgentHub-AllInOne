@@ -31,7 +31,7 @@ export const useConversationsStore = defineStore('conversations', () => {
     return loadPromise
   }
 
-  async function create(title: string, mode: 'single' | 'group', agentIds: string[]) {
+  async function create(title: string, mode: 'single' | 'group' | 'broadcast', agentIds: string[]) {
     const result = await conversationsApi.create({ title, mode, agent_ids: agentIds })
     conversations.value.unshift(result)
     return result

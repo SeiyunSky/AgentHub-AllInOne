@@ -89,6 +89,14 @@ export interface ArtifactsBlock {
   items: ArtifactItem[]
 }
 
+export interface MemeBlock {
+  block_id: string
+  type: 'meme'
+  meme_id: string
+  url: string
+  description: string
+}
+
 export type ContentBlock =
   | TextBlock
   | ThinkingBlock
@@ -98,6 +106,7 @@ export type ContentBlock =
   | DeploymentBlock
   | ImageBlock
   | ArtifactsBlock
+  | MemeBlock
 
 // Message types — aligned with backend schemas/message.py
 
@@ -212,6 +221,17 @@ export interface MessageAppendedEvent {
   timestamp: string
 }
 
+export interface ReadReceiptEvent {
+  type: 'read_receipt'
+  conversation_id: string
+  message_id: string
+  agent_id: string
+  agent_name: string
+  agent_avatar?: string
+  read_at: string
+  timestamp: string
+}
+
 export type AgentEvent =
   | AgentStartEvent
   | BlockStartEvent
@@ -220,4 +240,4 @@ export type AgentEvent =
   | AgentDoneEvent
   | AgentErrorEvent
 
-export type SSEEvent = AgentEvent | RoundDoneEvent | QueueDrainedEvent | MessageAppendedEvent
+export type SSEEvent = AgentEvent | RoundDoneEvent | QueueDrainedEvent | MessageAppendedEvent | ReadReceiptEvent

@@ -188,6 +188,24 @@ class QueueDrainedEvent(BaseModel):
     timestamp: datetime = Field(default_factory=now_utc)
 
 
+class ReadReceiptEvent(BaseModel):
+    """
+    broadcast 模式下，Agent 决定不回复时产生的已读回执。
+
+    前端收到后在对应消息气泡底部追加"agent_name 已读"标记，
+    不创建新气泡，不触发 streaming 状态。
+    """
+
+    type: Literal["read_receipt"] = "read_receipt"
+    conversation_id: str
+    message_id: str = Field(description="被已读的用户消息 ID")
+    agent_id: str = Field(description="已读的 Agent ID")
+    agent_name: str = Field(description="Agent 显示名，前端直接展示用")
+    agent_avatar: Optional[str] = Field(default=None, description="Agent 头像 URL")
+    read_at: datetime = Field(default_factory=now_utc)
+    timestamp: datetime = Field(default_factory=now_utc)
+
+
 class MessageAppendedEvent(BaseModel):
     """
     一条已落库的完整消息追加到会话。

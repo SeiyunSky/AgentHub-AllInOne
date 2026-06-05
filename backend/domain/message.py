@@ -188,6 +188,19 @@ class ArtifactsBlock(_BaseBlock):
 
 
 # ============================================================
+# 表情包块
+# ============================================================
+
+class MemeBlock(_BaseBlock):
+    """Agent 发送的表情包 —— broadcast 闲聊模式下调用 send_meme 工具产生"""
+
+    type: Literal["meme"] = "meme"
+    meme_id: str = Field(description="表情包 ID，对应 meme_library.json 中的 id 字段")
+    url: str = Field(description="前端可直接访问的图片路径，如 /memes/doge.png")
+    description: str = Field(description="表情包文字描述，alt text 兜底用")
+
+
+# ============================================================
 # Discriminated Union
 # ============================================================
 
@@ -201,6 +214,7 @@ ContentBlock = Annotated[
         DeploymentBlock,
         ImageBlock,
         ArtifactsBlock,
+        MemeBlock,
     ],
     Field(discriminator="type"),
 ]
@@ -219,5 +233,6 @@ __all__ = [
     "ImageBlock",
     "ArtifactItem",
     "ArtifactsBlock",
+    "MemeBlock",
     "ContentBlock",
 ]

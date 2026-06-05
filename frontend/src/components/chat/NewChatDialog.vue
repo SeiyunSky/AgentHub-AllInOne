@@ -64,6 +64,35 @@
         </div>
       </section>
 
+      <!-- Mode Selector -->
+      <section>
+        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Mode</label>
+        <div class="flex gap-2">
+          <button
+            class="mode-btn"
+            :class="{ 'mode-btn-active': chatMode === 'group' }"
+            @click="chatMode = 'group'"
+          >
+            <span class="text-[13px]">⚙️</span>
+            <div class="text-left">
+              <p class="text-[12px] font-semibold leading-tight">Task</p>
+              <p class="text-[10px] text-on-surface-variant leading-tight">Orchestrator 统筹任务</p>
+            </div>
+          </button>
+          <button
+            class="mode-btn"
+            :class="{ 'mode-btn-active': chatMode === 'broadcast' }"
+            @click="chatMode = 'broadcast'"
+          >
+            <span class="text-[13px]">💬</span>
+            <div class="text-left">
+              <p class="text-[12px] font-semibold leading-tight">Broadcast</p>
+              <p class="text-[10px] text-on-surface-variant leading-tight">闲聊，各自回复</p>
+            </div>
+          </button>
+        </div>
+      </section>
+
       <!-- Agent Selector -->
       <section>
         <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Invite Agents</label>
@@ -192,6 +221,7 @@ const squads = ref<Squad[]>([])
 const selectedSquadId = ref<string | null>(null)
 // 追踪用户是否手动修改过 title（用于决定切换小组时是否覆盖）
 const userModifiedTitle = ref(false)
+const chatMode = ref<'group' | 'broadcast'>('group')
 
 const filteredAgents = computed(() => {
   const available = agentsStore.agents.filter(
@@ -315,12 +345,9 @@ async function createChat() {
   if (!canCreate.value) return
   creating.value = true
   try {
-    // 永远走 group 模式:主 Agent (orchestrator) 默认在场,
-    // 用户选的 Agent 作为"群成员"加入,后端会自动注入 orchestrator。
-    // single/group 是后端实现细节,前端不区分。
     const conv = await conversationsStore.create(
       title.value.trim(),
-      'group',
+      chatMode.value,
       selectedAgents.value.map((a) => a.id)
     )
     visible.value = false
@@ -349,12 +376,37 @@ watch(visible, async (open) => {
     searchQuery.value = ''
     selectedSquadId.value = null
     userModifiedTitle.value = false
+    chatMode.value = 'group'
     await Promise.all([loadAgents(), loadSquads()])
   }
 })
 </script>
 
 <style scoped>
+/* ── Mode Button ── */
+.mode-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px solid var(--color-outline-variant);
+  background: var(--color-surface-container-low);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+.mode-btn:hover {
+  border-color: var(--color-brand);
+  background: var(--color-brand-light);
+}
+.mode-btn-active {
+  border-color: var(--color-brand);
+  background: var(--color-brand-light);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 /* ── Squad Card ── */
 .squad-card {
   display: flex;

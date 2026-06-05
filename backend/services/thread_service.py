@@ -33,6 +33,7 @@ from backend.adapters.events import (
     BlockDeltaEvent,
     BlockStartEvent,
     BlockStopEvent,
+    MessageAppendedEvent,
 )
 from backend.models.thread import Thread
 from backend.repositories.thread_repo import ThreadRepository
@@ -126,15 +127,50 @@ def _build_runtime_context_header(
     agent_name: str,
     agent_description: Optional[str],
     conversation_id: str,
-    conversation_mode: str,           # "single" | "group"
-    member_lines: list[str],          # 群聊时的成员简介列表;单聊为空
+    conversation_mode: str,           # "single" | "group" | "broadcast"
+    member_lines: list[str],          # 群聊/broadcast 时的成员简介列表;单聊为空
 ) -> str:
     """组装注入子 Agent system_prompt 顶部的运行环境 header。"""
     role_line = f"- 角色: {agent_description}" if agent_description else ""
 
     members_section = ""
-    if conversation_mode == "group" and member_lines:
+    if conversation_mode in ("group", "broadcast") and member_lines:
         members_section = "\n【群聊成员】\n" + "\n".join(member_lines)
+
+    if conversation_mode == "broadcast":
+        meme_map = _load_meme_map()
+        meme_list = ""
+        if meme_map:
+            meme_lines = "\n".join(
+                f"  - {mid}: {info['description'][:40]}..." if len(info['description']) > 40 else f"  - {mid}: {info['description']}"
+                for mid, info in meme_map.items()
+            )
+            meme_list = f"""
+【表情包】
+你可以在回复里插入表情包，格式：[MEME:表情包ID]
+可用表情包：
+{meme_lines}
+例：哈哈哈[MEME:pepe_laugh]这也太好笑了"""
+
+        collab_section = f"""【协作】
+这是 broadcast 闲聊模式。没有主 Agent 统筹，你直接面对用户消息，自己决定要不要回复。
+
+回复规则：
+- 消息与你相关、你有话说 → 直接用你的角色身份回复，正常输出。
+- 消息与你无关、你不想参与 → 只输出以下这一行，不要加任何其他文字：
+  __READ_RECEIPT__
+- 若消息里有"[用户在群聊中直接 @ 了你，你必须回复]"前缀 → 必须回复，不得发已读。
+
+已读回执的判断准则（参考，不是硬规则）：
+- 这条消息是问某个特定人的问题，明显不是在问你
+- 这条消息是纯任务指令，和你的角色/擅长领域毫无关系
+- 你作为角色，此刻不在场或没有动机开口
+只要消息有一点你能自然接上的，就正常回复。{meme_list}"""
+    else:
+        collab_section = """【协作】
+- 单聊场景: 整个会话只有你和主 Agent,完成用户的事即可
+- 群聊场景: 主 Agent 已决定派给你,专注做你擅长的部分;
+  需要其他 Agent 配合时,在回答里说"还需要 X 处理 Y",主 Agent 决定是否再派"""
 
     return f"""=== 运行环境 ===
 你在 AgentHub 平台运行,身份是子 Agent。
@@ -159,11 +195,81 @@ def _build_runtime_context_header(
 你的"工作目录"概念上是会话级沙箱: sandbox/{conversation_id}/
 涉及文件路径时用相对路径(基于沙箱根),不要写绝对路径。
 
-【协作】
-- 单聊场景: 整个会话只有你和主 Agent,完成用户的事即可
-- 群聊场景: 主 Agent 已决定派给你,专注做你擅长的部分;
-  需要其他 Agent 配合时,在回答里说"还需要 X 处理 Y",主 Agent 决定是否再派
+{collab_section}
 ================"""
+
+
+# ============================================================
+# 表情包库(broadcast 模式)
+# ============================================================
+
+import json as _json_lib
+import re as _re
+from pathlib import Path as _Path
+
+_MEME_LIBRARY_PATH = _Path(__file__).parent.parent / "skills" / "meme_library.json"
+_MEME_MAP: dict[str, dict] = {}
+
+
+def _load_meme_map() -> dict[str, dict]:
+    global _MEME_MAP
+    if _MEME_MAP:
+        return _MEME_MAP
+    try:
+        data = _json_lib.loads(_MEME_LIBRARY_PATH.read_text(encoding="utf-8"))
+        _MEME_MAP = {m["id"]: m for m in data.get("memes", [])}
+    except Exception:
+        logger.warning("meme_library.json 加载失败,表情包功能不可用")
+        _MEME_MAP = {}
+    return _MEME_MAP
+
+
+_MEME_PATTERN = _re.compile(r'\[MEME:([a-z0-9_]+)\]', _re.IGNORECASE)
+
+
+def _process_meme_markers(blocks: list) -> list:
+    """
+    扫描 blocks 里 TextBlock 的 content，把 [MEME:xxx] 标记拆出来变成独立 MemeBlock。
+    一个 TextBlock 内可能有多个标记，处理后文本里的标记被移除，MemeBlock 紧接其后插入。
+    """
+    from backend.domain.message import MemeBlock, TextBlock
+    from backend.core.utils import gen_uuid
+
+    meme_map = _load_meme_map()
+    if not meme_map:
+        return blocks
+
+    result = []
+    for block in blocks:
+        if getattr(block, "type", None) != "text":
+            result.append(block)
+            continue
+
+        content: str = block.content
+        matches = list(_MEME_PATTERN.finditer(content))
+        if not matches:
+            result.append(block)
+            continue
+
+        # 移除文本里的所有 [MEME:xxx] 标记
+        cleaned_text = _MEME_PATTERN.sub("", content).strip()
+        if cleaned_text:
+            result.append(TextBlock(block_id=block.block_id, content=cleaned_text))
+        # 为每个 meme 标记插入 MemeBlock
+        for m in matches:
+            meme_id = m.group(1).lower()
+            meme_info = meme_map.get(meme_id)
+            if meme_info:
+                result.append(MemeBlock(
+                    block_id=gen_uuid(),
+                    meme_id=meme_id,
+                    url=f"/memes/{meme_info['filename']}",
+                    description=meme_info["description"],
+                ))
+            else:
+                logger.warning("未知 meme_id=%r，跳过", meme_id)
+
+    return result
 
 
 # ============================================================
@@ -387,6 +493,35 @@ class ThreadService:
             started.append(thread)
         return started
 
+    async def schedule_conversation_staggered(
+        self,
+        conversation_id: str,
+        max_delay: float = 8.0,
+    ) -> list[Thread]:
+        """
+        broadcast 模式专用：同 schedule_conversation，但每个 Thread 随机延迟启动，
+        模拟群聊中各人打字速度不同、回复时间错开的效果。
+        第一个 Thread 延迟 0（让群聊感觉立刻有人回），其余随机散布在 (0, max_delay] 秒内。
+        """
+        import random
+        threads = self.repo.list_active_in_conversation(conversation_id)
+        started: list[Thread] = []
+        first = True
+        for thread in threads:
+            if thread.status != ThreadStatus.INIT.value:
+                continue
+            if not self.repo.all_blockers_done(thread):
+                continue
+            if thread.id in _running_tasks:
+                continue
+            self.repo.session.refresh(thread)
+            self.repo.session.expunge(thread)
+            delay = 0.0 if first else round(random.uniform(0.5, max_delay), 1)
+            first = False
+            self._launch_thread_task(thread, delay=delay)
+            started.append(thread)
+        return started
+
     async def cancel_thread(self, thread_id: str) -> Optional[Thread]:
         """
         主动取消单个 Thread。
@@ -590,12 +725,12 @@ class ThreadService:
     # 内部:启动 Thread(异步运行 Adapter.stream)
     # --------------------------------------------------------
 
-    def _launch_thread_task(self, thread: Thread) -> None:
+    def _launch_thread_task(self, thread: Thread, *, delay: float = 0.0) -> None:
         """把 Thread 启动包装为 asyncio.Task,登记到 _running_tasks。"""
-        task = asyncio.create_task(self._run_thread(thread))
+        task = asyncio.create_task(self._run_thread(thread, delay=delay))
         _running_tasks[thread.id] = task
 
-    async def _run_thread(self, thread: Thread) -> None:
+    async def _run_thread(self, thread: Thread, *, delay: float = 0.0) -> None:
         """
         启动单个 Thread:mark_running → 调 Adapter.stream → 处理事件 → 落终态。
         """
@@ -626,6 +761,8 @@ class ThreadService:
                 return t
 
         try:
+            if delay > 0:
+                await asyncio.sleep(delay)
             _mark(ThreadStatus.RUNNING)
 
             adapter = adapter_registry.get(thread.agent_id)
@@ -649,7 +786,7 @@ class ThreadService:
                 conv_row = ConversationRepository(s).get(thread.conversation_id)
                 conv_mode = (conv_row.mode if conv_row else "single") or "single"
                 member_lines: list[str] = []
-                if conv_mode == "group" and conv_row is not None:
+                if conv_mode in ("group", "broadcast") and conv_row is not None:
                     other_agent_ids = ConversationRepository(s).list_active_agent_ids(thread.conversation_id)
                     for aid in other_agent_ids:
                         # 自己不放进成员列表(避免"你是 X,成员有 X")
@@ -772,6 +909,14 @@ class ThreadService:
                         thread.id, len(block_order), block_order,
                         event.tokens_input or 0, event.tokens_output or 0,
                     )
+
+                    # ---- broadcast 模式 sentinel 检测 ----
+                    # 如果 LLM 输出的全部文本恰好是 BROADCAST_NO_REPLY_SENTINEL，
+                    # 说明 Agent 决定不回复：跳过落消息，写 read_receipt + 推 SSE。
+                    if self._is_read_receipt_sentinel(block_order, block_states):
+                        await self._handle_read_receipt(thread, agent_name)
+                        break
+
                     await self._persist_assistant_message(
                         thread=thread,
                         agent_row=agent_snapshot,
@@ -780,6 +925,8 @@ class ThreadService:
                         tokens_input=event.tokens_input or 0,
                         tokens_output=event.tokens_output or 0,
                     )
+                    # broadcast 模式下回复了也写已读（回复了 = 也已读）
+                    await self._handle_read_receipt(thread, agent_name)
                     break
 
             summary = " ".join(summary_parts)[:500] or "(无摘要)"
@@ -882,6 +1029,9 @@ class ThreadService:
             )
             return
 
+        # meme 后处理:把 text block 里的 [MEME:xxx] 标记替换成独立 MemeBlock
+        blocks = _process_meme_markers(blocks)
+
         # agent_row 现在是 dict 快照(_run_thread 已 expunge ORM,改成纯数据传过来)
         # 兼容老 ORM 路径:有 .name 属性时也走;两条路径都拿 sender 名字
         if isinstance(agent_row, dict):
@@ -899,6 +1049,36 @@ class ThreadService:
                 sender=sender,
                 model=model,
             )
+            # meme 处理过 blocks 后，用 message_appended 让前端用落库版本覆盖 streaming 气泡
+            if msg is not None and any(getattr(b, "type", None) == "meme" for b in blocks):
+                try:
+                    msg_dict = {
+                        "id": thread.message_id,
+                        "conversation_id": thread.conversation_id,
+                        "thread_id": thread.id,
+                        "agent_id": thread.agent_id,
+                        "agent_avatar": None,
+                        "role": "assistant",
+                        "blocks": [b.model_dump() for b in blocks],
+                        "status": "done",
+                        "sender": sender,
+                        "model": model,
+                        "tokens_input": tokens_input,
+                        "tokens_output": tokens_output,
+                        "latency_ms": None,
+                        "feedback": None,
+                        "is_deleted": False,
+                        "created_at": msg.created_at.isoformat() if hasattr(msg, "created_at") else "",
+                    }
+                    await stream_service.push_event(
+                        thread.conversation_id,
+                        MessageAppendedEvent(
+                            conversation_id=thread.conversation_id,
+                            message=msg_dict,
+                        ),
+                    )
+                except Exception:
+                    logger.exception("Thread %s push message_appended (meme) 失败", thread.id)
         except Exception:
             logger.exception(
                 "Thread %s 落 assistant 消息失败,read_thread_result 将查不到产出",
@@ -919,6 +1099,92 @@ class ThreadService:
                     "Thread %s message %s 写 token 失败 (in=%d out=%d)",
                     thread.id, msg.id, tokens_input, tokens_output,
                 )
+
+        # broadcast 互聊：记录本轮回复，on_round_done 据此判断是否触发下一轮
+        try:
+            from backend.services.chat_service import record_broadcast_reply
+            # 提取文本摘要（只取 text block 内容）
+            text_content = " ".join(
+                getattr(b, "content", "") for b in blocks if getattr(b, "type", None) == "text"
+            ).strip()
+            if text_content:
+                record_broadcast_reply(
+                    conversation_id=thread.conversation_id,
+                    agent_id=thread.agent_id,
+                    agent_name=sender or thread.agent_id,
+                    content=text_content,
+                )
+        except Exception:
+            logger.exception("Thread %s record_broadcast_reply 失败（不影响消息落库）", thread.id)
+
+    @staticmethod
+    def _is_read_receipt_sentinel(
+        block_order: list[str],
+        block_states: dict[str, dict],
+    ) -> bool:
+        """
+        判断 LLM 输出内容是否是已读回执 sentinel。
+        只收集所有 text 类型块的 content，拼起来去首尾空白后：
+        - 精确等于 sentinel，或
+        - 去掉标点/空白后包含 sentinel（兼容 LLM 在前后加换行/引号的情况）
+        """
+        from backend.services.chat_service import BROADCAST_NO_REPLY_SENTINEL
+        parts: list[str] = []
+        for block_id in block_order:
+            state = block_states.get(block_id, {})
+            if state.get("type") == "text":
+                parts.append(state.get("content", ""))
+        full_text = "".join(parts).strip()
+        logger.debug("broadcast sentinel check: full_text=%r", full_text)
+        return BROADCAST_NO_REPLY_SENTINEL in full_text
+
+    async def _handle_read_receipt(self, thread: Thread, agent_name: str) -> None:
+        """
+        broadcast 模式下 Agent 发出已读回执：
+        1. 写 read_receipts 表
+        2. 推 ReadReceiptEvent 给前端
+        不落 assistant 消息，不创建气泡。
+        非 broadcast 模式下直接跳过。
+        """
+        from backend.adapters.events import ReadReceiptEvent
+        from backend.core.database import db_session
+        from backend.repositories.read_receipt_repo import ReadReceiptRepository
+        from backend.repositories.agent_repo import AgentRepository
+        from backend.repositories.conversation_repo import ConversationRepository
+
+        # 只在 broadcast 模式下写已读
+        with db_session() as s:
+            conv = ConversationRepository(s).get(thread.conversation_id)
+            if conv is None or conv.mode != "broadcast":
+                return
+
+        try:
+            with db_session() as s:
+                ReadReceiptRepository(s).save(
+                    conversation_id=thread.conversation_id,
+                    message_id=thread.message_id,
+                    agent_id=thread.agent_id,
+                )
+                agent_row = AgentRepository(s).get(thread.agent_id)
+                agent_avatar = agent_row.avatar if agent_row else None
+                s.commit()
+        except Exception:
+            logger.exception("Thread %s 写 read_receipt 失败", thread.id)
+            return
+
+        try:
+            await stream_service.push_event(
+                thread.conversation_id,
+                ReadReceiptEvent(
+                    conversation_id=thread.conversation_id,
+                    message_id=thread.message_id,
+                    agent_id=thread.agent_id,
+                    agent_name=agent_name,
+                    agent_avatar=agent_avatar,
+                ),
+            )
+        except Exception:
+            logger.exception("Thread %s 推 ReadReceiptEvent 失败", thread.id)
 
     @staticmethod
     def _extract_summary(event: AgentEvent) -> list[str]:
