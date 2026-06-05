@@ -5,3 +5,6 @@ dist-ssr/
 .env
 .env.production
 .vite/
+
+# Claude Code 本地 skill 安装目录
+.agents/
