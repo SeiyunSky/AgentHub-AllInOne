@@ -11,7 +11,7 @@ applicable_agents: [claude, custom]
 
 ## 阶段 0:确认前置条件
 
-调 `read_file` 看 research_data 是否已经给了:
+检查主 Agent 在 dispatch_prompt 里是否已提供:
 1. 分析目标(要回答什么决策问题)
 2. 关键指标定义和计算口径
 3. 可用数据源清单

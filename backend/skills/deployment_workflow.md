@@ -57,6 +57,7 @@ deploy_app 起容器 → 返回 URL
 
 - [ ] 文件读写路径用相对路径,不出现 `/etc/` / `C:\` 之类宿主机路径
 - [ ] 静态资源、模板放标准位置 (`templates/` / `static/`)
+- [ ] 前端代码里所有 `fetch()` / `<script src>` / `<link href>` / `<img src>` **不以 `/` 开头**（绝对路径会打到 AgentHub 后端而不是容器）
 
 ### E. 端到端可启动性
 
@@ -109,8 +110,8 @@ deploy_app(entry_point="app.py")
 返回:
 ```json
 {
-  "url": "http://localhost:18888/preview/{conv_id}/",
-  "status": "running" | "error",
+  "url": "/preview/{conv_id}/",
+  "status": "running | error",
   "logs": "..."
 }
 ```

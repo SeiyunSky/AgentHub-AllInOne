@@ -1,5 +1,5 @@
 """
-主 Agent (Orchestrator) 19 个内置工具的 input schema
+主 Agent (Orchestrator) 22 个内置工具的 input schema
 
 对应主 Agent 设计第五节的工具列表。每个工具一个 Pydantic class,定义 LLM 调用工具时
 input 字段的形态。Python tool handler 用对应类反序列化并校验入参。
@@ -10,6 +10,8 @@ B. 任务链管理(5)      CreateTaskPlan / UpdateTaskStatus / ReadTaskPlan / Ad
 C. 用户交互(3)        RespondToUser / RequestUserClarification / PresentTaskPlanForReview
 D. 上下文检索(3)      ReadConversationHistory / ListAvailableAgents / GetAgentCapabilities
 E. 文件(4)            CreateFile / ReadFile / EditFile / ListDirectory
+F. 部署(3)            DeployApp / StopApp / ReadAppLogs
+G. 网络(1)            FetchUrl
 
 约定:
 - 每个工具的入参类命名为 {ToolName}Input(驼峰),即使是无参数的工具也定义空类,
@@ -242,4 +244,26 @@ class ReadAppLogsInput(BaseModel):
         ge=1,
         le=500,
         description="从日志末尾读取的行数,默认 50,最多 500。",
+    )
+
+
+# ============================================================
+# G. 网络
+# ============================================================
+
+class FetchUrlInput(BaseModel):
+    """向指定 URL 发送 HTTP GET 请求,返回响应内容"""
+
+    url: str = Field(description="要请求的 URL,必须以 http:// 或 https:// 开头。")
+    timeout: float = Field(
+        default=15.0,
+        ge=1.0,
+        le=60.0,
+        description="请求超时秒数,默认 15,最大 60。",
+    )
+    max_chars: int = Field(
+        default=20000,
+        ge=100,
+        le=100000,
+        description="响应正文截断字符数,默认 20000,防止超长响应撑爆上下文。",
     )
