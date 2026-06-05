@@ -1,22 +1,19 @@
 """
-SkillService —— Skill 元数据管理
+SkillService —— Skill 元数据 + 正文管理
+
+正文存储：
+- 内置 Skill：源代码在 backend/skills/*.md，启动时 scan_builtin() 同步进 DB content
+- 用户 Skill：完全只在 DB 中（content 列），create/update 直接写 DB
 
 职责：
-1. scan_builtin()   — 扫 backend/skills/*.md，同步元数据到 skills 表（幂等）
-2. list_for_orchestrator(user_id) — 供 prompt_builder._layer_3 调用
-3. get_with_content(id/name)     — 读文件正文，返回 SkillWithContent
-4. create / update / delete      — 用户 Skill CRUD（元数据写 DB + 正文写文件）
-
-文件约定：
-- 内置 Skill：backend/skills/{name}.md
-- 用户 Skill：backend/skills/user_{author_id}/{name}.md
-
-frontmatter 字段（可选）：
-  name / display_name / description / category
+1. scan_builtin()             — 扫描 backend/skills/*.md 同步元数据 + 正文到 DB（幂等）
+2. list_for_orchestrator()    — 供 prompt_builder._layer_3 调用
+3. get_with_content() / get_by_name_with_content() — 读 DB content 返回 SkillWithContent
+4. create / update / delete   — 用户 Skill CRUD（纯 DB）
 
 队伍：咕嘎一辈子队
 修改者：Musuyin
-修改日期：2026-05-28
+修改日期：2026-06-05
 """
 
 from __future__ import annotations
@@ -49,22 +46,27 @@ class SkillService:
         self._repo = SkillRepository(db)
 
     # --------------------------------------------------------
-    # 启动时扫描内置 Skill
+    # 启动时扫描内置 Skill：把 backend/skills/*.md 文件同步进 DB
     # --------------------------------------------------------
 
     def scan_builtin(self) -> int:
         """
-        扫描 backend/skills/*.md，幂等同步到 skills 表。
-        - 不存在 → INSERT
-        - 存在但 description 为空 → UPDATE description
-        - 存在且 description 非空 → SKIP
+        扫描 backend/skills/*.md 同步到 skills 表。仅扫顶层 .md（用户 skill 在
+        各自的 user_{author_id}/ 子目录，不会被这里误处理；改 DB 存储后子目录
+        将逐渐废弃，本扫描也只看顶层）。
+
+        策略（幂等）：
+        - 不存在 → INSERT (元数据 + content)
+        - 存在但 content 为空 → UPDATE content + 缺失的 description
+        - 存在且 content 非空 → 强制同步 content / description（让 .md 永远是
+          内置 Skill 的真相源；用户编辑过内置 Skill？我们已禁止，所以这里直接覆盖）
+
         返回实际插入或更新的行数。
         """
         affected = 0
         for md_path in sorted(_SKILLS_DIR.glob("*.md")):
             name = md_path.stem
-            fm, _ = _parse_md(md_path)
-            file_path = f"skills/{md_path.name}"
+            fm, body = _parse_md(md_path)
 
             existing = self._repo.get_by_name(name, "GUGA")
             if existing is None:
@@ -74,7 +76,7 @@ class SkillService:
                     display_name=fm.get("display_name") or fm.get("name"),
                     description=fm.get("description"),
                     category=fm.get("category"),
-                    file_path=file_path,
+                    content=body,
                     author_id="GUGA",
                     is_public=1,
                     is_active=1,
@@ -82,10 +84,18 @@ class SkillService:
                 self._db.add(skill)
                 logger.info("Skill scan: inserted %s", name)
                 affected += 1
-            elif not existing.description and fm.get("description"):
-                existing.description = fm["description"]
-                logger.info("Skill scan: updated description for %s", name)
-                affected += 1
+            else:
+                changed = False
+                # content 强制同步：.md 是内置 Skill 的真相源
+                if existing.content != body:
+                    existing.content = body
+                    changed = True
+                if not existing.description and fm.get("description"):
+                    existing.description = fm["description"]
+                    changed = True
+                if changed:
+                    logger.info("Skill scan: updated %s", name)
+                    affected += 1
 
         self._db.commit()
         return affected
@@ -119,14 +129,9 @@ class SkillService:
         return self._read_content(skill)
 
     def _read_content(self, skill: Skill) -> SkillWithContent:
-        path = Path(__file__).parent.parent / skill.file_path
-        if path.exists():
-            _, body = _parse_md(path)
-        else:
-            logger.warning("Skill file missing: %s", path)
-            body = ""
+        """从 DB content 列直接读正文，构造 SkillWithContent。"""
         data = SkillSummary.model_validate(skill).model_dump()
-        return SkillWithContent(**data, content=body)
+        return SkillWithContent(**data, content=skill.content or "")
 
     def list_with_content_for_agent(self, agent_id: str) -> list[SkillWithContent]:
         """为子 Adapter 加载 Agent 挂载的所有 Skill（含正文）。"""
@@ -134,26 +139,17 @@ class SkillService:
         return [self._read_content(s) for s in skills]
 
     # --------------------------------------------------------
-    # 用户 Skill CRUD
+    # 用户 Skill CRUD：纯 DB，不再写文件
     # --------------------------------------------------------
 
     def create(self, author_id: str, data: SkillCreate) -> Skill:
-        if author_id == "GUGA":
-            file_path = f"skills/{data.name}.md"
-        else:
-            file_path = f"skills/user_{author_id}/{data.name}.md"
-
-        abs_path = Path(__file__).parent.parent / file_path
-        abs_path.parent.mkdir(parents=True, exist_ok=True)
-        abs_path.write_text(data.content, encoding="utf-8")
-
         skill = Skill(
             id=gen_uuid(),
             name=data.name,
             display_name=data.display_name,
             description=data.description,
             category=data.category,
-            file_path=file_path,
+            content=data.content,
             author_id=author_id,
             is_public=1 if data.is_public else 0,
             is_active=1,
@@ -173,8 +169,6 @@ class SkillService:
             return None
 
         fields = data.model_dump(exclude_unset=True)
-        fields.pop("content", None)  # content 不写文件，只存 DB（若 SkillUpdate 后续加 content 字段）
-
         for key, val in fields.items():
             if key in ("is_public", "is_active"):
                 setattr(skill, key, 1 if val else 0)
@@ -189,17 +183,9 @@ class SkillService:
         skill = self._repo.get(skill_id)
         if skill is None:
             return False
-        # 只有创建者本人能删：内置 Skill 的 author_id='GUGA' 与任何登录用户都不等
+        # 只有创建者本人能删
         if str(skill.author_id) != author_id:
             return False
-
-        # 先删本地 .md 文件，再删 DB 行（顺序不可颠倒：DB 行是文件路径的来源）
-        if skill.file_path:
-            abs_path = Path(__file__).parent.parent / skill.file_path
-            try:
-                abs_path.unlink(missing_ok=True)
-            except OSError:
-                logger.warning("Skill file delete failed: %s", abs_path)
 
         self._db.delete(skill)
         self._db.commit()

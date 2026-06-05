@@ -18,6 +18,7 @@ export interface WorkflowThreadDTO {
   threadId: string
   agentId: string
   agentName: string
+  avatar?: string
   messageId: string
   status: string
   blocks: WorkflowBlockDTO[]
