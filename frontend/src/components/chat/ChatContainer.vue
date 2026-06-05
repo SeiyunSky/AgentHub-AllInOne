@@ -109,6 +109,7 @@ const agents = computed<ChatAgent[]>(() =>
     id: a.id,
     name: a.name,
     role: a.type,
+    avatar: a.avatar,
     status: 'active' as const,
     avatar: a.avatar,
   })),

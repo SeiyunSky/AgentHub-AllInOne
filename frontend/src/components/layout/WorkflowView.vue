@@ -49,9 +49,9 @@
                :class="threadHeaderClass(thread.status)"
                @click="toggleCollapsed(`${snap.id}-${thread.threadId}`, isCollapsedKey(`${snap.id}-${thread.threadId}`, thread.status))">
             <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 overflow-hidden"
-                 :style="getAgentAvatar(thread) ? {} : { background: agentGradient(thread.agentName) }">
-              <img v-if="getAgentAvatar(thread)" :src="getAgentAvatar(thread)" :alt="thread.agentName" class="w-full h-full object-cover" />
-              <span v-else>{{ thread.agentName.charAt(0).toUpperCase() }}</span>
+                 :style="thread.avatar ? undefined : { background: agentGradient(thread.agentName) }">
+              <img v-if="thread.avatar" :src="thread.avatar" :alt="thread.agentName" class="w-full h-full object-cover" />
+              <template v-else>{{ thread.agentName.charAt(0).toUpperCase() }}</template>
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap">
@@ -120,10 +120,10 @@
                  @click="toggleCollapsed(thread.threadId, isCollapsed(thread))">
               <div
                 class="w-8 h-8 rounded-xl flex items-center justify-center text-white text-[12px] font-bold shrink-0 relative overflow-hidden"
-                :style="getAgentAvatar(thread) ? {} : { background: agentGradient(thread.agentName) }"
+                :style="thread.avatar ? undefined : { background: agentGradient(thread.agentName) }"
               >
-                <img v-if="getAgentAvatar(thread)" :src="getAgentAvatar(thread)" :alt="thread.agentName" class="w-full h-full object-cover" />
-                <span v-else>{{ thread.agentName.charAt(0).toUpperCase() }}</span>
+                <img v-if="thread.avatar" :src="thread.avatar" :alt="thread.agentName" class="w-full h-full object-cover" />
+                <template v-else>{{ thread.agentName.charAt(0).toUpperCase() }}</template>
                 <span v-if="thread.status === 'init'"
                   class="absolute inset-0 rounded-xl border-2 border-white/40 animate-ping" />
               </div>

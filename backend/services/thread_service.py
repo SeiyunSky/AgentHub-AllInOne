@@ -778,6 +778,7 @@ class ThreadService:
                 agent_row = AgentRepository(s).get(thread.agent_id)
                 # 解耦 ORM:把后续要用的字段当场抠出来当纯数据
                 agent_name = agent_row.name if agent_row else thread.agent_id
+                agent_avatar: Optional[str] = agent_row.avatar if agent_row else None
                 agent_description: Optional[str] = agent_row.description if agent_row else None
                 agent_system_prompt_raw: Optional[str] = agent_row.system_prompt if agent_row else None
 
@@ -849,6 +850,7 @@ class ThreadService:
             stream_input = StreamInput(
                 agent_id=thread.agent_id,
                 agent_name=agent_name,
+                agent_avatar=agent_avatar,
                 thread_id=thread.id,
                 message_id=thread.message_id,
                 prompt=thread.dispatch_prompt or "",

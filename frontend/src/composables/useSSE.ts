@@ -22,6 +22,7 @@ function handleEvent(convId: string, event: SSEEvent) {
         agentAvatar: event.agent_avatar,
         threadId: event.thread_id,
         messageId: event.message_id,
+        avatar: event.agent_avatar,
       })
       break
 
