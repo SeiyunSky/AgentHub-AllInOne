@@ -1,5 +1,5 @@
 """
-orchestrator_tools —— 主 Agent 19 个内置工具的 Handler 注册
+orchestrator_tools —— 主 Agent 20 个内置工具的 Handler 注册
 
 Input Schema 唯一真相源在 backend.schemas.orchestrator_tools(A 阶段定的契约),
 本文件负责把每个 schema 挂上 @register_tool 装饰器并实装 handler。
@@ -17,6 +17,7 @@ Input Schema 唯一真相源在 backend.schemas.orchestrator_tools(A 阶段定�
 - D. 上下文检索 (3) read_conversation_history / list_available_agents /
                     get_agent_capabilities
 - E. 文件 (4)       create_file / read_file / edit_file / list_directory
+- F. 部署 (2)       deploy_app / stop_app
 
 约定:
 - 每个 handler 第一行 model_validate 把 LLM dict 校验成 Pydantic input
@@ -54,6 +55,7 @@ from backend.schemas.orchestrator_tools import (
     DispatchToAgentInput,
     EditFileInput,
     DeployAppInput,
+    StopAppInput,
     GetAgentCapabilitiesInput,
     ListAvailableAgentsInput,
     ListDirectoryInput,
@@ -1230,3 +1232,31 @@ async def deploy_app(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[st
         "entry_point": parsed.entry_point,
         "logs": "\n".join(accumulated_logs),
     }
+
+
+@register_tool(
+    name="stop_app",
+    description="停止本会话已部署的应用并销毁容器。部署的 URL 立即失效。",
+    input_model=StopAppInput,
+)
+async def stop_app(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
+    """
+    停止本会话的 Docker 容器(stop + remove)。
+    容器销毁后沙箱目录保留,下次 deploy_app 会重建容器。
+    """
+    from backend.services.docker_runtime import get_docker_runtime
+
+    StopAppInput.model_validate(tool_input)
+
+    runtime = get_docker_runtime()
+    try:
+        stopped = await runtime.stop_container(ctx.conversation_id)
+    except Exception as exc:
+        logger.exception("stop_app failed conv=%s", ctx.conversation_id)
+        return {"status": "error", "error": str(exc)}
+
+    if not stopped:
+        return {"status": "not_running", "message": "本会话没有运行中的容器"}
+
+    logger.info("stop_app success conv=%s", ctx.conversation_id)
+    return {"status": "stopped"}

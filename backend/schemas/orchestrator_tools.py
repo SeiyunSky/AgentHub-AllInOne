@@ -228,3 +228,7 @@ class DeployAppInput(BaseModel):
         description="入口文件名(沙箱根目录下相对路径),默认 app.py。容器内会跑 "
                     "uvicorn {entry_module}:app --host 0.0.0.0 --port 8000",
     )
+
+
+class StopAppInput(BaseModel):
+    """停止本会话已部署的应用并销毁容器"""
