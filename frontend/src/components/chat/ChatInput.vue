@@ -77,9 +77,6 @@
         <div class="flex items-center justify-between px-2 py-1.5">
           <!-- Left actions -->
           <div class="flex items-center gap-0.5">
-            <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer">
-              <el-icon :size="18"><Plus /></el-icon>
-            </button>
             <button
               class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
               :class="attachedFiles.length > 0 ? 'text-brand bg-brand-light/40 hover:bg-brand-light' : 'text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container'"
@@ -129,7 +126,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
-import { Plus, Paperclip, Promotion, Close, Document, Loading } from '@element-plus/icons-vue'
+import { Paperclip, Promotion, Close, Document, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MentionPicker from './MentionPicker.vue'
 import { sandboxApi } from '@/api/sandbox'

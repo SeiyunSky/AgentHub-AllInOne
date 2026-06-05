@@ -76,23 +76,7 @@
       </nav>
     </div>
 
-    <!-- Workflow Tab 专属:工具栏(放大缩小等) -->
-    <template v-if="activeTab === 'workflow'" #toolbar>
-      <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors">
-        <el-icon :size="16"><Plus /></el-icon>
-      </button>
-      <div class="w-px h-4 bg-outline-variant"></div>
-      <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors">
-        <el-icon :size="16"><ZoomIn /></el-icon>
-      </button>
-      <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors">
-        <el-icon :size="16"><Aim /></el-icon>
-      </button>
-      <div class="w-px h-4 bg-outline-variant"></div>
-      <button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors">
-        <el-icon :size="16"><Operation /></el-icon>
-      </button>
-    </template>
+
   </PanelContainer>
 </template>
 
