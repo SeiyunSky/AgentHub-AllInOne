@@ -280,7 +280,7 @@ export const useChatStore = defineStore('chat', () => {
     setMessages(convId, [...older, ...existing])
   }
 
-  function addUserMessage(convId: string, content: string) {
+  function addUserMessage(convId: string, content: string): string {
     const tempId = `local-${Date.now()}`
     const msgs = [...getMessages(convId)]
     msgs.push({

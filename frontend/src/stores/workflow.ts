@@ -23,7 +23,7 @@ export interface WorkflowThread {
   threadId: string
   agentId: string
   agentName: string
-  agentAvatar?: string
+  avatar?: string
   messageId: string
   status: ThreadStatus
   blocks: WorkflowBlock[]
@@ -79,6 +79,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     agentAvatar?: string
     threadId: string
     messageId: string
+    avatar?: string
   }) {
     const threads = _getOrCreate(convId)
     const existing = threads.find(t => t.threadId === payload.threadId)
@@ -86,6 +87,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
       // init → running 状态升级
       existing.status = 'running'
       existing.startedAt = Date.now()
+      // 补回 avatar（如果之前没有）
+      if (!existing.avatar && payload.avatar) {
+        existing.avatar = payload.avatar
+      }
       threadMap.value.set(convId, [...threads])
       return
     }
@@ -93,7 +98,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       threadId: payload.threadId,
       agentId: payload.agentId,
       agentName: payload.agentName,
-      agentAvatar: payload.agentAvatar,
+      avatar: payload.avatar,
       messageId: payload.messageId,
       status: 'running',
       blocks: [],

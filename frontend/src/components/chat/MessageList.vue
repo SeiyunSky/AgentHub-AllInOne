@@ -8,9 +8,10 @@
     <template v-for="msg in messages" :key="msg.id">
       <AgentBubble v-if="msg.type === 'agent'" :message="msg" :streaming="isStreamingMessage(msg)"
         :activity="streamingActivityFor(msg)" :current-tool="streamingToolFor(msg)" @reply="$emit('reply', $event)"
-        @copy="$emit('copy', $event)" @react="(id, type) => $emit('react', id, type)" />
+        @copy="$emit('copy', $event)" @react="(id, type) => $emit('react', id, type)" @more="$emit('more', $event)" />
       <template v-else-if="msg.type === 'user'">
-        <UserBubble :message="msg" @reply="$emit('reply', $event)" @copy="$emit('copy', $event)" />
+        <UserBubble :message="msg" @reply="$emit('reply', $event)" @copy="$emit('copy', $event)"
+          @react="(id, type) => $emit('react', id, type)" @more="$emit('more', $event)" />
         <!-- broadcast 已读回执 -->
         <div v-if="chatStore.getReadReceipts(msg.id).length > 0" class="flex justify-end items-center gap-2 mt-2 pr-1">
           <span class="text-[12px] text-on-surface-variant/70">已读</span>
@@ -34,7 +35,8 @@
       <div v-else-if="msg.type === 'typing'" class="flex gap-3 message-enter">
         <div
           class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-gradient-to-br from-brand-light to-brand-subtle border border-brand/20">
-          <span class="text-xs font-bold text-brand">{{ getInitials(msg.agentName) }}</span>
+          <img v-if="resolveTypingAvatar(msg)" :src="resolveTypingAvatar(msg)!" :alt="msg.agentName" class="w-full h-full object-cover" />
+          <span v-else class="text-xs font-bold text-brand">{{ getInitials(msg.agentName) }}</span>
         </div>
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2 mb-1.5">
@@ -59,6 +61,7 @@ import { Loading } from '@element-plus/icons-vue'
 import type { Message, AgentMessage } from '@/types/chat'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
+import { useAgentsStore } from '@/stores/agents'
 import AgentBubble from './bubbles/AgentBubble.vue'
 import UserBubble from './bubbles/UserBubble.vue'
 
@@ -73,6 +76,7 @@ defineEmits<{
   reply: [messageId: string]
   copy: [messageId: string]
   react: [messageId: string, type: 'like' | 'dislike']
+  more: [messageId: string]
 }>()
 
 const chatStore = useChatStore()
@@ -106,6 +110,12 @@ function getInitials(name: string) {
   const words = name.trim().split(/\s+/)
   if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase()
   return name[0]?.toUpperCase() ?? ''
+}
+
+// typing 气泡的头像兜底：消息自带 → store 查 → null
+const agentsStore = useAgentsStore()
+function resolveTypingAvatar(msg: { agentId: string; avatar?: string }): string | undefined {
+  return msg.avatar ?? agentsStore.agents.find(a => a.id === msg.agentId)?.avatar ?? undefined
 }
 
 const listRef = ref<HTMLElement>()
@@ -185,8 +195,8 @@ watch(
       pendingScrollToBottom.value = false
       // 使用 nextTick 确保 DOM 更新完成
       setTimeout(() => {
-        nextTick(() => scrollToBottom()) // so weird
-      }, 200)
+        nextTick(() => scrollToBottom())
+      }, 100)
       
       return
     }
@@ -199,6 +209,6 @@ watch(
       scrollToBottom()
     }
   },
-  { immediate:true, flush: 'post' },
+  { immediate:true, deep: true, flush: 'post' },
 )
 </script>
