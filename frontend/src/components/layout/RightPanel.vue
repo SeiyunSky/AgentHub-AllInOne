@@ -148,7 +148,7 @@ const tabs = computed(() => [
 ])
 
 const panelTitle = computed(() => {
-  if (activeTab.value === 'preview') return activeArtifact.value?.item.name ?? 'Preview'
+  if (activeTab.value === 'preview') return activeArtifact.value?.item?.name ?? 'Preview'
   if (activeTab.value === 'files') return 'Files'
   if (activeTab.value === 'deployments') return 'Deployments'
   return 'Workflow'

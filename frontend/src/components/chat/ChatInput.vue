@@ -209,6 +209,10 @@ async function onFilesSelected(e: Event) {
         entry.uploading = false
       }
     })
+    // Remove any extra placeholders the backend didn't return (partial success)
+    if (files.length < selected.length) {
+      attachedFiles.value.splice(startIdx + files.length, selected.length - files.length)
+    }
     // Files Tab 立即看到新上传的文件
     void sandboxFilesStore.loadFiles(convId)
   } catch {
