@@ -89,6 +89,9 @@ _orchestrator_tasks: dict[str, asyncio.Task] = {}  # conversation_id → 当前�
 # 结构: { conv_id: {"depth": int, "replies": [{"agent_id": str, "agent_name": str, "content": str}]} }
 _broadcast_state: dict[str, dict] = {}
 
+# on_round_done 防重入：同一 conversation 同时只允许一个 on_round_done 执行
+_round_done_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+
 
 @dataclass
 class _PendingItem:
@@ -513,13 +516,20 @@ async def on_round_done(conversation_id: str) -> None:
     1. 检查是否需要触发 broadcast 下一轮互聊（在 round_done 之前，SSE 仍开着）
     2. 如果触发了下一轮，直接返回（不推 round_done，下一轮结束时再走）
     3. 否则推 round_done，取出排队消息，全部完成推 queue_drained
+
+    防重入：broadcast 模式下多个 Thread 并发完成会同时调本函数，
+    用 _round_done_locks 确保同一 conversation 串行执行，重复调用直接跳过。
     """
-    triggered = await _maybe_trigger_broadcast_next_round(conversation_id)
-    if triggered:
-        # 下一轮已启动，SSE 保持开着，等那一轮的 on_round_done 收尾
+    lock = _round_done_locks[conversation_id]
+    if lock.locked():
+        # 已有一个 on_round_done 在执行，跳过重复调用
         return
-    await stream_service.push_round_done(conversation_id)
-    await _drain_pending_messages(conversation_id)
+    async with lock:
+        triggered = await _maybe_trigger_broadcast_next_round(conversation_id)
+        if triggered:
+            return
+        await stream_service.push_round_done(conversation_id)
+        await _drain_pending_messages(conversation_id)
 
 
 def record_broadcast_reply(
