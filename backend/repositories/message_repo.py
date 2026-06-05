@@ -210,3 +210,41 @@ class MessageRepository(BaseRepository[Message]):
         msg.content = blocks
         self.session.flush()
         return msg
+
+    def reap_stale_approval_blocks(self) -> int:
+        """启动时将所有僵尸 pending approval block 标为 rejected。
+
+        服务重启后内存中的 asyncio.Event 已消失，这些 block 永远无法被 decide()
+        处理，需在启动时主动清理，否则前端会一直显示"等待审批"。
+        返回修改的 block 数量。
+        """
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc).isoformat()
+        msgs = (
+            self.session.query(Message)
+            .filter(Message.content.isnot(None))
+            .all()
+        )
+        count = 0
+        for msg in msgs:
+            blocks = list(msg.content or [])
+            changed = False
+            for i, block in enumerate(blocks):
+                if (
+                    isinstance(block, dict)
+                    and block.get("type") == "approval"
+                    and block.get("status") == "pending"
+                ):
+                    new_block = dict(block)  # copy，避免原地修改被 SQLAlchemy 忽略
+                    new_block["status"] = "rejected"
+                    new_block["reject_reason"] = "backend restart"
+                    new_block["decided_at"] = now
+                    blocks[i] = new_block
+                    changed = True
+                    count += 1
+            if changed:
+                msg.content = blocks  # 整列重新赋值触发 SQLAlchemy JSON 变更追踪
+        if count:
+            self.session.flush()
+        return count

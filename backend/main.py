@@ -149,6 +149,16 @@ async def lifespan(app: FastAPI):
                 result.rowcount,
             )
 
+        # 收尸：清理上次崩溃/重启留下的僵尸 pending approval blocks
+        from backend.repositories.message_repo import MessageRepository as _MsgRepo
+        reaped_approvals = _MsgRepo(db).reap_stale_approval_blocks()
+        db.commit()
+        if reaped_approvals:
+            logger.warning(
+                "stale approval blocks reaped on startup: %d blocks (presumed dead from previous run)",
+                reaped_approvals,
+            )
+
         # 顺序约束:必须先 seed_users(GUGA 系统用户)→ scan_builtin 让 skills 表填好
         # → seed_agents 再写 agent_skills 关联(seed_agents 内部按 default_skills
         # 配置查 skills 表挂载,且 agents.user_id='GUGA' 必须先存在)
