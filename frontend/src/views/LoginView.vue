@@ -342,11 +342,6 @@ async function handleLogin() {
   backdrop-filter: blur(8px);
   animation: icon-float 3s ease-in-out infinite;
   object-fit: contain;
-  transition: transform 0.3s;
-}
-.orbit-icon:hover {
-  background: rgba(255, 255, 255, 0.22);
-  transform: translate(-50%, -50%) scale(1.15) !important;
 }
 
 @keyframes icon-float {

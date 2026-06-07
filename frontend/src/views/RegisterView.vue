@@ -393,10 +393,6 @@ async function handleRegister() {
   animation: icon-float 3s ease-in-out infinite;
   object-fit: contain;
 }
-.orbit-icon:hover {
-  background: rgba(255, 255, 255, 0.22);
-  transform: translate(-50%, -50%) scale(1.15) !important;
-}
 @keyframes icon-float {
   0%, 100% { filter: brightness(0.9); }
   50% { filter: brightness(1.2); }

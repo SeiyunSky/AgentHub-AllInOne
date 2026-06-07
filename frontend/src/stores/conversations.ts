@@ -46,6 +46,16 @@ export const useConversationsStore = defineStore('conversations', () => {
       currentConversation.value = conversation
       const chatStore = useChatStore()
       chatStore.loadFromAPI(id, messages)
+
+      // 建立 SSE 连接并传递回放起点
+      const { useSSE } = await import('@/composables/useSSE')
+      const { connect } = useSSE()
+
+      // 查找最后一条 Agent 消息作为回放起点
+      const lastAgentMsg = [...messages].reverse().find(m => m.role === 'assistant')
+      const afterMessageId = lastAgentMsg?.id || '__START__'  // 没有 Agent 消息就用特殊字符串
+
+      connect(id, afterMessageId)
     } catch (e) {
       currentId.value = prevId
       throw e

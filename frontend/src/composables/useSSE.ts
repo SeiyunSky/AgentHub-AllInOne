@@ -9,9 +9,52 @@ import type { SSEEvent } from '@/types/api'
 
 const controllers = ref<Map<string, AbortController>>(new Map())
 
+/**
+ * 判断消息是否已存在于消息列表中且已完成（非 streaming 状态）
+ * 用于过滤回放时的重复事件
+ */
+function isMessageCompleted(convId: string, messageId: string): boolean {
+  const chatStore = useChatStore()
+  const msgs = chatStore.getMessages(convId)
+  // 查找该消息ID是否已存在于历史消息列表中
+  const existingMsg = msgs.find(m => m.id === messageId)
+  if (!existingMsg) return false
+
+  // 如果存在，检查是否还在 streaming 状态
+  // streaming 状态的 agent 不在 messageMap 中，而是在 streamingMap 中
+  // 所以如果能在 messageMap 中找到，说明已经完成（agent_done 已触发）
+  return existingMsg.type === 'agent'
+}
+
+/**
+ * 判断是否应该忽略该事件（用于回放场景）
+ * 策略：agent_start 是入口事件，如果 message_id 已完成，忽略整个消息链
+ */
+function shouldIgnoreEvent(convId: string, event: SSEEvent): boolean {
+  // agent_start：检查 message_id 是否已完成
+  if (event.type === 'agent_start') {
+    return isMessageCompleted(convId, event.message_id)
+  }
+
+  // 其他事件（block_start/delta/stop, agent_done/error）：如果同 message_id 的 agent_start 被忽略，也忽略这些
+  // 但我们没有记录哪些 message_id 被忽略了，所以实时检查
+  if ('message_id' in event) {
+    return isMessageCompleted(convId, event.message_id as string)
+  }
+
+  return false
+}
+
 function handleEvent(convId: string, event: SSEEvent) {
   const chatStore = useChatStore()
   const workflowStore = useWorkflowStore()
+
+  // 过滤已完成消息的重复事件
+  if (shouldIgnoreEvent(convId, event)) {
+    console.log("discard event:", event);
+    
+    return
+  }
 
   switch (event.type) {
     case 'agent_start':
@@ -129,7 +172,7 @@ function handleEvent(convId: string, event: SSEEvent) {
   }
 }
 
-function connect(conversationId: string) {
+function connect(conversationId: string, afterMessageId?: string) {
   if (controllers.value.has(conversationId)) return
 
   controllers.value.set(conversationId, chatApi.stream(conversationId, {
@@ -147,6 +190,7 @@ function connect(conversationId: string) {
       chatStore.finishStreaming(conversationId)
       controllers.value.delete(conversationId)
     },
+    afterMessageId,
   }))
 }
 
@@ -163,5 +207,9 @@ function disconnect(convId?: string) {
 }
 
 export function useSSE() {
-  return { connect, disconnect, controllers }
+  return {
+    connect,
+    disconnect,
+    controllers,
+  }
 }
