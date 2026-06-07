@@ -307,15 +307,17 @@ export const useChatStore = defineStore('chat', () => {
   function appendPersistedMessage(convId: string, msg: MessageResponse) {
     const msgs = getMessages(convId)
     const ui = toUIMessage(msg)
-    // 已存在相同 id 时替换（例如 meme 后处理后的覆盖更新）
     const existingIdx = msgs.findIndex(m => m.id === msg.id)
-    if (existingIdx !== -1) {
+    if (existingIdx !== -1 && msgs[existingIdx].type !== 'user') {
+      // 已有同 id 的非用户消息（如 streaming commit 版）→ 替换为落库版本
       const updated = [...msgs]
       updated[existingIdx] = ui
       setMessages(convId, updated)
-    } else {
+    } else if (existingIdx === -1) {
+      // 找不到 → append
       setMessages(convId, [...msgs, ui])
     }
+    // existingIdx 找到的是 user 消息 → 跳过（ID 碰撞保护，防止 UserMsg 被覆盖）
   }
 
   /** SSE agent_start:为该 agent 起一条新的 streaming 气泡(若已存在则刷新) */
@@ -469,17 +471,25 @@ export const useChatStore = defineStore('chat', () => {
       const finalAvatar = agentMember?.avatar ?? streaming.avatar
       const finalName = agentMember?.name ?? streaming.agentName
 
-      msgs.push({
+      const newMsg = {
         id: streaming.messageId,
-        type: 'agent',
+        type: 'agent' as const,
         agentId: streaming.agentId,
         agentName: finalName,
         avatar: finalAvatar,
         content: (streaming.blocks.find(b => b.type === 'text') as { content: string } | undefined)?.content ?? '',
         timestamp: streaming.startedAt,
         blocks: streaming.blocks,
-      })
-      setMessages(convId, msgs)
+      }
+      // message_appended 先到时已用 agent_reply_id 把落库版本加入 messageMap，
+      // 此时 existingIdx 应该找不到（agent_reply_id 与 streaming.messageId 相同）。
+      // 万一仍然找到（id 碰撞兜底）→ 不覆盖不重渲染，保留落库版本。
+      const existingIdx = msgs.findIndex(m => m.id === streaming.messageId)
+      if (existingIdx === -1) {
+        msgs.push(newMsg)
+        setMessages(convId, msgs)
+      }
+      // 已存在 → 保持现状，不触发多余渲染
       // broadcast 会话的新消息标记打字流动画
       if (conv?.mode === 'broadcast') {
         newBroadcastMessageIds.value = new Set([...newBroadcastMessageIds.value, streaming.messageId])
