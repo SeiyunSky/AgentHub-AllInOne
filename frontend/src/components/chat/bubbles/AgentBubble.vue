@@ -1,14 +1,15 @@
 <template>
-  <div class="flex gap-3 message-enter group mb-5">
+  <div class="flex gap-3 message-enter group" :class="isApprovalOnly ? '-mt-3 mb-2' : 'mb-5'">
     <div
       class="w-9 h-9 rounded-[20%] flex items-center justify-center shrink-0 overflow-hidden"
+      :class="isApprovalOnly ? 'invisible' : ''"
     >
       <img v-if="agentAvatar" :src="agentAvatar" :alt="displayAgentName" class="w-full h-full object-cover" />
     </div>
 
     <div class="flex-1 min-w-0 relative pb-5">
-      <!-- Header -->
-      <div class="flex items-center gap-2 mb-1.5">
+      <!-- Header：approval-only 气泡不显示，视觉上贴紧上方的工具流程气泡 -->
+      <div v-if="!isApprovalOnly" class="flex items-center gap-2 mb-1.5">
         <span class="text-[12px] font-semibold text-on-surface">{{ displayAgentName }}</span>
         <span
           v-if="message.agentRole"
@@ -27,7 +28,7 @@
         </span>
 
         <span class="text-[10px] text-on-surface-variant">{{ timeAgo }}</span>
-      </div>
+      </div><!-- end header v-if -->
 
       <CollapsibleContent :streaming="streaming">
         <!-- Blocks mode -->
@@ -265,6 +266,14 @@ watch(
 const agentAvatar = computed(() =>
   agentsStore.agents.find(a => a.id === props.message.agentId)?.avatar ?? props.message.avatar
 )
+
+// 消息只含 approval block（无文字/工具内容）时，隐藏头像和 header，
+// 视觉上让审批气泡紧贴上方的工具流程气泡，看起来像同一个发话单元。
+const isApprovalOnly = computed(() => {
+  const blocks = props.message.blocks
+  if (!blocks || blocks.length === 0) return false
+  return blocks.every(b => b.type === 'approval')
+})
 
 const displayAgentName = computed(() => {
   // 数据库 agent.name 是真相源；message.agentName 是 SSE 事件携带的快照值，

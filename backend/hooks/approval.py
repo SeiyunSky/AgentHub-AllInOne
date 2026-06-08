@@ -47,7 +47,7 @@ _HIGH_RISK_TOOLS: frozenset[str] = frozenset({
 })
 
 # 用户无决策的超时阈值（秒），超时降级为 reject
-_APPROVAL_TIMEOUT_SECONDS = 600
+_APPROVAL_TIMEOUT_SECONDS = 120
 
 # 通知通道就绪开关：False 时 ApprovalHook 直接放行，不走审批等待。
 # 防止前端收不到 ApprovalBlock（message_service / stream_service.push_approval_block 未实装）
@@ -145,6 +145,10 @@ class ApprovalHook(SyncHook):
         if tool_name not in _HIGH_RISK_TOOLS:
             return HookResult(decision="continue")
 
+        # 批量审批已通过：跳过逐一审批
+        if ctx.extra.get("batch_approved"):
+            return HookResult(decision="continue")
+
         # 守卫：通知通道未就绪时直接放行，避免主 Agent loop 静默等超时
         # （前端收不到 ApprovalBlock，用户无感知，10 分钟后自动 reject 体验极差）
         if not _APPROVAL_CHANNEL_READY:
@@ -191,8 +195,8 @@ class ApprovalHook(SyncHook):
             hook_manager.emit(HookEvent.APPROVAL_REQUESTED, approval_ctx)
 
             logger.info(
-                "APPROVAL_REQUESTED tool=%s block_id=%s user=%s conversation=%s",
-                tool_name, block_id, ctx.user_id, ctx.conversation_id,
+                "APPROVAL_REQUESTED tool=%s block_id=%s user=%s conversation=%s — waiting for user decision (timeout=%ds)",
+                tool_name, block_id, ctx.user_id, ctx.conversation_id, _APPROVAL_TIMEOUT_SECONDS,
             )
 
             # 3. 阻塞等待用户决策，带超时
@@ -285,12 +289,29 @@ class ApprovalHook(SyncHook):
             detail=detail_json,
         )
 
+        # 查 agent 表拿 sender name 和 avatar，让 approval 气泡的名字/头像与
+        # orchestrator streaming 气泡一致（否则 sender=None → agentName fallback 到
+        # agent_id "orchestrator" 小写，与 "Orchestrator" 大写的 streaming 气泡不一致）
+        agent_sender: Optional[str] = None
+        agent_avatar: Optional[str] = None
+        try:
+            from backend.core.database import db_session as _dbs
+            from backend.repositories.agent_repo import AgentRepository as _AR
+            with _dbs() as _s:
+                _row = _AR(_s).get(ctx.agent_id or "")
+                if _row:
+                    agent_sender = _row.name or None
+                    agent_avatar = _row.avatar or None
+        except Exception:
+            pass  # 查失败不影响主流程，只是 UI 名字/头像用 fallback
+
         try:
             msg = await message_service.create_assistant_message(
                 conversation_id=ctx.conversation_id or "",
                 agent_id=ctx.agent_id or "",
                 content_blocks=[approval_block],
                 thread_id=ctx.thread_id,
+                sender=agent_sender,
             )
             message_id = getattr(msg, "id", None)
         except Exception:
@@ -322,7 +343,7 @@ class ApprovalHook(SyncHook):
                 "parent_id": getattr(msg, "parent_id", None),
                 "user_id": msg.user_id,
                 "agent_id": msg.agent_id,
-                "agent_avatar": None,
+                "agent_avatar": agent_avatar,
                 "role": msg.role,
                 "blocks": msg.content or [],  # DB 列叫 content,API 字段叫 blocks
                 "status": msg.status,
@@ -368,3 +389,132 @@ class ApprovalHook(SyncHook):
             },
         })
         hook_manager.emit(HookEvent.APPROVAL_DECIDED, decided_ctx)
+
+
+# ============================================================
+# 批量文件审批（多个写工具合并为一次审批）
+# ============================================================
+
+_FILE_WRITE_TOOLS: frozenset[str] = frozenset({"create_file", "edit_file"})
+
+
+async def batch_request_file_approval(
+    *,
+    conversation_id: str,
+    thread_id: str,
+    user_id: Optional[str],
+    agent_id: str,
+    calls: list,  # list of LLMToolCall-like objects with .name / .input
+) -> ApprovalDecision:
+    """
+    把同一轮里所有 create_file / edit_file 调用合并成一个 ApprovalBlock。
+    返回 "approve" 或 "reject"（超时视为 reject）。
+
+    调用方（service.py）在检测到本轮有 ≥2 个文件写工具时调用；
+    只有 1 个文件写工具时仍走原来的逐一 ApprovalHook 路径（无需批量）。
+    """
+    from backend.domain.message import ApprovalBlock
+    from backend.services.message_service import message_service
+    from backend.services.stream_service import stream_service
+    from backend.adapters.events import MessageAppendedEvent
+
+    # 构造批量 detail：列出所有文件路径 + 操作类型
+    file_ops = []
+    for call in calls:
+        if getattr(call, "name", None) not in _FILE_WRITE_TOOLS:
+            continue
+        tool_input = getattr(call, "input", {}) or {}
+        path = tool_input.get("path") or tool_input.get("file_path") or "(未知路径)"
+        op = "新建" if getattr(call, "name", "") == "create_file" else "编辑"
+        content = tool_input.get("content") or ""
+        file_ops.append({"op": op, "path": path, "size": len(content)})
+
+    detail_json = _json.dumps({"files": file_ops, "total": len(file_ops)}, ensure_ascii=False)
+
+    # 查 agent 表拿 sender name 和 avatar
+    batch_sender: Optional[str] = None
+    batch_avatar: Optional[str] = None
+    try:
+        from backend.core.database import db_session as _dbs
+        from backend.repositories.agent_repo import AgentRepository as _AR
+        with _dbs() as _s:
+            _row = _AR(_s).get(agent_id)
+            if _row:
+                batch_sender = _row.name or None
+                batch_avatar = _row.avatar or None
+    except Exception:
+        pass
+
+    block_id = gen_uuid()
+    approval_block = ApprovalBlock(
+        block_id=block_id,
+        action="batch_write_files",
+        detail=detail_json,
+    )
+
+    # 落库 + 推 SSE
+    message_id: Optional[str] = None
+    try:
+        msg = await message_service.create_assistant_message(
+            conversation_id=conversation_id,
+            agent_id=agent_id,
+            content_blocks=[approval_block],
+            thread_id=thread_id,
+            sender=batch_sender,
+        )
+        message_id = getattr(msg, "id", None)
+        if message_id:
+            msg_payload = {
+                "id": msg.id,
+                "conversation_id": msg.conversation_id,
+                "thread_id": msg.thread_id,
+                "parent_id": getattr(msg, "parent_id", None),
+                "user_id": msg.user_id,
+                "agent_id": msg.agent_id,
+                "agent_avatar": batch_avatar,
+                "role": msg.role,
+                "blocks": msg.content or [],
+                "status": msg.status,
+                "error_message": msg.error_message,
+                "model": msg.model,
+                "sender": msg.sender,
+                "tokens_input": msg.tokens_input,
+                "tokens_output": msg.tokens_output,
+                "latency_ms": msg.latency_ms,
+                "feedback": msg.feedback,
+                "selected_range": msg.selected_range,
+                "is_deleted": bool(msg.is_deleted),
+                "created_at": msg.created_at.isoformat() if msg.created_at else "",
+            }
+            await stream_service.push_event(
+                conversation_id,
+                MessageAppendedEvent(conversation_id=conversation_id, message=msg_payload),
+            )
+    except Exception:
+        logger.exception("batch approval: 落库/推送失败, 直接放行")
+        return "approve"
+
+    if not message_id:
+        logger.warning("batch approval: 落库失败, 直接放行")
+        return "approve"
+
+    # 注册待审批，等待决策
+    pending = _PendingApproval(block_id=block_id, message_id=message_id, event=asyncio.Event())
+    _pending_approvals[block_id] = pending
+
+    try:
+        logger.info(
+            "BATCH_APPROVAL_REQUESTED files=%d block_id=%s conversation=%s",
+            len(file_ops), block_id, conversation_id,
+        )
+        try:
+            await asyncio.wait_for(pending.event.wait(), timeout=_APPROVAL_TIMEOUT_SECONDS)
+        except asyncio.TimeoutError:
+            logger.warning("batch approval timeout block_id=%s → reject", block_id)
+            return "reject"
+
+        decision = pending.decision or "reject"
+        logger.info("batch approval decided=%s block_id=%s", decision, block_id)
+        return decision
+    finally:
+        _pending_approvals.pop(block_id, None)
