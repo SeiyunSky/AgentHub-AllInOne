@@ -58,6 +58,31 @@
           </el-button>
         </el-form-item>
 
+        <!-- 分割线 -->
+        <div class="flex items-center gap-3 my-1">
+          <div class="flex-1 h-px bg-outline-variant"></div>
+          <span class="text-[11px] text-on-surface-variant">or</span>
+          <div class="flex-1 h-px bg-outline-variant"></div>
+        </div>
+
+        <!-- 微软账号登录 -->
+        <el-form-item>
+          <el-button
+            size="large"
+            class="w-full !rounded-xl !border !border-outline-variant !bg-surface hover:!bg-surface-variant !h-11 !font-medium !text-on-surface"
+            :loading="msLoading"
+            @click.prevent="handleMicrosoftLogin"
+          >
+            <img
+              src="https://learn.microsoft.com/en-us/entra/identity-platform/media/howto-add-branding-in-apps/ms-symbollockup_mssymbol_19.svg"
+              alt="Microsoft"
+              class="w-4 h-4 mr-2"
+              @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+            />
+            Sign in with Microsoft
+          </el-button>
+        </el-form-item>
+
         <div v-if="errorMsg" class="text-center text-[12px] text-error mb-2">
           {{ errorMsg }}
         </div>
@@ -90,6 +115,7 @@ const auth = useAuthStore()
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
+const msLoading = ref(false)
 const errorMsg = ref<string>('')
 
 const form = reactive({
@@ -122,6 +148,18 @@ async function handleLogin() {
     errorMsg.value = err instanceof Error ? err.message : '登录失败,请稍后重试'
   } finally {
     loading.value = false
+  }
+}
+
+async function handleMicrosoftLogin() {
+  msLoading.value = true
+  errorMsg.value = ''
+  try {
+    const { url } = await authApi.getMicrosoftOAuthUrl()
+    window.location.href = url
+  } catch (err) {
+    msLoading.value = false
+    errorMsg.value = err instanceof Error ? err.message : '微软登录初始化失败,请稍后重试'
   }
 }
 </script>

@@ -102,5 +102,29 @@ class Settings(BaseSettings):
         "其他依赖 Redis 的子系统(分布式锁 / 断点恢复)同样降级。",
     )
 
+    # ---- Microsoft OAuth2 (Azure AD) ----
+    AZURE_CLIENT_ID: str | None = Field(
+        default=None,
+        description="Azure AD 应用的 client_id（Application ID）。未配置时禁用微软登录入口。",
+    )
+    AZURE_CLIENT_SECRET: str | None = Field(
+        default=None,
+        description="Azure AD 应用的 client_secret。生产环境从 KeyVault 注入，禁止明文提交。",
+    )
+    AZURE_TENANT_ID: str = Field(
+        default="common",
+        description="AAD 租户 ID。'common' 允许任意微软账号登录；"
+        "填具体租户 GUID 则仅允许该组织账号登录。",
+    )
+    AZURE_REDIRECT_URI: str = Field(
+        default="http://localhost:5173/auth/microsoft/callback",
+        description="OAuth2 授权码回调地址，必须与 Azure 应用注册中的重定向 URI 完全一致。"
+        "本地开发默认指向 Vite dev server；生产环境改为真实域名。",
+    )
+    AZURE_OAUTH_STATE_TTL: int = Field(
+        default=300,
+        description="OAuth state 在 Redis 中的 TTL（秒）。防 CSRF，默认 5 分钟。",
+    )
+
 
 settings = Settings()

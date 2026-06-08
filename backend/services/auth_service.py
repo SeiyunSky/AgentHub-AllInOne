@@ -5,8 +5,9 @@ auth_service.py —— 鉴权业务核心
 1. 密码哈希 / 校验          —— bcrypt(via passlib),不直接存明文
 2. JWT 签发 / 解码          —— python-jose,access + refresh 双 token,jti 用 UUID4
 3. 业务流程                  —— register / login / logout / refresh / get_user_from_token
+                               login_or_register_oauth —— OAuth2 第三方登录/自动注册
 4. 黑名单                    —— logout 把 jti 写到 Redis;Redis 不可达时 fail-open
-                              (只警告日志,业务继续走;此时 logout 仅前端丢 token)
+                               (只警告日志,业务继续走;此时 logout 仅前端丢 token)
 
 设计原则:
 - 不抛 HTTPException,只抛 backend.core.exceptions 里的领域异常;
@@ -17,12 +18,13 @@ auth_service.py —— 鉴权业务核心
 
 队伍:咕嘎一辈子队
 修改者:咕嘎
-修改日期:2026-06-02
+修改日期:2026-06-08
 """
 
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
@@ -323,6 +325,115 @@ class AuthService:
         if user is None:
             raise TokenInvalidError("token 对应的用户不存在")
         return user
+
+    # ----- OAuth2 第三方登录 / 自动注册 -----
+
+    def login_or_register_oauth(
+        self,
+        *,
+        provider: str,
+        subject: str,
+        email: Optional[str] = None,
+        display_name: Optional[str] = None,
+        tenant_id: Optional[str] = None,
+    ) -> tuple[User, str, datetime, str, datetime]:
+        """
+        OAuth2 登录/自动注册统一入口。返回与 login() 相同的五元组。
+
+        查找顺序:
+        1. (provider, subject) → 已绑定账号,直接登录
+        2. email → 已有本地账号,绑定 oauth 字段后登录(账号合并)
+        3. 均无 → 自动注册新 OAuth 账号
+
+        username 生成规则:取 email @ 前部分,过滤非法字符,长度不足则补全;
+        冲突时追加随机 4 位十六进制后缀。
+        """
+        # --- 1. 按 oauth 身份查已有绑定 ---
+        user = self.users.get_by_oauth(provider, subject)
+
+        # --- 2. 按 email 合并已有本地账号 ---
+        if user is None and email:
+            user = self.users.get_by_email(email)
+            if user is not None:
+                # 绑定 oauth 字段
+                self.users.update(
+                    user.id,
+                    oauth_provider=provider,
+                    oauth_subject=subject,
+                    oauth_tenant_id=tenant_id,
+                )
+                logger.info(
+                    "oauth account merged: user_id=%s provider=%s", user.id, provider
+                )
+
+        # --- 3. 自动注册 ---
+        if user is None:
+            username = self._generate_username(email, provider, subject)
+            user = self.users.create_oauth_user(
+                username=username,
+                email=email,
+                display_name=display_name or username,
+                oauth_provider=provider,
+                oauth_subject=subject,
+                oauth_tenant_id=tenant_id,
+            )
+            logger.info(
+                "oauth user auto-registered: id=%s username=%s provider=%s",
+                user.id,
+                user.username,
+                provider,
+            )
+
+        access_token, access_expire = create_access_token(user.id, user.username)
+        refresh_token, refresh_expire = create_refresh_token(user.id, user.username)
+
+        self.users.touch_last_login(user.id)
+        self.session.commit()
+
+        logger.info(
+            "oauth login success: id=%s username=%s provider=%s",
+            user.id,
+            user.username,
+            provider,
+        )
+        return user, access_token, access_expire, refresh_token, refresh_expire
+
+    def _generate_username(
+        self,
+        email: Optional[str],
+        provider: str,
+        subject: str,
+    ) -> str:
+        """
+        从 email 生成合法 username;冲突时加随机后缀。
+        合法字符: 字母、数字、下划线、短横线,4-50 字符。
+        """
+        if email:
+            base = email.split("@")[0]
+        else:
+            # 无 email:用 provider 前缀 + subject 后 8 位
+            base = f"{provider}_{subject[-8:]}"
+
+        # 只保留合法字符
+        base = re.sub(r"[^a-zA-Z0-9_\-]", "_", base)
+        # 保证最小长度 4
+        base = base[:50] or "user"
+        if len(base) < 4:
+            base = base.ljust(4, "0")
+
+        candidate = base[:46]  # 留 4 位给后缀
+        if not self.users.username_taken(candidate):
+            return candidate
+
+        # 冲突: 加随机后缀
+        for _ in range(10):
+            suffix = uuid.uuid4().hex[:4]
+            name = f"{candidate[:46]}_{suffix}"
+            if not self.users.username_taken(name):
+                return name
+
+        # 极端情况: 全 uuid
+        return f"user_{uuid.uuid4().hex[:12]}"
 
 
 __all__ = [
