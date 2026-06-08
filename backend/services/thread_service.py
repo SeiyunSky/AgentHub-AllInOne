@@ -46,6 +46,7 @@ from backend.services.stream_service import stream_service
 
 
 from backend.adapters.registry import registry as adapter_registry
+from backend.core.utils import gen_uuid
 
 
 logger = logging.getLogger(__name__)
@@ -856,12 +857,18 @@ class ThreadService:
                 # model 字段未来可能加;目前 message_service 内部 model=None 兜底
             }
 
+            # agent_reply_id：agent 回复气泡的唯一标识。
+            # thread.message_id 是触发本 thread 的用户消息 id（DB 语义），
+            # 不能复用作 agent 气泡 id——前端 messageMap 里已有同 id 的用户消息，
+            # 会触发 id 碰撞，导致用户消息被 agent 消息覆盖 / agent 消息丢失。
+            agent_reply_id = gen_uuid()
+
             stream_input = StreamInput(
                 agent_id=thread.agent_id,
                 agent_name=agent_name,
                 agent_avatar=agent_avatar,
                 thread_id=thread.id,
-                message_id=thread.message_id,
+                message_id=agent_reply_id,
                 prompt=thread.dispatch_prompt or "",
                 history=history,
                 skills=agent_skills,
@@ -944,6 +951,7 @@ class ThreadService:
                         block_states=block_states,
                         tokens_input=event.tokens_input or 0,
                         tokens_output=event.tokens_output or 0,
+                        agent_reply_id=agent_reply_id,
                     )
                     # broadcast 模式下回复了也写已读（回复了 = 也已读）
                     await self._handle_read_receipt(thread, agent_name)
@@ -1005,6 +1013,7 @@ class ThreadService:
         block_states: dict[str, dict[str, Any]],
         tokens_input: int,
         tokens_output: int,
+        agent_reply_id: Optional[str] = None,
     ) -> None:
         """
         把 Adapter 流转累积出的 block_states 落成一条 assistant 消息。
@@ -1073,7 +1082,7 @@ class ThreadService:
             if msg is not None and any(getattr(b, "type", None) == "meme" for b in blocks):
                 try:
                     msg_dict = {
-                        "id": thread.message_id,  # 与 streaming 气泡的 messageId 一致，确保前端能找到并替换
+                        "id": agent_reply_id,  # gen_uuid() 已保证非 None，不用 fallback
                         "conversation_id": thread.conversation_id,
                         "thread_id": thread.id,
                         "agent_id": thread.agent_id,
