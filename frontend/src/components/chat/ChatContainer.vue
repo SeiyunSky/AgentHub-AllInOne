@@ -27,17 +27,9 @@
       <span>{{ t('chat.archivedNotice') }}</span>
     </div>
 
-    <!-- Approval Overlay (replaces input when pending) -->
-    <ApprovalOverlay
-      v-else-if="currentApproval"
-      :approval="currentApproval"
-      @approve="handleApprove"
-      @reject="handleReject"
-    />
-
     <!-- Input -->
     <ChatInput
-      v-else
+      v-if="!isArchived"
       ref="chatInputRef"
       :model-value="inputText"
       :html-draft="inputHtml"
@@ -63,7 +55,6 @@ import { useAgentsStore } from '@/stores/agents'
 import ChatHeader from '@/components/layout/ChatHeader.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
-import ApprovalOverlay from '@/components/chat/ApprovalOverlay.vue'
 import { ChatLineRound, FolderOpened } from '@element-plus/icons-vue'
 
 const props = defineProps<{
@@ -94,7 +85,6 @@ onMounted(() => {
 const convId = computed(() => conversationsStore.currentId)
 const isArchived = computed(() => conversationsStore.currentConversation?.is_archived ?? false)
 const isStreaming = computed(() => !!convId.value && chatStore.isStreamingFor(convId.value))
-const currentApproval = computed(() => convId.value ? chatStore.getPendingApproval(convId.value) : null)
 const streamingMessageId = computed(() => convId.value ? chatStore.getStreamingMessage(convId.value)?.id : undefined)
 
 const inputText = computed(() => convId.value ? chatStore.getInputDraft(convId.value) : '')
@@ -160,15 +150,5 @@ function onCopy(_messageId: string) {
 
 function onReact(messageId: string, type: 'like' | 'dislike') {
   emit('react', messageId, type)
-}
-
-function handleApprove() {
-  if (!currentApproval.value || !convId.value) return
-  chatStore.resolveApproval(convId.value, currentApproval.value.messageId, currentApproval.value.blockId, 'approved')
-}
-
-function handleReject(reason?: string) {
-  if (!currentApproval.value || !convId.value) return
-  chatStore.resolveApproval(convId.value, currentApproval.value.messageId, currentApproval.value.blockId, 'rejected', reason)
 }
 </script>

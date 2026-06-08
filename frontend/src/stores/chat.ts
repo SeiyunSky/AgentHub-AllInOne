@@ -271,7 +271,19 @@ export const useChatStore = defineStore('chat', () => {
     const base = getMessages(convId)
     const streamings = getStreamingAgents(convId)
     if (streamings.length === 0) return base
-    return [...base, ...streamings.map(streamingToMessage)]
+
+    // 把 streaming 气泡和 messageMap 消息按 timestamp 时间合并，而不是无脑追加到末尾。
+    // 这样 approval 消息（created_at > streaming 开始）会排在 streaming 气泡之后，
+    // 修复"approval 出现在工具流程气泡上方"的视觉错位问题。
+    const streamingMsgs = streamings.map(streamingToMessage)
+    const all = [...base, ...streamingMsgs]
+    all.sort((a, b) => {
+      const ta = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(String(a.timestamp)).getTime()
+      const tb = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(String(b.timestamp)).getTime()
+      if (ta !== tb) return ta - tb
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0  // 同毫秒按 id 字典序保证稳定
+    })
+    return all
   }
 
   const isAnyStreaming = computed(() => streamingConvIds.value.size > 0)
@@ -279,13 +291,20 @@ export const useChatStore = defineStore('chat', () => {
   // ── Actions ──
 
   function loadFromAPI(convId: string, apiMessages: MessageResponse[]) {
-    setMessages(convId, apiMessages.map(toUIMessage))
+    // 按 created_at ASC 排序，不依赖后端顺序假设，防止初始加载时消息倒序
+    const sorted = [...apiMessages].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+    setMessages(convId, sorted.map(toUIMessage))
   }
 
   /** 在现有消息前插入历史消息（用于加载更多） */
   function prependMessages(convId: string, olderMessages: MessageResponse[]) {
     const existing = getMessages(convId)
-    const older = olderMessages.map(toUIMessage)
+    // 确保旧消息本身也是 ASC 顺序，防止"加载更多"时出现倒序
+    const older = [...olderMessages]
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      .map(toUIMessage)
     setMessages(convId, [...older, ...existing])
   }
 
@@ -322,11 +341,25 @@ export const useChatStore = defineStore('chat', () => {
       const updated = [...msgs]
       updated[existingIdx] = ui
       setMessages(convId, updated)
-    } else if (existingIdx === -1) {
-      // 找不到 → append
-      setMessages(convId, [...msgs, ui])
+      return
     }
-    // existingIdx 找到的是 user 消息 → 跳过（ID 碰撞保护，防止 UserMsg 被覆盖）
+    if (existingIdx !== -1) return  // user 消息保护（ID 碰撞时跳过）
+
+    // 找不到 → 按 created_at 时间有序插入，保证时间线正确
+    // approval 等独立消息在 tool_use streaming 期间产生，插入到正确时间位置
+    // 而不是简单追加到末尾（否则会排在 streaming 气泡之前，视觉上错位）
+    const msgTime = new Date(msg.created_at).getTime()
+    const insertIdx = msgs.findIndex(m => {
+      const t = m.timestamp
+      return t && (t instanceof Date ? t.getTime() : new Date(String(t)).getTime()) > msgTime
+    })
+    const updated = [...msgs]
+    if (insertIdx === -1) {
+      updated.push(ui)
+    } else {
+      updated.splice(insertIdx, 0, ui)
+    }
+    setMessages(convId, updated)
   }
 
   /** SSE agent_start:为该 agent 起一条新的 streaming 气泡(若已存在则刷新) */
@@ -494,7 +527,17 @@ export const useChatStore = defineStore('chat', () => {
       // 万一仍然找到（id 碰撞兜底）→ 不覆盖不重渲染，保留落库版本。
       const existingIdx = msgs.findIndex(m => m.id === streaming.messageId)
       if (existingIdx === -1) {
-        msgs.push(newMsg)
+        // 按 timestamp 有序插入，保证 messageMap 内部顺序与 currentMessages() 排序一致
+        const msgTime = newMsg.timestamp.getTime()
+        const insertIdx = msgs.findIndex(m => {
+          const t = m.timestamp
+          return t && (t instanceof Date ? t.getTime() : new Date(String(t)).getTime()) > msgTime
+        })
+        if (insertIdx === -1) {
+          msgs.push(newMsg)
+        } else {
+          msgs.splice(insertIdx, 0, newMsg)
+        }
         setMessages(convId, msgs)
       }
       // 已存在 → 保持现状，不触发多余渲染
