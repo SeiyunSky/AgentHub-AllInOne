@@ -1,6 +1,6 @@
 <template>
   <div class="px-4 py-4">
-    <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">Active Conversations</div>
+    <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">{{ t('conversation.activeConversations') }}</div>
     <div class="space-y-2">
       <!-- New Chat -->
       <div
@@ -10,7 +10,7 @@
         <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-light">
           <el-icon :size="16" class="text-brand"><Plus /></el-icon>
         </div>
-        <span class="text-[13px] font-medium">New Chat</span>
+        <span class="text-[13px] font-medium">{{ t('conversation.newChat') }}</span>
       </div>
       <!-- New Chat Dialog -->
       <NewChatDialog v-model="showNewChatDialog" @created="handleChatCreated" />
@@ -19,7 +19,7 @@
       <template v-if="pinnedConversations.length">
         <div class="flex items-center gap-1.5 px-1 pt-1">
           <el-icon :size="10" class="text-amber-500 rotate-45"><Promotion /></el-icon>
-          <span class="text-[10px] uppercase font-semibold text-amber-500 tracking-widest">Pinned</span>
+          <span class="text-[10px] uppercase font-semibold text-amber-500 tracking-widest">{{ t('conversation.pinned') }}</span>
         </div>
         <div
           v-for="conv in pinnedConversations"
@@ -43,7 +43,7 @@
           <el-icon :size="10" class="text-on-surface-variant transition-transform duration-200" :class="recentExpanded ? 'rotate-0' : '-rotate-90'">
             <ArrowDown />
           </el-icon>
-          <span class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest">Recent</span>
+          <span class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest">{{ t('conversation.recent') }}</span>
           <span class="ml-auto text-[10px] text-on-surface-variant/40">{{ unpinnedConversations.length }}</span>
         </div>
         <template v-if="recentExpanded">
@@ -70,7 +70,7 @@
           <el-icon :size="10" class="text-on-surface-variant/60 transition-transform duration-200" :class="archivedExpanded ? 'rotate-0' : '-rotate-90'">
             <ArrowDown />
           </el-icon>
-          <span class="text-[10px] uppercase font-semibold text-on-surface-variant/60 tracking-widest">Archived</span>
+          <span class="text-[10px] uppercase font-semibold text-on-surface-variant/60 tracking-widest">{{ t('conversation.archived') }}</span>
           <span class="ml-auto text-[10px] text-on-surface-variant/40">{{ archivedConversations.length }}</span>
         </div>
         <template v-if="archivedExpanded">
@@ -95,12 +95,14 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { Plus, Promotion, ArrowDown } from '@element-plus/icons-vue'
 import { useConversationsStore } from '@/stores/conversations'
 import type { ConversationListItem, ConversationResponse } from '@/types/conversation'
 import NewChatDialog from '@/components/chat/NewChatDialog.vue'
 import ConvItem from './ConversationItem.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const conversationsStore = useConversationsStore()
 const showNewChatDialog = ref(false)
@@ -137,10 +139,10 @@ async function handleSelect(id: string) {
 
 async function handleRename(conv: ConversationListItem) {
   try {
-    const { value } = await ElMessageBox.prompt(conv.title, 'Rename Conversation', {
-      confirmButtonText: 'Save',
-      cancelButtonText: 'Cancel',
-      inputPlaceholder: 'Enter new name',
+    const { value } = await ElMessageBox.prompt(conv.title, t('conversation.rename'), {
+      confirmButtonText: t('common.save'),
+      cancelButtonText: t('common.cancel'),
+      inputPlaceholder: t('conversation.enterNewName'),
       customStyle: { borderRadius: '16px' },
     })
     if (value?.trim()) {

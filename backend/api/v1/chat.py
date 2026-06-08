@@ -25,14 +25,18 @@ api/v1/chat.py —— Chat 业务 HTTP 端点
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import AsyncIterator
-from typing import Annotated
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sse_starlette.sse import EventSourceResponse
 
 from backend.api.deps import get_chat_service, get_current_user
+from backend.core.database import SessionLocal
+from backend.repositories.stream_buffer_repo import StreamEventBuffer
+from backend.repositories.thread_repo import ThreadRepository
 from backend.schemas.chat import (
     ChatQueuedResponse,
     ChatRequest,
@@ -115,20 +119,26 @@ async def post_chat_stop(
         "SSE 长连接,持续推送 AgentEvent / RoundDoneEvent / QueueDrainedEvent。"
         "QueueDrainedEvent 后服务端主动关闭连接,客户端可断开。"
         "前端应在 POST /chat 之前就建立连接。"
+        "支持刷新回放:携带 after_message_id 参数时,先回放 Redis 缓冲中该消息之后的事件。"
     ),
 )
 async def get_chat_stream(
     conversation_id: Annotated[str, Path(description="目标会话 ID")],
     user_id: Annotated[str, Depends(get_current_user)],
+    after_message_id: Annotated[
+        Optional[str],
+        Query(description="回放该消息ID之后的事件(刷新重连用)"),
+    ] = None,
 ):
     """
     SSE 端点。流程:
-    1. stream_service.open(conv_id) 拿一个 StreamSession(注册到广播表)
-    2. async for event in consume(session):
+    1. 如果携带 after_message_id,先回放 Redis 缓冲中的历史事件
+    2. stream_service.open(conv_id) 拿一个 StreamSession(注册到广播表)
+    3. async for event in consume(session):
          yield {"event": event.type, "data": event.model_dump_json()}
        —— sse_starlette 自动包成 SSE 协议 (data: ...\n\n)
-    3. 收到 QueueDrainedEvent 后停止 yield(也即关 SSE)
-    4. finally:stream_service.close(session) 清理广播注册
+    4. 收到 QueueDrainedEvent 后停止 yield(也即关 SSE)
+    5. finally:stream_service.close(session) 清理广播注册
 
     [TODO/perm]: 同上,缺 conversation 归属校验。
     """
@@ -140,14 +150,59 @@ async def get_chat_stream(
 
     session = stream_service.open(conversation_id)
     logger.debug(
-        "SSE session %s opened for conversation %s by user %s",
+        "SSE session %s opened for conversation %s by user %s (after_message=%s)",
         session.session_id,
         conversation_id,
         user_id,
+        after_message_id,
     )
 
     async def event_generator() -> AsyncIterator[dict]:
         try:
+            # 1. 如果有 after_message_id，查询活跃 Thread 并回放对应事件
+            has_replay = False
+            if after_message_id is not None:
+                # 从数据库查询当前会话的所有活跃 Thread ID
+                db = SessionLocal()
+                try:
+                    active_thread_ids = ThreadRepository(db).list_active_thread_ids(conversation_id)
+                finally:
+                    db.close()
+
+                # 从 Redis 缓冲中提取这些 Thread 的所有事件
+                if active_thread_ids:
+                    buffer = StreamEventBuffer(conversation_id)
+                    replay_events = buffer.replay_for_active_threads(active_thread_ids)
+                    if replay_events:
+                        has_replay = True
+                        logger.info(
+                            "Replaying %d events for %d active threads in conv=%s",
+                            len(replay_events),
+                            len(active_thread_ids),
+                            conversation_id,
+                        )
+                        for event_json in replay_events:
+                            try:
+                                event_dict = json.loads(event_json)
+                                yield {
+                                    "event": event_dict.get("type", "message"),
+                                    "data": event_json,
+                                }
+                            except Exception:
+                                logger.warning(
+                                    "Failed to parse replay event: %s",
+                                    event_json[:100],
+                                )
+
+            # 2. 如果没有活跃 Thread 或没有回放内容，立即断开
+            if after_message_id is not None and not has_replay:
+                logger.info(
+                    "No active threads or replay events for conv=%s, close SSE",
+                    conversation_id,
+                )
+                return  # 直接结束生成器，断开 SSE 连接
+
+            # 3. 继续消费实时事件
             async for event in stream_service.consume(session):
                 # sse_starlette 接受 dict 形态:{"event": <type>, "data": <str>}
                 # event_type 默认走 SSE 协议的 'event:' 字段(可选,但前端按 type 分流方便)

@@ -30,7 +30,7 @@
           class="w-full text-[11px] text-brand hover:text-brand-dark hover:bg-brand-light/30 transition-colors py-1.5 border-t border-outline-variant cursor-pointer flex items-center justify-center gap-1"
           @click.stop="fullyExpanded = !fullyExpanded"
         >
-          {{ fullyExpanded ? `Collapse (${lineCount} lines)` : `Show all ${lineCount} lines` }}
+          {{ fullyExpanded ? t('codeBlock.collapseLines', { n: lineCount }) : t('codeBlock.showAllLines', { n: lineCount }) }}
         </button>
       </div>
     </template>
@@ -52,7 +52,7 @@
           class="w-full text-[11px] text-brand hover:text-brand-dark hover:bg-brand-light/30 transition-colors py-1.5 border-t border-outline-variant cursor-pointer flex items-center justify-center gap-1"
           @click.stop="fullyExpanded = !fullyExpanded"
         >
-          {{ fullyExpanded ? `Collapse (${lineCount} lines)` : `Show all ${lineCount} lines` }}
+          {{ fullyExpanded ? t('codeBlock.collapseLines', { n: lineCount }) : t('codeBlock.showAllLines', { n: lineCount }) }}
         </button>
       </div>
     </template>
@@ -61,6 +61,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { VueMonacoDiffEditor } from '@guolao/vue-monaco-editor'
 import { highlightCode, initHighlighter } from '@/utils/markdown'
 import { copyToClipboard } from '@/utils/clipboard'
@@ -75,6 +76,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:code': [value: string]
 }>()
+
+const { t } = useI18n()
 
 // 右侧可编辑内容，初始值为 props.code
 const editableCode = ref(props.code)

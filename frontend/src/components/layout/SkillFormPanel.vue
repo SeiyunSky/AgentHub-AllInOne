@@ -1,13 +1,13 @@
 <template>
   <PanelContainer
-    :title="isEditMode ? 'Edit Skill' : 'Create Skill'"
+    :title="isEditMode ? t('skillFormPanel.editTitle') : t('skillFormPanel.createTitle')"
     :icon="MagicStick"
     variant="brand"
   >
     <template #headerActions>
       <div class="flex items-center gap-2">
         <span v-if="isReadOnly" class="text-[11px] text-on-surface-variant px-2 py-1 rounded bg-surface-container">
-          {{ readOnlyTooltip }}（只读）
+          {{ readOnlyTooltip }}{{ t('skillFormPanel.readonlyTag') }}
         </span>
         <button
           v-if="isEditMode"
@@ -17,13 +17,13 @@
           @click="handleDelete"
         >
           <el-icon v-if="isDeleting" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
-          Delete
+          {{ t('skillFormPanel.delete') }}
         </button>
         <button
           class="h-8 px-4 rounded-lg text-[13px] font-medium border border-outline-variant bg-white text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all cursor-pointer"
           @click="handleCancel"
         >
-          Cancel
+          {{ t('skillFormPanel.cancel') }}
         </button>
         <button
           class="h-8 px-4 rounded-lg text-[13px] font-medium bg-gradient-to-r from-brand to-brand-dark text-white shadow-soft hover:shadow-glow hover:-translate-y-px transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
@@ -32,7 +32,7 @@
           @click="handleSave"
         >
           <el-icon v-if="isSaving" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
-          {{ isEditMode ? 'Save Changes' : 'Create Skill' }}
+          {{ isEditMode ? t('skillFormPanel.saveChanges') : t('skillFormPanel.createSkill') }}
         </button>
       </div>
     </template>
@@ -59,6 +59,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { MagicStick, Loading } from '@element-plus/icons-vue'
 import { useSkillsStore } from '@/stores/skills'
@@ -72,6 +73,7 @@ const route = useRoute()
 const router = useRouter()
 const skillsStore = useSkillsStore()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 const isSaving = ref(false)
 const isDeleting = ref(false)
@@ -102,7 +104,7 @@ const isReadOnly = computed(() => {
 })
 const isBuiltin = computed(() => loadedAuthorId.value === 'GUGA')
 const readOnlyTooltip = computed(() =>
-  isBuiltin.value ? '内置 Skill 不可修改' : '无权修改他人创建的 Skill'
+  isBuiltin.value ? t('skillFormPanel.readonlyBuiltin') : t('skillFormPanel.readonlyOther')
 )
 
 function toDraft(raw: SkillWithContentResponse): SkillDraft {
@@ -141,7 +143,7 @@ async function loadSkillById(id: string) {
     loadedAuthorId.value = raw.author_id ?? null
     localDraft.value = toDraft(raw)
   } catch {
-    ElMessage.error('Failed to load skill')
+    ElMessage.error(t('skillFormPanel.loadFailed'))
     router.push({ name: 'skills' })
   } finally {
     isLoading.value = false
@@ -172,9 +174,9 @@ function handleCancel() {
 async function handleDelete() {
   try {
     await ElMessageBox.confirm(
-      `Delete skill "${localDraft.value.displayName || localDraft.value.name}"? This cannot be undone.`,
-      'Delete Skill',
-      { confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
+      t('skillFormPanel.deleteConfirm', { name: localDraft.value.displayName || localDraft.value.name }),
+      t('skillFormPanel.deleteTitle'),
+      { confirmButtonText: t('skillFormPanel.delete'), cancelButtonText: t('common.cancel'), type: 'warning' },
     )
   } catch {
     return
@@ -183,10 +185,10 @@ async function handleDelete() {
   try {
     await skillsApi.remove(skillId.value!)
     skillsStore.removeSkill(skillId.value!)
-    ElMessage.success('Skill deleted')
+    ElMessage.success(t('skillFormPanel.deleted'))
     router.back()
   } catch {
-    ElMessage.error('Failed to delete skill')
+    ElMessage.error(t('skillFormPanel.deleteFailed'))
   } finally {
     isDeleting.value = false
   }
@@ -194,15 +196,15 @@ async function handleDelete() {
 
 async function handleSave() {
   if (!localDraft.value.name.trim()) {
-    ElMessage.warning('Skill name is required')
+    ElMessage.warning(t('skillFormPanel.nameRequired'))
     return
   }
   if (!/^[a-z0-9_-]+$/.test(localDraft.value.name)) {
-    ElMessage.warning('Skill name must be lowercase letters, numbers, hyphens, or underscores')
+    ElMessage.warning(t('skillFormPanel.nameFormat'))
     return
   }
   if (!localDraft.value.content.trim()) {
-    ElMessage.warning('Skill content is required')
+    ElMessage.warning(t('skillFormPanel.contentRequired'))
     return
   }
 
@@ -240,7 +242,7 @@ async function handleSave() {
       skillsStore.skills.unshift(skill)
     }
 
-    ElMessage.success(isEditMode.value ? 'Skill updated' : 'Skill created')
+    ElMessage.success(isEditMode.value ? t('skillFormPanel.updated') : t('skillFormPanel.created'))
 
     if (!isEditMode.value) {
       router.replace({ name: 'skill-edit', params: { skillId: saved.id } })
@@ -248,7 +250,7 @@ async function handleSave() {
       router.back()
     }
   } catch {
-    ElMessage.error('Failed to save skill')
+    ElMessage.error(t('skillFormPanel.saveFailed'))
   } finally {
     isSaving.value = false
   }

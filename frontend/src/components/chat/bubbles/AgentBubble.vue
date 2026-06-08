@@ -156,7 +156,7 @@
       <div
         v-if="message.reaction"
         class="px-1 py-1.5 rounded-md bg-neutral-100 text-[14px] leading-none select-none inline-flex items-center gap-1 w-fit"
-        :title="message.reaction === 'like' ? '已点赞' : '已点踩'"
+        :title="message.reaction === 'like' ? t('agentBubble.reactionLike') : t('agentBubble.reactionDislike')"
       >{{ message.reaction === 'like' ? '😀' : '🙁' }}</div>
     </div>
   </div>
@@ -164,6 +164,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AgentMessage } from '@/types/chat'
 import { useAgentsStore } from '@/stores/agents'
 import { useChatStore } from '@/stores/chat'
@@ -195,6 +196,7 @@ defineEmits<{
   react: [messageId: string, type: 'like' | 'dislike']
 }>()
 
+const { t } = useI18n()
 const agentsStore = useAgentsStore()
 const chatStore = useChatStore()
 // 进入气泡时确保 agents store 已加载（幂等，重复调直接返回）
@@ -292,12 +294,12 @@ const roleBadgeClass = computed(() => {
 
 const activityLabel = computed(() => {
   switch (props.activity) {
-    case 'thinking': return '思考中'
-    case 'typing': return '回复中'
+    case 'thinking': return t('agentBubble.thinking')
+    case 'typing': return t('agentBubble.typing')
     case 'tool':
-      return props.currentTool ? `调用 ${props.currentTool}` : '调用工具'
-    case 'idle': return '等待中'
-    default: return '回复中'
+      return props.currentTool ? `${t('agentBubble.toolPrefix')} ${props.currentTool}` : t('agentBubble.toolFallback')
+    case 'idle': return t('agentBubble.idle')
+    default: return t('agentBubble.typing')
   }
 })
 
@@ -325,9 +327,9 @@ const timeAgo = computed(() => {
   const now = new Date()
   const diff = now.getTime() - props.message.timestamp.getTime()
   const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  return `${Math.floor(minutes / 60)}h ago`
+  if (minutes < 1) return t('timeAgo.justNow')
+  if (minutes < 60) return t('timeAgo.minutesAgo', { n: minutes })
+  return t('timeAgo.hoursAgo', { n: Math.floor(minutes / 60) })
 })
 </script>
 

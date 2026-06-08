@@ -14,11 +14,11 @@
         v-if="convId"
         class="settings-btn"
         :class="{ 'settings-btn-active': showSettings }"
-        title="会话设置(成员 / Token 用量)"
+        :title="t('conversationSettings.sessionSettingsTitle')"
         @click="showSettings = true"
       >
         <el-icon :size="14"><Setting /></el-icon>
-        <span class="text-[11px] font-medium">群聊设置</span>
+        <span class="text-[11px] font-medium">{{ t('conversationSettings.settings') }}</span>
       </button>
 
       <el-button
@@ -46,6 +46,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUIStore } from '@/stores/ui'
 import { useChatStore } from '@/stores/chat'
 import { useConversationsStore } from '@/stores/conversations'
@@ -59,6 +60,7 @@ import { Setting, ArrowRight, ArrowLeft } from '@element-plus/icons-vue'
 const uiStore = useUIStore()
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
+const { t } = useI18n()
 const { sendMessage, stopGeneration } = useChat()
 
 defineProps<{
@@ -76,12 +78,12 @@ const statusText = computed(() => {
   const streamingCount = chatStore.getStreamingAgents(convId.value).length
   if (streamingCount > 0) {
     return streamingCount === 1
-      ? '1 个 Agent 正在回复'
-      : `${streamingCount} 个 Agent 并行中`
+      ? t('chatStatus.oneAgentReplying')
+      : `${streamingCount} ${t('chatStatus.multiAgentParallel')}`
   }
   const agents = conversationsStore.currentConversation?.agents
   const count = agents?.length ?? 0
-  return count > 0 ? `${count} 个 Agent · 待命` : 'Ready'
+  return count > 0 ? `${count} ${t('chatStatus.multiAgentIdle')}` : 'Ready'
 })
 
 const currentMessages = computed(() => {
@@ -110,7 +112,7 @@ async function onReact(messageId: string, type: 'like' | 'dislike') {
     await messagesApi.updateFeedback(messageId, feedback)
   } catch {
     chatStore.updateReaction(convId.value, messageId, current)
-    ElMessage({ message: '反馈提交失败，请重试', type: 'error', duration: 2000, plain: true })
+    ElMessage({ message: t('chat.feedbackFailed'), type: 'error', duration: 2000, plain: true })
   }
 }
 </script>

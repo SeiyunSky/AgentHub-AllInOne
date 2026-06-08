@@ -32,6 +32,7 @@ from backend.adapters.events import (
     RoundDoneEvent,
 )
 from backend.core.utils import gen_uuid
+from backend.repositories.stream_buffer_repo import push_event_to_buffer
 
 
 logger = logging.getLogger(__name__)
@@ -138,6 +139,8 @@ class StreamService:
         把普通 AgentEvent 广播给该 conversation 的所有 SSE 连接。
         队列满时丢该连接的事件 + warning(防止慢消费者拖死广播)。
 
+        同时写入 Redis 缓冲,用于刷新重连时回放。
+
         信号性事件(RoundDoneEvent / QueueDrainedEvent)请走 push_round_done /
         push_queue_drained,它们走"必达"路径。
         """
@@ -151,6 +154,17 @@ class StreamService:
                     session.session_id,
                     type(event).__name__,
                 )
+
+        # 写入 Redis 缓冲(用于刷新回放)
+        try:
+            event_json = event.model_dump_json()
+            push_event_to_buffer(conversation_id, event_json)
+        except Exception:
+            logger.warning(
+                "Failed to buffer event to Redis for conv=%s",
+                conversation_id,
+                exc_info=True,
+            )
 
     async def push_round_done(self, conversation_id: str) -> None:
         """

@@ -21,7 +21,7 @@
           class="flex items-center gap-2 px-3 py-2 bg-brand-light/20 border-b border-outline-variant"
         >
           <div class="flex-1 min-w-0 border-l-2 border-brand pl-2">
-            <span class="text-[11px] text-brand font-semibold">Replying to {{ replyTo.senderName }}</span>
+            <span class="text-[11px] text-brand font-semibold">{{ t('chatInputExtra.replyingTo', { name: replyTo.senderName }) }}</span>
             <p class="text-[11px] text-on-surface-variant truncate">{{ replyTo.content }}</p>
           </div>
           <button
@@ -65,7 +65,7 @@
           ref="editorRef"
           contenteditable="true"
           class="w-full min-h-[80px] max-h-[200px] px-4 pt-3 pb-1 bg-transparent text-[13px] text-on-surface outline-none resize-none leading-relaxed overflow-y-auto custom-scrollbar"
-          :data-placeholder="placeholder"
+          :data-placeholder="effectivePlaceholder"
           @input="onEditorInput"
           @keydown="onEditorKeydown"
           @compositionstart="isComposing = true"
@@ -80,7 +80,7 @@
             <button
               class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
               :class="attachedFiles.length > 0 ? 'text-brand bg-brand-light/40 hover:bg-brand-light' : 'text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container'"
-              :title="!hasConversation ? '请先打开或创建一个会话' : (attachedFiles.length > 0 ? `${attachedFiles.length} file(s) attached` : 'Attach files (uploads to conversation sandbox)')"
+              :title="!hasConversation ? t('chat.noSessionOpen') : (attachedFiles.length > 0 ? t('chatInputExtra.filesAttached', { n: attachedFiles.length }) : t('chatInputExtra.attachFiles'))"
               :disabled="!hasConversation"
               @click="fileInputRef?.click()"
             >
@@ -126,6 +126,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Paperclip, Promotion, Close, Document, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MentionPicker from './MentionPicker.vue'
@@ -133,6 +134,8 @@ import { sandboxApi } from '@/api/sandbox'
 import { useConversationsStore } from '@/stores/conversations'
 import { useSandboxFilesStore } from '@/stores/sandboxFiles'
 import type { ChatAgent, ReplyPreview } from '@/types/chat'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -142,10 +145,11 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   streaming?: boolean
 }>(), {
-  placeholder: 'Ask anything...',
   streaming: false,
   htmlDraft: '',
 })
+
+const effectivePlaceholder = computed(() => props.placeholder ?? t('chatInputExtra.placeholder'))
 
 const emit = defineEmits<{
   'update:modelValue': [value: string, html?: string]
@@ -182,7 +186,7 @@ async function onFilesSelected(e: Event) {
 
   const convId = conversationsStore.currentId
   if (!convId) {
-    ElMessage({ message: '请先打开或创建一个会话', type: 'warning', duration: 1500, plain: true })
+    ElMessage({ message: t('chat.noSessionOpen'), type: 'warning', duration: 1500, plain: true })
     input.value = ''
     return
   }
@@ -218,7 +222,7 @@ async function onFilesSelected(e: Event) {
   } catch {
     // Remove the failed placeholders
     attachedFiles.value.splice(startIdx, selected.length)
-    ElMessage({ message: '文件上传失败，请重试', type: 'error', duration: 2000, plain: true })
+    ElMessage({ message: t('chat.uploadFailed'), type: 'error', duration: 2000, plain: true })
   }
 }
 
@@ -438,7 +442,7 @@ function handleSend() {
 
   // Don't send while any file is still uploading
   if (attachedFiles.value.some(f => f.uploading)) {
-    ElMessage({ message: '文件上传中，请稍候', type: 'warning', duration: 1500, plain: true })
+    ElMessage({ message: t('chat.uploadInProgress'), type: 'warning', duration: 1500, plain: true })
     return
   }
 

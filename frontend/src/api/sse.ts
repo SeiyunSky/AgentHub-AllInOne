@@ -5,13 +5,19 @@ export interface SSEOptions {
   onEvent: (event: SSEEvent) => void
   onError?: (error: Error) => void
   onClose?: () => void
+  afterMessageId?: string  // 回放起点消息ID(刷新重连用)
 }
 
 export function connectSSE(url: string, options: SSEOptions): AbortController {
   const ctrl = new AbortController()
   const userId = localStorage.getItem('user_id') || 'default'
 
-  fetchEventSource(url, {
+  // 构造带查询参数的 URL
+  const fullUrl = options.afterMessageId
+    ? `${url}?after_message_id=${encodeURIComponent(options.afterMessageId)}`
+    : url
+
+  fetchEventSource(fullUrl, {
     method: 'GET',
     headers: {
       'Accept': 'text/event-stream',

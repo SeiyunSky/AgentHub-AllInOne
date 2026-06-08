@@ -11,7 +11,7 @@
           <div class="hero-logo">🐧</div>
           <div>
             <div class="hero-title">AgentHub</div>
-            <div class="hero-subtitle">Agent Orchestrator Platform</div>
+            <div class="hero-subtitle">{{ t('auth.brandSubtitle') }}</div>
           </div>
         </div>
 
@@ -49,8 +49,8 @@
           <h1 class="mobile-logo-name">AgentHub</h1>
         </div>
 
-        <h2 class="form-heading">Create account</h2>
-        <p class="form-sub">Join the Agent Orchestrator Platform</p>
+        <h2 class="form-heading">{{ t('auth.registerTitle') }}</h2>
+        <p class="form-sub">{{ t('auth.registerSubtitle') }}</p>
 
         <el-form
           ref="formRef"
@@ -62,7 +62,7 @@
           <el-form-item prop="username">
             <el-input
               v-model="form.username"
-              placeholder="Username (4-50 chars, a-z 0-9 _ -)"
+              :placeholder="t('auth.usernamePlaceholderRules')"
               size="large"
               :prefix-icon="User"
               class="auth-input"
@@ -72,7 +72,7 @@
           <el-form-item prop="display_name">
             <el-input
               v-model="form.display_name"
-              placeholder="Display name (optional)"
+              :placeholder="t('auth.displayName')"
               size="large"
               :prefix-icon="Avatar"
               class="auth-input"
@@ -82,7 +82,7 @@
           <el-form-item prop="email">
             <el-input
               v-model="form.email"
-              placeholder="Email (optional)"
+              :placeholder="t('auth.email')"
               size="large"
               :prefix-icon="Message"
               class="auth-input"
@@ -93,7 +93,7 @@
             <el-input
               v-model="form.password"
               type="password"
-              placeholder="Password (min 8 chars)"
+              :placeholder="t('auth.passwordPlaceholderRules')"
               size="large"
               :prefix-icon="Lock"
               show-password
@@ -105,7 +105,7 @@
             <el-input
               v-model="form.confirmPassword"
               type="password"
-              placeholder="Confirm password"
+              :placeholder="t('auth.confirmPassword')"
               size="large"
               :prefix-icon="Lock"
               show-password
@@ -120,7 +120,7 @@
               :class="{ loading }"
               :disabled="loading"
             >
-              <span v-if="!loading" class="btn-label">Create Account</span>
+              <span v-if="!loading" class="btn-label">{{ t('auth.createAccount') }}</span>
               <span v-else class="btn-spinner">
                 <span class="typing-dot"></span>
                 <span class="typing-dot"></span>
@@ -132,15 +132,15 @@
           <div v-if="errorMsg" class="auth-error">{{ errorMsg }}</div>
 
           <div class="auth-switch">
-            Already have an account?
+            {{ t('auth.alreadyHaveAccount') }}
             <router-link :to="{ name: 'login', query: route.query }" class="auth-link">
-              Sign in
+              {{ t('auth.signInLink') }}
             </router-link>
           </div>
         </el-form>
 
         <div class="provider-strip">
-          <div class="provider-strip-label">Supports leading AI providers</div>
+          <div class="provider-strip-label">{{ t('auth.providersLabel') }}</div>
           <div class="provider-icons">
             <img v-for="p in providers" :key="p.name" :src="p.src" :alt="p.name" class="provider-icon" />
           </div>
@@ -151,8 +151,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import { User, Lock, Message, Avatar } from '@element-plus/icons-vue'
@@ -162,6 +163,7 @@ import claudecodeIcon from '@/assets/icons/claudecode-color.svg'
 import codexIcon from '@/assets/icons/codex-color.svg'
 import opencodeIcon from '@/assets/icons/opencode.svg'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
@@ -190,12 +192,17 @@ const providers = [
   { src: opencodeIcon, name: 'OpenCode' },
 ]
 
-const pills = ['Free to Join', 'No Credit Card', 'Instant Access']
-const steps = [
-  'Create your account in seconds',
-  'Configure AI agents with custom prompts',
-  'Orchestrate parallel conversations',
-]
+const pills = computed(() => [
+  t('auth.featureFreeToJoin'),
+  t('auth.featureNoCreditCard'),
+  t('auth.featureInstantAccess'),
+])
+
+const steps = computed(() => [
+  t('auth.stepAccountCreation'),
+  t('auth.stepAgentConfig'),
+  t('auth.stepParallelOrchestration'),
+])
 
 function orbitStyle(i: number, total: number) {
   const angle = (i / total) * 360
@@ -210,31 +217,31 @@ function orbitStyle(i: number, total: number) {
 }
 
 const validateConfirmPassword: FormItemRule['validator'] = (_rule, value, cb) => {
-  if (!value) return cb(new Error('Please confirm your password'))
-  if (value !== form.password) return cb(new Error('Passwords do not match'))
+  if (!value) return cb(new Error(t('auth.validation.confirmPasswordRequired')))
+  if (value !== form.password) return cb(new Error(t('auth.validation.passwordsMismatch')))
   cb()
 }
 
 const validateEmail: FormItemRule['validator'] = (_rule, value, cb) => {
   if (!value) return cb()
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return cb(new Error('Invalid email format'))
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return cb(new Error(t('auth.validation.emailInvalid')))
   cb()
 }
 
-const rules: FormRules = {
+const rules = computed<FormRules>(() => ({
   username: [
-    { required: true, message: 'Please enter username', trigger: 'blur' },
-    { min: 4, max: 50, message: 'Username must be 4-50 characters', trigger: 'blur' },
-    { pattern: /^[a-zA-Z0-9_-]+$/, message: 'Only letters, digits, _ and - are allowed', trigger: 'blur' },
+    { required: true, message: t('auth.validation.usernameRequired'), trigger: 'blur' },
+    { min: 4, max: 50, message: t('auth.validation.usernameLength'), trigger: 'blur' },
+    { pattern: /^[a-zA-Z0-9_-]+$/, message: t('auth.validation.usernameFormat'), trigger: 'blur' },
   ],
   password: [
-    { required: true, message: 'Please enter password', trigger: 'blur' },
-    { min: 8, max: 128, message: 'Password must be at least 8 characters', trigger: 'blur' },
+    { required: true, message: t('auth.validation.passwordRequired'), trigger: 'blur' },
+    { min: 8, max: 128, message: t('auth.validation.passwordLength'), trigger: 'blur' },
   ],
   confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }],
   email: [{ validator: validateEmail, trigger: 'blur' }],
-  display_name: [{ max: 100, message: 'Display name too long', trigger: 'blur' }],
-}
+  display_name: [{ max: 100, message: t('auth.validation.displayNameTooLong'), trigger: 'blur' }],
+}))
 
 async function handleRegister() {
   const valid = await formRef.value?.validate().catch(() => false)
@@ -255,7 +262,7 @@ async function handleRegister() {
     const redirect = (route.query.redirect as string) || '/chat'
     router.push(redirect)
   } catch (err) {
-    errorMsg.value = err instanceof Error ? err.message : '注册失败，请稍后重试'
+    errorMsg.value = err instanceof Error ? err.message : t('auth.registerFailed')
   } finally {
     loading.value = false
   }
@@ -392,10 +399,6 @@ async function handleRegister() {
   backdrop-filter: blur(8px);
   animation: icon-float 3s ease-in-out infinite;
   object-fit: contain;
-}
-.orbit-icon:hover {
-  background: rgba(255, 255, 255, 0.22);
-  transform: translate(-50%, -50%) scale(1.15) !important;
 }
 @keyframes icon-float {
   0%, 100% { filter: brightness(0.9); }

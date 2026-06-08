@@ -107,6 +107,26 @@ class ThreadRepository(BaseRepository[Thread]):
             .all()
         )
 
+    def list_active_thread_ids(self, conversation_id: str) -> list[str]:
+        """
+        获取会话所有活跃 Thread 的 ID 列表(用于 SSE 回放)。
+        只返回 ID,轻量查询。
+        """
+        active = [
+            ThreadStatus.INIT.value,
+            ThreadStatus.RUNNING.value,
+            ThreadStatus.SUSPENDED.value,
+        ]
+        rows = (
+            self.session.query(Thread.id)
+            .filter(
+                Thread.conversation_id == conversation_id,
+                Thread.status.in_(active),
+            )
+            .all()
+        )
+        return [row[0] for row in rows]
+
     def list_dependents_of(self, thread_id: str) -> list[Thread]:
         """
         解锁判定用:找出 blocked_by 数组里包含 thread_id 的所有下游 Thread。

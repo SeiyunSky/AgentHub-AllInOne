@@ -5,6 +5,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router/index'
 import { useAuthStore } from './stores/auth'
+import { i18n } from './i18n'
 
 import './style.css'
 import 'element-plus/dist/index.css'
@@ -20,6 +21,7 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus)
+app.use(i18n)
 
 // 监听 http.ts 派发的 token 失效事件:清状态 + 跳登录页
 window.addEventListener('auth:expired', () => {

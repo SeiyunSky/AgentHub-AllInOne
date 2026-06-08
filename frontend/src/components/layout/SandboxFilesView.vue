@@ -3,13 +3,13 @@
     <!-- Toolbar -->
     <div class="flex items-center gap-2 px-4 py-3 border-b border-outline-variant bg-white">
       <span class="text-[11px] uppercase font-semibold tracking-widest text-on-surface-variant">
-        Sandbox · {{ files.length }} {{ files.length === 1 ? 'file' : 'files' }}
+        {{ t('sandboxFiles.toolbarLabel') }} · {{ files.length }} {{ files.length === 1 ? t('sandboxFiles.toolbarFile') : t('sandboxFiles.toolbarFiles') }}
       </span>
       <div class="flex-1" />
       <button
         class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors disabled:opacity-50"
         :disabled="loading"
-        :title="loading ? 'Loading...' : 'Refresh'"
+        :title="loading ? t('sandboxFiles.tooltipLoading') : t('sandboxFiles.tooltipRefresh')"
         @click="refresh"
       >
         <el-icon :size="14" :class="{ 'animate-spin': loading }">
@@ -25,7 +25,7 @@
         <div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center mb-4 border border-outline-variant">
           <el-icon :size="28"><FolderOpened /></el-icon>
         </div>
-        <p class="text-[13px] font-medium text-on-surface mb-1">No conversation selected</p>
+        <p class="text-[13px] font-medium text-on-surface mb-1">{{ t('sandboxFiles.noConversation') }}</p>
       </div>
 
       <!-- Error -->
@@ -33,7 +33,7 @@
         <div class="w-14 h-14 rounded-2xl bg-error-light flex items-center justify-center mb-4">
           <el-icon :size="28" class="text-error"><WarningFilled /></el-icon>
         </div>
-        <p class="text-[13px] font-medium text-error mb-1">Failed to load files</p>
+        <p class="text-[13px] font-medium text-error mb-1">{{ t('sandboxFiles.loadFailed') }}</p>
         <p class="text-[11px] text-on-surface-variant max-w-xs">{{ errorMsg }}</p>
       </div>
 
@@ -42,9 +42,9 @@
         <div class="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center mb-4 border border-outline-variant">
           <el-icon :size="28"><FolderOpened /></el-icon>
         </div>
-        <p class="text-[13px] font-medium text-on-surface mb-1">No files yet</p>
+        <p class="text-[13px] font-medium text-on-surface mb-1">{{ t('sandboxFiles.emptyTitle') }}</p>
         <p class="text-[11px] text-on-surface-variant max-w-xs">
-          When the agent creates a file in this conversation, it will appear here.
+          {{ t('sandboxFiles.emptyDesc') }}
         </p>
       </div>
 
@@ -82,21 +82,21 @@
               <button
                 v-if="isPreviewable(file)"
                 class="w-7 h-7 rounded-md flex items-center justify-center text-on-surface-variant hover:bg-brand-light hover:text-brand transition-colors"
-                title="Preview"
+                :title="t('sandboxFiles.tooltipPreview')"
                 @click.stop="handlePreview(file)"
               >
                 <el-icon :size="14"><View /></el-icon>
               </button>
               <button
                 class="w-7 h-7 rounded-md flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-                title="Edit"
+                :title="t('sandboxFiles.tooltipEdit')"
                 @click.stop="handleEdit(file)"
               >
                 <el-icon :size="14"><Edit /></el-icon>
               </button>
               <button
                 class="w-7 h-7 rounded-md flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-                title="Download"
+                :title="t('sandboxFiles.tooltipDownload')"
                 @click.stop="handleDownload(file)"
               >
                 <el-icon :size="14"><Download /></el-icon>
@@ -111,6 +111,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   Refresh,
   View,
@@ -128,6 +129,8 @@ import { useArtifactPreview } from '@/composables/useArtifactPreview'
 import { sandboxApi } from '@/api/sandbox'
 import type { SandboxFileNode } from '@/types/sandbox'
 import type { ArtifactItem, ArtifactKind } from '@/types/artifact'
+
+const { t } = useI18n()
 
 const conversationsStore = useConversationsStore()
 const filesStore = useSandboxFilesStore()

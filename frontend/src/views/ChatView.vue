@@ -2,7 +2,7 @@
   <template v-if="!hasConversation">
     <div class="flex flex-col items-center justify-center h-full gap-4 text-on-surface-variant">
       <el-icon :size="48" class="opacity-30"><ChatLineRound /></el-icon>
-      <p class="text-base">从左侧选择或新建聊天</p>
+      <p class="text-base">{{ t('chat.selectOrCreate') }}</p>
     </div>
   </template>
 
@@ -19,6 +19,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useUIStore } from '@/stores/ui'
 import { useConversationsStore } from '@/stores/conversations'
 import { Splitpanes, Pane } from 'splitpanes'
@@ -27,6 +28,7 @@ import { ChatLineRound } from '@element-plus/icons-vue'
 import ChatPanel from '@/components/layout/ChatPanel.vue'
 import RightPanel from '@/components/layout/RightPanel.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 const uiStore = useUIStore()
 const conversationsStore = useConversationsStore()

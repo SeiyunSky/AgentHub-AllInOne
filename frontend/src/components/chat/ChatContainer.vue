@@ -24,7 +24,7 @@
       class="flex items-center justify-center gap-2 px-4 py-3 bg-surface border-t border-outline-variant text-on-surface-variant text-[13px]"
     >
       <el-icon :size="14"><FolderOpened /></el-icon>
-      <span>该会话已归档，无法继续发送消息</span>
+      <span>{{ t('chat.archivedNotice') }}</span>
     </div>
 
     <!-- Approval Overlay (replaces input when pending) -->
@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Message, ChatAgent } from '@/types/chat'
 import type { AgentMember } from '@/types/conversation'
 import { useChatStore } from '@/stores/chat'
@@ -83,6 +84,7 @@ const emit = defineEmits<{
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
 const agentsStore = useAgentsStore()
+const { t } = useI18n()
 const chatInputRef = ref<{ focus: () => void } | null>(null)
 
 onMounted(() => {

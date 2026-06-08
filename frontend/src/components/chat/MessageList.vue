@@ -14,7 +14,7 @@
           @react="(id, type) => $emit('react', id, type)" @more="$emit('more', $event)" />
         <!-- broadcast 已读回执 -->
         <div v-if="chatStore.getReadReceipts(msg.id).length > 0" class="flex justify-end items-center gap-2 mt-2 pr-1">
-          <span class="text-[12px] text-on-surface-variant/70">已读</span>
+          <span class="text-[12px] text-on-surface-variant/70">{{ t('chat.messageRead') }}</span>
           <div class="flex items-center gap-1.5">
             <div
               v-for="receipt in chatStore.getReadReceipts(msg.id)"
@@ -57,6 +57,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Loading } from '@element-plus/icons-vue'
 import type { Message, AgentMessage } from '@/types/chat'
 import { useChatStore } from '@/stores/chat'
@@ -81,6 +82,7 @@ defineEmits<{
 
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
+const { t } = useI18n()
 
 /** 判断这条消息是不是某个 Agent 当前正在 streaming 的气泡 */
 function isStreamingMessage(msg: AgentMessage): boolean {

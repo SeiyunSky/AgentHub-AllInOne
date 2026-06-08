@@ -15,8 +15,8 @@
           <el-icon :size="18" class="text-brand"><ChatDotRound /></el-icon>
         </div>
         <div>
-          <h3 class="text-[15px] font-semibold text-on-surface leading-tight">New Chat</h3>
-          <p class="text-[11px] text-on-surface-variant">Set up your conversation</p>
+          <h3 class="text-[15px] font-semibold text-on-surface leading-tight">{{ t('newChatExtra.title') }}</h3>
+          <p class="text-[11px] text-on-surface-variant">{{ t('newChatExtra.subtitle') }}</p>
         </div>
       </div>
     </template>
@@ -24,7 +24,7 @@
     <div class="space-y-5">
       <!-- Squad Templates -->
       <section v-if="squads.length > 0">
-        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Squad Templates</label>
+        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">{{ t('newChatExtra.squadTemplates') }}</label>
         <div class="grid grid-cols-2 gap-2">
           <button
             v-for="squad in squads"
@@ -42,7 +42,7 @@
               <span v-if="squad.agents.length > 0" class="text-[10px] text-on-surface-variant">
                 {{ squad.agents.map(a => a.name).join(' · ') }}
               </span>
-              <span v-else class="text-[10px] text-on-surface-variant italic">暂无预设成员</span>
+              <span v-else class="text-[10px] text-on-surface-variant italic">{{ t('newChat.noPresetMembers') }}</span>
             </div>
           </button>
         </div>
@@ -50,14 +50,14 @@
 
       <!-- Chat Title -->
       <section>
-        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Title</label>
+        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">{{ t('newChatExtra.chatTitleLabel') }}</label>
         <div class="title-input-wrapper group">
           <el-icon class="title-input-icon text-on-surface-variant group-focus-within:text-brand transition-colors" :size="15"><EditPen /></el-icon>
           <input
             ref="titleInputRef"
             v-model="title"
             type="text"
-            placeholder="Enter chat title..."
+            :placeholder="t('newChatExtra.chatTitlePlaceholder')"
             class="title-input"
             @input="onTitleInput"
           />
@@ -66,7 +66,7 @@
 
       <!-- Mode Selector -->
       <section>
-        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Mode</label>
+        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">{{ t('newChatExtra.modeLabel') }}</label>
         <div class="flex gap-2">
           <button
             class="mode-btn"
@@ -75,8 +75,8 @@
           >
             <span class="text-[13px]">⚙️</span>
             <div class="text-left">
-              <p class="text-[12px] font-semibold leading-tight">Task</p>
-              <p class="text-[10px] text-on-surface-variant leading-tight">Orchestrator 统筹任务</p>
+              <p class="text-[12px] font-semibold leading-tight">{{ t('newChatExtra.taskMode') }}</p>
+              <p class="text-[10px] text-on-surface-variant leading-tight">{{ t('newChat.taskModeDesc') }}</p>
             </div>
           </button>
           <button
@@ -86,8 +86,8 @@
           >
             <span class="text-[13px]">💬</span>
             <div class="text-left">
-              <p class="text-[12px] font-semibold leading-tight">Broadcast</p>
-              <p class="text-[10px] text-on-surface-variant leading-tight">闲聊，各自回复</p>
+              <p class="text-[12px] font-semibold leading-tight">{{ t('newChatExtra.broadcastMode') }}</p>
+              <p class="text-[10px] text-on-surface-variant leading-tight">{{ t('newChat.broadcastModeDesc') }}</p>
             </div>
           </button>
         </div>
@@ -95,7 +95,7 @@
 
       <!-- Agent Selector -->
       <section>
-        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Invite Agents</label>
+        <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-2">{{ t('newChatExtra.inviteAgents') }}</label>
 
         <!-- Selected agents as chips -->
         <div v-if="selectedAgents.length > 0" class="flex flex-wrap gap-1.5 mb-2">
@@ -130,7 +130,7 @@
           <template #reference>
             <button class="add-agent-btn">
               <el-icon :size="13"><Plus /></el-icon>
-              <span class="text-[12px] font-medium">{{ selectedAgents.length > 0 ? 'Add more agents' : 'Select agents' }}</span>
+              <span class="text-[12px] font-medium">{{ selectedAgents.length > 0 ? t('newChatExtra.addMoreAgents') : t('newChatExtra.selectAgents') }}</span>
             </button>
           </template>
           <div class="py-1.5">
@@ -139,14 +139,14 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Search agents..."
+              :placeholder="t('newChatExtra.searchAgents')"
                 class="agent-search-input"
               />
             </div>
             <!-- Agent list -->
             <div class="max-h-48 overflow-y-auto custom-scrollbar">
               <div v-if="filteredAgents.length === 0" class="px-3 py-3 text-[12px] text-on-surface-variant text-center">
-                No agents available
+                {{ t('newChatExtra.noAgentsAvailable') }}
               </div>
               <div
                 v-for="agent in filteredAgents"
@@ -173,7 +173,7 @@
     <!-- Footer -->
     <template #footer>
       <div class="flex justify-end gap-2.5 pt-2">
-        <button class="btn-cancel" @click="close">Cancel</button>
+        <button class="btn-cancel" @click="close">{{ t('common.cancel') }}</button>
         <button
           class="btn-create"
           :class="{ 'btn-create-disabled': !canCreate }"
@@ -181,7 +181,7 @@
           @click="createChat"
         >
           <el-icon v-if="creating" :size="14" class="is-loading"><Loading /></el-icon>
-          {{ creating ? 'Creating...' : 'Create Chat' }}
+          {{ creating ? t('newChatExtra.creating') : t('newChatExtra.createChat') }}
         </button>
       </div>
     </template>
@@ -190,6 +190,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Close, Plus, ChatDotRound, EditPen, Loading } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
 import { useConversationsStore } from '@/stores/conversations'
@@ -206,6 +207,7 @@ const emit = defineEmits<{
 
 const agentsStore = useAgentsStore()
 const conversationsStore = useConversationsStore()
+const { t } = useI18n()
 
 const visible = computed({
   get: () => props.modelValue,

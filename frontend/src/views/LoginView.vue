@@ -289,6 +289,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore, applyAccent } from '@/stores/theme'
 import { authApi } from '@/api/auth'
@@ -536,6 +537,10 @@ const features = [
   margin: 0;
   text-align: left;
   width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+  display: block;
 }
 
 /* ══════════════════════════════════════════
@@ -605,6 +610,7 @@ const features = [
 }
 .screen-foot {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 6px;
   padding: 7px 13px;
@@ -645,6 +651,42 @@ const features = [
   width: 100%; height: 100%;
   pointer-events: none;
 }
+
+@keyframes orbit-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.orbit-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 5px;
+  backdrop-filter: blur(8px);
+  animation: icon-float 3s ease-in-out infinite;
+  object-fit: contain;
+}
+
+@keyframes icon-float {
+  0%, 100% { filter: brightness(0.9); }
+  50% { filter: brightness(1.2); }
+}
+
+.orbit-hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.25);
 .wf-node {
   display: flex;
   flex-direction: column;
@@ -822,6 +864,7 @@ const features = [
 }
 .support-btn {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 5px;
   background: none;

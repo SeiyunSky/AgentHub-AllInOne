@@ -5,7 +5,7 @@
       v-if="variant === 'agent'"
       class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150"
       :class="reaction === 'like' ? 'text-brand bg-brand/20 scale-110' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
-      title="Like"
+      :title="t('messageActions.like')"
       @click="handleReact('like')"
     >
       <span class="text-[14px]">😀</span>
@@ -16,7 +16,7 @@
       v-if="variant === 'agent'"
       class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150"
       :class="reaction === 'dislike' ? 'text-red-500 bg-red-200 scale-110' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
-      title="Dislike"
+      :title="t('messageActions.dislike')"
       @click="handleReact('dislike')"
     >
       <span class="text-[14px]">🙁</span>
@@ -25,7 +25,7 @@
     <!-- Reply -->
     <button
       class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface cursor-pointer transition-colors"
-      title="Reply"
+      :title="t('messageActions.reply')"
       @click="$emit('reply', messageId)"
     >
       <el-icon :size="14"><ChatRound /></el-icon>
@@ -34,7 +34,7 @@
     <!-- Copy -->
     <button
       class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface cursor-pointer transition-colors"
-      title="Copy"
+      :title="t('messageActions.copy')"
       @click="handleCopy"
     >
       <el-icon :size="14"><component :is="copied ? Select : DocumentCopy" /></el-icon>
@@ -44,6 +44,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { ChatRound, DocumentCopy, Select } from '@element-plus/icons-vue'
 
@@ -61,6 +62,7 @@ const emit = defineEmits<{
 }>()
 
 const copied = ref(false)
+const { t } = useI18n()
 
 function handleCopy() {
   navigator.clipboard.writeText(props.content)
@@ -73,10 +75,10 @@ function handleReact(type: 'like' | 'dislike') {
   const isToggleOff = props.reaction === type
   emit('react', props.messageId, type)
   if (isToggleOff) {
-    ElMessage({ message: '已撤销反馈', type: 'info', duration: 1500, plain: true })
+    ElMessage({ message: t('chat.feedbackWithdrawn'), type: 'info', duration: 1500, plain: true })
   } else {
     ElMessage({
-      message: type === 'like' ? '👍 反馈已提交' : '👎 反馈已提交',
+      message: type === 'like' ? t('chat.feedbackThumbsUp') : t('chat.feedbackThumbsDown'),
       type: 'success',
       duration: 1500,
       plain: true,

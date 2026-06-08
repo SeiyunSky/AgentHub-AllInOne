@@ -8,8 +8,8 @@
         <el-icon :size="28" class="text-brand/40"><Share /></el-icon>
       </div>
       <div>
-        <p class="text-[13px] font-semibold text-on-surface-variant">等待 Agent 运行</p>
-        <p class="text-[11px] text-on-surface-variant/60 mt-1">发送消息后将在此处实时展示执行流程</p>
+        <p class="text-[13px] font-semibold text-on-surface-variant">{{ t('workflow.emptyTitle') }}</p>
+        <p class="text-[11px] text-on-surface-variant/60 mt-1">{{ t('workflow.emptyDesc') }}</p>
       </div>
     </div>
 
@@ -19,13 +19,13 @@
       <!-- Stats bar (only for current round) -->
       <div v-if="threads.length > 0" class="flex items-center gap-3 px-1 mb-3">
         <span class="text-[11px] text-on-surface-variant/60">
-          {{ threads.length }} 个 Agent
+          {{ threads.length }}{{ t('workflow.agentUnit') }}
         </span>
         <span class="text-on-surface-variant/30">·</span>
         <span class="text-[11px] text-on-surface-variant/60">
-          {{ doneCount }} 完成
-          <template v-if="errorCount"> · <span class="text-error">{{ errorCount }} 失败</span></template>
-          <template v-if="cancelledCount"> · <span class="text-on-surface-variant/40">{{ cancelledCount }} 已取消</span></template>
+          {{ doneCount }} {{ t('workflow.done') }}
+          <template v-if="errorCount"> · <span class="text-error">{{ errorCount }} {{ t('workflow.error') }}</span></template>
+          <template v-if="cancelledCount"> · <span class="text-on-surface-variant/40">{{ cancelledCount }} {{ t('workflow.cancelled') }}</span></template>
         </span>
         <span v-if="totalTokens > 0" class="ml-auto text-[11px] text-on-surface-variant/50 font-mono">
           {{ formatTokens(totalTokens) }} tok
@@ -103,7 +103,7 @@
       <template v-if="threads.length > 0">
         <div v-if="history.length > 0" class="flex items-center gap-2 px-2 py-1">
           <div class="flex-1 h-px bg-brand/40"></div>
-          <span class="text-[10px] text-brand font-medium shrink-0">本轮</span>
+          <span class="text-[10px] text-brand font-medium shrink-0">{{ t('workflow.currentRound') }}</span>
           <div class="flex-1 h-px bg-brand/40"></div>
         </div>
         <TransitionGroup name="thread-enter">
@@ -207,7 +207,7 @@
               <div v-show="!isCollapsed(thread)" v-if="thread.status === 'init'" class="px-4 py-2 border-t border-outline-variant/20">
                 <p class="text-[11px] text-on-surface-variant/40 flex items-center gap-1.5">
                   <span class="inline-block w-1 h-1 rounded-full bg-on-surface-variant/30 animate-bounce"></span>
-                  等待依赖任务完成后启动
+                  {{ t('workflow.pendingHint') }}
                 </p>
               </div>
             </Transition>
@@ -216,7 +216,7 @@
               <div v-show="!isCollapsed(thread)" v-if="thread.status === 'suspended'" class="px-4 py-2 border-t border-warning/20 bg-warning/5">
                 <p class="text-[11px] text-warning flex items-center gap-1.5">
                   <el-icon :size="11"><WarningFilled /></el-icon>
-                  等待用户审批
+                  {{ t('workflow.waitingApproval') }}
                 </p>
               </div>
             </Transition>
@@ -229,7 +229,7 @@
 
             <Transition name="collapse">
               <div v-show="!isCollapsed(thread)" v-if="thread.status === 'cancelled'" class="px-4 py-2 border-t border-outline-variant/20">
-                <p class="text-[11px] text-on-surface-variant/40">已取消</p>
+                <p class="text-[11px] text-on-surface-variant/40">{{ t('workflow.cancelled') }}</p>
               </div>
             </Transition>
           </div>
@@ -237,7 +237,7 @@
 
         <div v-if="isRoundDone" class="flex items-center gap-2 px-2 py-1 mt-2">
           <div class="flex-1 h-px bg-outline-variant/60"></div>
-          <span class="text-[10px] text-on-surface-variant/40 font-medium shrink-0">本轮完成</span>
+          <span class="text-[10px] text-on-surface-variant/40 font-medium shrink-0">{{ t('workflow.roundDone') }}</span>
           <div class="flex-1 h-px bg-outline-variant/60"></div>
         </div>
       </template>
@@ -248,6 +248,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   Share, CircleCheckFilled, CircleCloseFilled, RemoveFilled,
   WarningFilled, ChatLineRound, Tools, Document, Picture, View, Promotion, ArrowDown,
@@ -255,6 +256,8 @@ import {
 import { useWorkflowStore, type WorkflowThread, type WorkflowBlock } from '@/stores/workflow'
 import { useConversationsStore } from '@/stores/conversations'
 import { useAgentsStore } from '@/stores/agents'
+
+const { t } = useI18n()
 
 const workflowStore = useWorkflowStore()
 const conversationsStore = useConversationsStore()
@@ -404,20 +407,20 @@ function statusBadgeClass(s: WorkflowThread['status']) {
   return 'bg-on-surface-variant/10 text-on-surface-variant/50'  // init
 }
 
-const BLOCK_LABELS: Record<string, string> = {
-  text: '输出文本',
-  thinking: '思考中',
+const BLOCK_LABELS = computed<Record<string, string>>(() => ({
+  text: t('workflow.blockText'),
+  thinking: t('workflow.blockThinking'),
   tool_use: '',
-  code: '生成代码',
-  image: '图像',
-  approval: '等待审批',
-  deployment: '部署',
-  artifacts: '产出物',
-}
+  code: t('workflow.blockCode'),
+  image: t('workflow.blockImage'),
+  approval: t('workflow.blockApproval'),
+  deployment: t('workflow.blockDeployment'),
+  artifacts: t('workflow.blockArtifacts'),
+}))
 
 function blockLabel(block: WorkflowBlock): string {
   if (block.type === 'tool_use') return block.toolName ?? 'tool'
-  return BLOCK_LABELS[block.type] ?? block.type
+  return BLOCK_LABELS.value[block.type] ?? block.type
 }
 
 function formatToolInput(input: Record<string, unknown>): string {

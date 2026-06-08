@@ -9,14 +9,14 @@
       <div class="flex-1 min-w-0">
         <el-input
           v-model="draft.name"
-          placeholder="skill-name"
+          :placeholder="t('skillForm.namePlaceholder')"
           size="large"
           class="borderless-input"
           input-style="padding: 0; font-size: 28px; font-weight: 600; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace;"
           :disabled="editMode || readonly"
         />
         <p v-if="!draft.name" class="text-[11px] text-on-surface-variant mt-1">
-          English identifier (lowercase, numbers, hyphens, underscores)
+          {{ t('skillForm.nameHelper') }}
         </p>
       </div>
     </section>
@@ -25,11 +25,11 @@
     <section>
       <h3 class="section-heading">
         <el-icon :size="14"><EditPen /></el-icon>
-        Display Name
+        {{ t('skillForm.displayNameLabel') }}
       </h3>
       <el-input
         v-model="draft.displayName"
-        placeholder="中文名称（可选）"
+        :placeholder="t('skillForm.displayNamePlaceholder')"
         input-style="padding: 10px 16px; font-size: 13px;"
         :disabled="readonly"
       />
@@ -39,13 +39,13 @@
     <section>
       <h3 class="section-heading">
         <el-icon :size="14"><Document /></el-icon>
-        Description
+        {{ t('skillForm.descriptionLabel') }}
       </h3>
       <el-input
         v-model="draft.description"
         type="textarea"
         :rows="2"
-        placeholder="Brief description of what this skill does..."
+        :placeholder="t('skillForm.descriptionPlaceholder')"
         resize="none"
         input-style="padding: 12px 16px; font-size: 13px; resize: none; line-height: 1.5;"
         :disabled="readonly"
@@ -56,20 +56,20 @@
     <section>
       <h3 class="section-heading">
         <el-icon :size="14"><PriceTag /></el-icon>
-        Category
+        {{ t('skillForm.categoryLabel') }}
       </h3>
       <el-select
         v-model="draft.category"
-        placeholder="Select category"
+        :placeholder="t('skillForm.selectCategory')"
         clearable
         style="width: 100%;"
         :disabled="readonly"
       >
         <el-option
           v-for="cat in categoryOptions"
-          :key="cat"
-          :label="cat"
-          :value="cat"
+          :key="cat.value"
+          :label="cat.label"
+          :value="cat.value"
         />
       </el-select>
     </section>
@@ -78,8 +78,8 @@
     <section class="form-section !p-0 overflow-hidden">
       <div class="code-container-header">
         <el-icon :size="12"><Document /></el-icon>
-        Content
-        <span class="ml-auto text-[10px] opacity-60">Markdown supported</span>
+        {{ t('skillForm.contentLabel') }}
+        <span class="ml-auto text-[10px] opacity-60">{{ t('skillForm.markdownSupported') }}</span>
       </div>
       <div class="code-container">
         <el-input
@@ -87,7 +87,7 @@
           type="textarea"
           :rows="14"
           resize="none"
-          placeholder="### Overview&#10;Describe the skill's purpose and scope...&#10;&#10;### Instructions&#10;Step-by-step guidance for the agent...&#10;&#10;### Examples&#10;Provide example inputs and outputs...&#10;&#10;### Constraints&#10;Set boundaries and limitations..."
+          :placeholder="t('skillForm.contentPlaceholder')"
           input-style="padding: 16px; font-size: 13px; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; line-height: 1.7; resize: none; border: none; box-shadow: none; background: transparent;"
           :disabled="readonly"
         />
@@ -98,12 +98,12 @@
     <section>
       <h3 class="section-heading">
         <el-icon :size="14"><View /></el-icon>
-        Visibility
+        {{ t('skillForm.visibilityLabel') }}
       </h3>
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-[13px] font-medium text-on-surface">Public Skill</p>
-          <p class="text-[12px] text-on-surface-variant">Allow other users to discover and use this skill</p>
+          <p class="text-[13px] font-medium text-on-surface">{{ t('skillForm.publicSkill') }}</p>
+          <p class="text-[12px] text-on-surface-variant">{{ t('skillForm.publicSkillDesc') }}</p>
         </div>
         <el-switch v-model="draft.isPublic" :disabled="readonly" />
       </div>
@@ -113,12 +113,12 @@
     <section v-if="editMode">
       <h3 class="section-heading">
         <el-icon :size="14"><CircleCheck /></el-icon>
-        Status
+        {{ t('skillForm.statusLabel') }}
       </h3>
       <div class="flex items-center justify-between">
         <div>
-          <p class="text-[13px] font-medium text-on-surface">Active</p>
-          <p class="text-[12px] text-on-surface-variant">Disabled skills cannot be selected by agents</p>
+          <p class="text-[13px] font-medium text-on-surface">{{ t('skillForm.activeLabel') }}</p>
+          <p class="text-[12px] text-on-surface-variant">{{ t('skillForm.disabledSkillDesc') }}</p>
         </div>
         <el-switch v-model="draft.isActive" :disabled="readonly" />
       </div>
@@ -128,8 +128,12 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { MagicStick, EditPen, Document, PriceTag, View, CircleCheck } from '@element-plus/icons-vue'
 import type { SkillDraft } from '@/types/skill'
+
+const { t } = useI18n()
 
 defineProps<{
   draft: SkillDraft

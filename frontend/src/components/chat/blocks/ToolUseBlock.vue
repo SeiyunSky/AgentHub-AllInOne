@@ -9,20 +9,20 @@
     <div class="px-3 py-2 space-y-2">
       <!-- Input -->
       <div v-if="input" class="text-[11px]">
-        <span class="text-on-surface-variant font-medium">Input:</span>
+        <span class="text-on-surface-variant font-medium">{{ t('toolUse.labelInput') }}</span>
         <pre class="mt-1 text-slate-600 bg-slate-50 rounded-lg px-2 py-1.5 overflow-x-auto font-mono">{{ formatInput(input) }}</pre>
       </div>
 
       <!-- Output -->
       <div v-if="output" class="text-[11px]">
-        <span class="text-on-surface-variant font-medium">Output:</span>
+        <span class="text-on-surface-variant font-medium">{{ t('toolUse.labelOutput') }}</span>
         <pre class="mt-1 text-emerald-600 bg-emerald-50/50 rounded-lg px-2 py-1.5 overflow-x-auto whitespace-pre-wrap">{{ output }}</pre>
       </div>
 
       <!-- Running indicator -->
       <div v-if="status === 'running'" class="flex items-center gap-2 text-[11px] text-blue-600">
         <el-icon class="animate-spin" :size="12"><Loading /></el-icon>
-        <span>Executing...</span>
+        <span>{{ t('toolUse.executing') }}</span>
       </div>
     </div>
   </CollapsibleBlock>
@@ -30,6 +30,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Cpu, Loading } from '@element-plus/icons-vue'
 import CollapsibleBlock from './CollapsibleBlock.vue'
 
@@ -42,6 +43,8 @@ const props = withDefaults(defineProps<{
 }>(), {
   defaultExpanded: false,
 })
+
+const { t } = useI18n()
 
 const statusVariant = computed(() => {
   if (props.status === 'running') return 'tool'

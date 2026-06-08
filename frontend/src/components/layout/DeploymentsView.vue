@@ -7,8 +7,8 @@
         <el-icon :size="28" class="text-emerald-500/50"><Promotion /></el-icon>
       </div>
       <div>
-        <p class="text-[13px] font-semibold text-on-surface-variant">还没有部署</p>
-        <p class="text-[11px] text-on-surface-variant/60 mt-1">让主 Agent 调 deploy_app 工具,部署应用后会出现在这里</p>
+        <p class="text-[13px] font-semibold text-on-surface-variant">{{ t('deployments.emptyTitle') }}</p>
+        <p class="text-[11px] text-on-surface-variant/60 mt-1">{{ t('deployments.emptyDesc') }}</p>
       </div>
     </div>
 
@@ -16,28 +16,28 @@
     <div v-else-if="active" class="flex-1 flex flex-col overflow-hidden">
       <!-- URL 工具栏 -->
       <div class="shrink-0 px-3 py-2 border-b border-outline-variant flex items-center gap-2 bg-surface-container-low">
-        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" title="运行中"></span>
-        <span class="text-[11px] text-on-surface-variant shrink-0">URL:</span>
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" :title="t('deployments.running')"></span>
+        <span class="text-[11px] text-on-surface-variant shrink-0">{{ t('deployments.urlLabel') }}</span>
         <code class="text-[11px] text-on-surface bg-white px-2 py-1 rounded font-mono truncate flex-1">{{ fullUrl(active.url) }}</code>
         <button
           class="text-[11px] text-brand hover:text-brand-dark hover:bg-brand-light/30 transition-colors px-2 py-1 rounded cursor-pointer"
-          title="复制 URL"
+          :title="t('deployments.copyUrl')"
           @click="copyUrl(active.url)"
         >
-          {{ copied ? '✓ Copied' : 'Copy' }}
+          {{ copied ? '✓ Copied' : t('deployments.copyUrl') }}
         </button>
         <a
           :href="active.url"
           target="_blank"
           class="text-[11px] text-brand hover:text-brand-dark hover:bg-brand-light/30 transition-colors px-2 py-1 rounded cursor-pointer flex items-center gap-1"
-          title="新标签打开"
+          :title="t('deployments.openInTab')"
         >
           <el-icon :size="11"><Promotion /></el-icon>
-          Open
+          {{ t('deployments.openInTab') }}
         </a>
         <button
           class="text-[11px] text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors px-2 py-1 rounded cursor-pointer"
-          title="刷新"
+          :title="t('deployments.refresh')"
           @click="refreshIframe"
         >
           <el-icon :size="11"><Refresh /></el-icon>
@@ -59,7 +59,7 @@
         <div class="px-3 py-2 cursor-pointer hover:bg-surface-container-low flex items-center gap-2 select-none"
              @click="historyExpanded = !historyExpanded">
           <el-icon :size="11" class="transition-transform" :class="{ 'rotate-90': historyExpanded }"><ArrowRight /></el-icon>
-          <span class="text-[11px] font-medium text-on-surface-variant">部署历史 ({{ deployments.length }})</span>
+          <span class="text-[11px] font-medium text-on-surface-variant">{{ t('deployments.historyLabel') }} ({{ deployments.length }})</span>
         </div>
         <div v-if="historyExpanded" class="max-h-40 overflow-y-auto custom-scrollbar bg-surface-container-low/40">
           <div v-for="d in [...deployments].reverse()" :key="d.id"
@@ -78,9 +78,9 @@
       <div class="rounded-xl border border-red-200 bg-red-50/50 p-4">
         <div class="flex items-center gap-2 mb-2">
           <el-icon :size="14" class="text-red-500"><CircleCloseFilled /></el-icon>
-          <span class="text-[12px] font-semibold text-red-700">最近部署失败</span>
+          <span class="text-[12px] font-semibold text-red-700">{{ t('deployments.latestFailed') }}</span>
         </div>
-        <p class="text-[11px] text-red-600 mb-2">{{ deployments[deployments.length - 1].errorMessage ?? '未知错误' }}</p>
+        <p class="text-[11px] text-red-600 mb-2">{{ deployments[deployments.length - 1].errorMessage ?? t('deployments.unknownError') }}</p>
         <pre v-if="deployments[deployments.length - 1].logs"
              class="text-[10px] font-mono bg-white border border-red-100 rounded p-2 overflow-x-auto max-h-40 overflow-y-auto whitespace-pre-wrap">{{ deployments[deployments.length - 1].logs }}</pre>
       </div>
@@ -90,11 +90,14 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Promotion, Refresh, ArrowRight, CircleCloseFilled } from '@element-plus/icons-vue'
 import { useDeploymentsStore } from '@/stores/deployments'
 import { useConversationsStore } from '@/stores/conversations'
 import type { Deployment } from '@/stores/deployments'
 import { copyToClipboard } from '@/utils/clipboard'
+
+const { t } = useI18n()
 
 const deploymentsStore = useDeploymentsStore()
 const conversationsStore = useConversationsStore()

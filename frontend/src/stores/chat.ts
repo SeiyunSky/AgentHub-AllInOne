@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import type { ContentBlock, MessageResponse } from '@/types/api'
 import type { AgentMessage, Message, UIBlock, UIApprovalBlock, ReplyPreview } from '@/types/chat'
 import { useConversationsStore } from '@/stores/conversations'
+import { i18n } from '@/i18n'
 
 type StreamingBlock = UIBlock & { block_id?: string }
 
@@ -185,6 +186,14 @@ export const useChatStore = defineStore('chat', () => {
 
   function setMessages(convId: string, msgs: Message[]) {
     messageMap.value.set(convId, msgs)
+  }
+
+  /** 获取某会话最后一条消息的ID(用于刷新回放) */
+  function getLastMessageId(convId: string): string | undefined {
+    const msgs = getMessages(convId)
+    if (msgs.length === 0) return undefined
+    // 返回最后一条消息的ID
+    return msgs[msgs.length - 1].id
   }
 
   function isStreamingFor(convId: string): boolean {
@@ -523,7 +532,7 @@ export const useChatStore = defineStore('chat', () => {
     const streaming = inner?.get(agentId)
     if (streaming) {
       // 错误信息追加为 text block
-      streaming.blocks = [...streaming.blocks, { type: 'text', content: `\n\n[错误] ${error}` }]
+      streaming.blocks = [...streaming.blocks, { type: 'text', content: `\n\n${i18n.global.t('sse.errorPrefix')}${error}` }]
     }
     commitAgentStreaming(convId, agentId)
     markThreadError(convId, agentId, error)
@@ -764,6 +773,7 @@ export const useChatStore = defineStore('chat', () => {
     // Getters
     getMessages,
     setMessages,
+    getLastMessageId,
     isStreamingFor,
     getStreamingAgents,
     getAgentStreaming,

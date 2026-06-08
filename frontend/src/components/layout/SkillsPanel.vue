@@ -1,5 +1,5 @@
 <template>
-  <PanelContainer title="Skills" :icon="MagicStick" variant="brand">
+  <PanelContainer :title="t('skillsPanel.title')" :icon="MagicStick" variant="brand">
 
     <div class="p-6 overflow-y-auto h-full custom-scrollbar">
 
@@ -26,13 +26,13 @@
         <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-brand-light to-brand-subtle flex items-center justify-center mb-5 shadow-soft">
           <el-icon :size="36" class="text-brand"><MagicStick /></el-icon>
         </div>
-        <h3 class="text-[16px] font-semibold text-on-surface mb-1.5">No skills yet</h3>
+        <h3 class="text-[16px] font-semibold text-on-surface mb-1.5">{{ t('skillsPanel.emptyTitle') }}</h3>
         <p class="text-[13px] text-on-surface-variant mb-5 text-center max-w-[260px]">
-          Create your first skill to define reusable knowledge and behaviors for your agents.
+          {{ t('skillsPanel.emptyDesc') }}
         </p>
         <button class="btn-create" @click="router.push({ name: 'skill-create' })">
           <el-icon :size="14"><Plus /></el-icon>
-          Create Skill
+          {{ t('skillsPanel.createSkill') }}
         </button>
       </div>
 
@@ -42,7 +42,7 @@
         class="flex flex-col items-center justify-center h-64 text-on-surface-variant fade-in-up"
       >
         <el-icon :size="32" class="opacity-30 mb-3"><Search /></el-icon>
-        <p class="text-[13px]">No skills match your filter</p>
+        <p class="text-[13px]">{{ t('skillsPanel.noMatch') }}</p>
       </div>
 
       <!-- Loading skeleton -->
@@ -93,12 +93,12 @@
               <div
                 class="shrink-0 mt-1.5"
                 :class="skill.isActive ? 'status-dot-active agent-pulse' : 'status-dot-inactive'"
-                :title="skill.isActive ? 'Active' : 'Inactive'"
+                :title="skill.isActive ? t('skillsPanel.tooltipActive') : t('skillsPanel.tooltipInactive')"
               ></div>
             </div>
 
             <p class="text-[12px] text-on-surface-variant line-clamp-2 mb-3 min-h-[32px]">
-              {{ skill.description || 'No description' }}
+              {{ skill.description || t('skillsPanel.noDescription') }}
             </p>
 
             <!-- Category tag -->
@@ -110,7 +110,7 @@
               >
                 {{ skill.category }}
               </span>
-              <span v-else class="text-[10px] text-on-surface-variant opacity-50">Uncategorized</span>
+              <span v-else class="text-[10px] text-on-surface-variant opacity-50">{{ t('skillsPanel.uncategorized') }}</span>
             </div>
           </div>
         </div>
@@ -122,10 +122,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { MagicStick, Plus, Search } from '@element-plus/icons-vue'
 import { useSkillsStore } from '@/stores/skills'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const skillsStore = useSkillsStore()
 

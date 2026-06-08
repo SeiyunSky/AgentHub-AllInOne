@@ -18,12 +18,14 @@ export const chatApi = {
       onEvent: (event: SSEEvent) => void
       onError?: (error: Error) => void
       onClose?: () => void
+      afterMessageId?: string  // 回放起点消息ID(刷新重连用)
     },
   ): AbortController {
     return connectSSE(`/api/v1/chat/stream/${conversationId}`, {
       onEvent: handlers.onEvent,
       onError: handlers.onError,
       onClose: handlers.onClose,
+      afterMessageId: handlers.afterMessageId,
     })
   },
 }

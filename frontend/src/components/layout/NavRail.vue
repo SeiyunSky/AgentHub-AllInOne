@@ -20,7 +20,7 @@
       @click="showSearchDialog"
     >
       <el-icon :size="18"><Search /></el-icon>
-      <span class="text-[13px] font-medium">Search</span>
+      <span class="text-[13px] font-medium">{{ t('navExtra.search') }}</span>
     </button>
 
     <!-- Divider -->
@@ -40,9 +40,9 @@
 
     <!-- Bottom Icons -->
     <div class="flex flex-col gap-1 w-full px-2 border-t border-rail-border pt-3 mt-3">
-      <NavRailItem :icon="QuestionFilled" label="Support" @click="showSupportDialog" />
-      <NavRailItem :icon="Setting" label="Settings" @click="settingsVisible = true" />
-      <NavRailItem :icon="DArrowLeft" label="Collapse" @click="uiStore.toggleNavRail" />
+      <NavRailItem :icon="QuestionFilled" :label="t('navExtra.support')" @click="showSupportDialog" />
+      <NavRailItem :icon="Setting" :label="t('navExtra.settings')" @click="settingsVisible = true" />
+      <NavRailItem :icon="DArrowLeft" :label="t('navExtra.collapse')" @click="uiStore.toggleNavRail" />
     </div>
 
     <!-- User card: 头像 + display_name + username + 退出按钮 -->
@@ -72,7 +72,7 @@
       <!-- Logout icon button (only visible on hover for cleanliness) -->
       <button
         class="w-7 h-7 rounded-md flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all opacity-0 group-hover:opacity-100 shrink-0"
-        title="退出登录"
+        :title="t('nav.logout')"
         @click="handleLogout"
       >
         <el-icon :size="15"><SwitchButton /></el-icon>
@@ -126,7 +126,7 @@
                   :href="`mailto:${activeContributor.email}`"
                   class="text-[12px] text-white/60 hover:text-white/90 mb-6 transition-colors"
                 >{{ activeContributor.email }}</a>
-                <div class="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-3">工作内容</div>
+            <div class="text-white/30 text-[10px] font-bold uppercase tracking-widest mb-3">{{ t('nav.contributors') }}</div>
 
                 <!-- 分组渲染:前端 / 后端 / 测试,空组隐藏 -->
                 <div class="space-y-5">
@@ -166,7 +166,7 @@
           >
             <div class="text-center mb-8">
               <div class="text-white/40 text-[11px] uppercase tracking-widest mb-1">AgentHub</div>
-              <div class="text-white text-2xl font-black">🐧 Contributors</div>
+              <div class="text-white text-2xl font-black">{{ t('nav.contributorsTitle') }}</div>
             </div>
 
             <!-- 5 cards in a slightly staggered layout -->
@@ -213,7 +213,7 @@
               </div>
             </div>
 
-            <div class="text-center mt-6 text-white/25 text-[11px]">点击卡片查看详情</div>
+            <div class="text-center mt-6 text-white/25 text-[11px]">{{ t('nav.contributorsHint') }}</div>
           </div>
         </div>
       </Transition>
@@ -223,6 +223,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { useUIStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -236,6 +237,7 @@ const router = useRouter()
 const route = useRoute()
 const uiStore = useUIStore()
 const auth = useAuthStore()
+const { t } = useI18n()
 
 // 头像首字母:优先 display_name 第一个字符,回退到 username
 const avatarInitial = computed(() => {
@@ -482,11 +484,11 @@ function workGroupsOf(c: ContribWithWork) {
   return []
 }
 
-const navItems = [
-  { id: 'chat', icon: ChatDotRound, label: 'Chat', routeName: 'chat' as const },
-  { id: 'agents', icon: User, label: 'Agents', routeName: 'agents' as const },
-  { id: 'skills', icon: MagicStick, label: 'Skills', routeName: 'skills' as const },
-] as const
+const navItems = computed(() => [
+  { id: 'chat', icon: ChatDotRound, label: t('navExtra.chatLabel'), routeName: 'chat' as const },
+  { id: 'agents', icon: User, label: t('navExtra.agentsLabel'), routeName: 'agents' as const },
+  { id: 'skills', icon: MagicStick, label: t('navExtra.skillsLabel'), routeName: 'skills' as const },
+])
 
 function isActive(item: { id: string; routeName: string }): boolean {
   if (item.id === 'chat') return route.name === 'chat' || route.name === 'chat-detail'
@@ -501,10 +503,10 @@ function navigateTo(routeName: string) {
 }
 
 function showSearchDialog() {
-  ElMessageBox.prompt('', 'Search', {
-    confirmButtonText: 'Search',
-    cancelButtonText: 'Cancel',
-    inputPlaceholder: 'Search conversations, agents, skills...',
+  ElMessageBox.prompt('', t('navExtra.searchDialogTitle'), {
+    confirmButtonText: t('navExtra.searchDialogConfirm'),
+    cancelButtonText: t('common.cancel'),
+    inputPlaceholder: t('navExtra.searchDialogPlaceholder'),
     customStyle: { borderRadius: '16px' },
   }).catch(() => {})
 }
@@ -516,9 +518,9 @@ function showSupportDialog() {
 
 async function handleLogout() {
   try {
-    await ElMessageBox.confirm('确定要退出登录吗?', '退出登录', {
-      confirmButtonText: '退出',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('nav.logoutConfirm'), t('nav.logoutTitle'), {
+      confirmButtonText: t('nav.logoutButton'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning',
     })
   } catch {
