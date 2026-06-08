@@ -754,6 +754,7 @@ const features = [
   border-radius: 50%;
   background: linear-gradient(135deg, rgba(99, 102, 241, 0.8), rgba(139, 92, 246, 0.6));
   border: 1px solid rgba(255, 255, 255, 0.25);
+}
 .wf-node {
   display: flex;
   flex-direction: column;
