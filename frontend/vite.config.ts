@@ -29,6 +29,10 @@ export default defineConfig({
         target: 'http://localhost:18888',
         changeOrigin: true,
       },
+      '/memes': {
+        target: 'http://localhost:18888',
+        changeOrigin: true,
+      },
       '/ws': {
         target: 'ws://localhost:18888',
         ws: true,

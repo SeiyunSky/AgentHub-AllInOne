@@ -304,6 +304,7 @@ const contributors = [
     dotColor: '#8b5cf6',
     tagline: '后端架构 + 前端工具链 + 救火队长',
     email: 'adam.zhang03@sap.com',
+
     work: {
       backend: [
         '架构与基建：项目调研、整体架构设计、前后端框架搭建、数据结构设计、ORM 落地、Alembic 迁移、UTC 时区对齐、连接池调优',
@@ -338,6 +339,7 @@ const contributors = [
     name: '玛叔叔',
     alias: 'Wang Chenhui / Uzemiu',
     initials: 'WC',
+    avatarImage: '/contributors/uzemiu.png',
     avatarGradient: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
     glowColor: 'rgba(59,130,246,0.6)',
     detailBg: 'linear-gradient(160deg, #0c1a3a 0%, #0e3a5c 100%)',
@@ -369,6 +371,7 @@ const contributors = [
     name: '令姐姐',
     alias: 'Wu Lvsheng / Musuyin',
     initials: 'WL',
+    avatarImage: '/contributors/musuyin.png',
     avatarGradient: 'linear-gradient(135deg, #10b981, #0d9488)',
     glowColor: 'rgba(16,185,129,0.6)',
     detailBg: 'linear-gradient(160deg, #052e16 0%, #064e3b 100%)',
@@ -399,55 +402,6 @@ const contributors = [
       testing: [
         '测试基础设施补全 + events 修订 + 数据结构文档同步',
         'Code Review 问题修复 + 集成测试响应解包',
-      ],
-    },
-  },
-  {
-    name: '冯瑜轩',
-    alias: 'Feng Yuxuan',
-    initials: 'FY',
-    avatarGradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-    glowColor: 'rgba(245,158,11,0.6)',
-    detailBg: 'linear-gradient(160deg, #2d1500 0%, #451a03 100%)',
-    role: '消息操作 + WebSocket',
-    tagBg: 'rgba(245,158,11,0.2)',
-    tagColor: '#fcd34d',
-    dotColor: '#f59e0b',
-    tagline: '消息互动 + 审批 WS 闭环',
-    email: 'yuxuan.feng@sap.com',
-    work: {
-      backend: [
-        '消息操作：点赞 / 踩 / 软删除 / 清除反馈、会话补全、归属校验',
-        'WebSocket 端点 + 审批决策协议：approval_decision 处理、Hook ↔ WS 闭环',
-      ],
-    },
-  },
-  {
-    name: '刘盘',
-    alias: 'nevergottagiveyouup',
-    initials: 'LP',
-    avatarGradient: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
-    glowColor: 'rgba(236,72,153,0.6)',
-    detailBg: 'linear-gradient(160deg, #2d0a1a 0%, #3b0764 100%)',
-    role: 'Auth 全栈 + 单元测试 + OpenCode',
-    tagBg: 'rgba(236,72,153,0.2)',
-    tagColor: '#f9a8d4',
-    dotColor: '#ec4899',
-    tagline: '基建 + 测试 + OpenCode 适配',
-    email: 'yf2685@nyu.edu',
-    work: {
-      backend: [
-        'Auth 体系：hash + JWT + 非明文密码、auth 前后端打通',
-        'OpenCode Adapter 初步适配 + 测试通过',
-        '主 Agent 提示词注入策略（成功路径）+ 脚本提示词去格式化',
-        'Token 计数透出 API',
-      ],
-      frontend: [
-        '登录元素优化',
-      ],
-      testing: [
-        '基础设施 + 业务层全部 unit 级通过 + 接通真 DB 验证',
-        '单元测试体系搭建',
       ],
     },
   },

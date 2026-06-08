@@ -151,7 +151,7 @@ def _build_runtime_context_header(
 你可以在回复里插入表情包，格式：[MEME:表情包ID]
 可用表情包：
 {meme_lines}
-例：哈哈哈[MEME:pepe_laugh]这也太好笑了"""
+例：哈哈哈[MEME:nianjie_stifle]这也太好笑了"""
 
         collab_section = f"""【协作】
 这是 broadcast 闲聊模式。没有主 Agent 统筹，你直接面对用户消息，自己决定要不要回复。

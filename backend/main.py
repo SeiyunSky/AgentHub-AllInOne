@@ -21,9 +21,6 @@ import asyncio
 import logging
 import sys
 
-# Windows 上 SelectorEventLoop 不支持子进程,切换到 ProactorEventLoop
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -345,6 +342,11 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     _static_dir = Path(__file__).parent / "static"
     _static_dir.mkdir(exist_ok=True)
     app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
+
+    # 表情包图片
+    _memes_dir = Path(__file__).parent / "memes"
+    _memes_dir.mkdir(exist_ok=True)
+    app.mount("/memes", StaticFiles(directory=str(_memes_dir)), name="memes")
 
     return app
 

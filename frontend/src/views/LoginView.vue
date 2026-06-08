@@ -263,7 +263,74 @@
             </button>
           </div>
           <div class="support-body">
-            <p>AgentHub is an open-source multi-agent orchestration platform.</p>
+            <p>AgentHub — Multi-Agent Orchestration Platform · 咕嘎一辈子队</p>
+
+            <!-- Donut chart + legend -->
+            <div class="support-donut-row">
+              <div class="support-donut-wrap">
+                <svg viewBox="0 0 120 120" width="120" height="120">
+                  <defs>
+                    <linearGradient id="sg-adam" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#818cf8"/>
+                    </linearGradient>
+                    <linearGradient id="sg-wang" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#0891b2"/><stop offset="100%" stop-color="#67e8f9"/>
+                    </linearGradient>
+                    <linearGradient id="sg-musuyin" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#10b981"/><stop offset="100%" stop-color="#6ee7b7"/>
+                    </linearGradient>
+                  </defs>
+                  <!-- C = 2π×44 = 276.46 -->
+                  <circle cx="60" cy="60" r="44" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="16"/>
+                  <!-- adam 50%=138.23, offset=C/4=69.115 -->
+                  <circle cx="60" cy="60" r="44" fill="none" stroke="url(#sg-adam)" stroke-width="16"
+                    stroke-dasharray="136.23 140.23" stroke-dashoffset="69.115" transform="rotate(-90 60 60)"/>
+                  <!-- wang 28%=77.41, offset=69.115-138.23=-69.115 -->
+                  <circle cx="60" cy="60" r="44" fill="none" stroke="url(#sg-wang)" stroke-width="16"
+                    stroke-dasharray="75.41 201.05" stroke-dashoffset="-69.115" transform="rotate(-90 60 60)"/>
+                  <!-- musuyin 20%=55.29, offset=-69.115-77.41=-146.525 -->
+                  <circle cx="60" cy="60" r="44" fill="none" stroke="url(#sg-musuyin)" stroke-width="16"
+                    stroke-dasharray="53.29 223.17" stroke-dashoffset="-146.525" transform="rotate(-90 60 60)"/>
+                  <!-- others 2% -->
+                  <circle cx="60" cy="60" r="44" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="16"
+                    stroke-dasharray="3.52 272.94" stroke-dashoffset="-199.825" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="support-donut-center">
+                  <div style="font-size:16px;font-weight:800;color:#818cf8;font-family:monospace;line-height:1">50%</div>
+                  <div style="font-size:8px;color:rgba(255,255,255,0.3);margin-top:2px;letter-spacing:.05em">adam</div>
+                </div>
+              </div>
+              <div class="support-donut-legend">
+                <div v-for="c in contributors" :key="c.alias" class="support-leg-item">
+                  <div class="support-leg-dot" :style="{ background: c.color }"></div>
+                  <div>
+                    <span class="support-leg-name" :style="{ color: c.color }">{{ c.name }}</span>
+                    <span class="support-leg-pct" :style="{ color: c.color }"> {{ c.pct }}%</span>
+                    <div class="support-leg-alias">{{ c.alias }}</div>
+                  </div>
+                </div>
+                <div class="support-leg-item">
+                  <div class="support-leg-dot" style="background:rgba(255,255,255,0.15)"></div>
+                  <div>
+                    <span class="support-leg-name" style="color:rgba(255,255,255,0.3)">其他</span>
+                    <span class="support-leg-pct" style="color:rgba(255,255,255,0.3)"> 2%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Contributor cards -->
+            <div class="support-contrib-cards">
+              <div v-for="c in contributors" :key="c.alias" class="support-contrib-card">
+                <img :src="c.avatar" :alt="c.name" class="support-contrib-avatar"/>
+                <div class="support-contrib-info">
+                  <div class="support-contrib-name">{{ c.name }}</div>
+                  <div class="support-contrib-role">{{ c.role }}</div>
+                </div>
+                <div class="support-contrib-pct" :style="{ color: c.color }">{{ c.pct }}%</div>
+              </div>
+            </div>
+
             <div class="support-links">
               <a href="https://github.com/SeiyunSky/AgentHub-AllInOne" target="_blank" class="support-link">
                 <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
@@ -359,9 +426,9 @@ const providers = [
   { src: opencodeIcon,   name: 'OpenCode' },
 ]
 const contributors = [
-  { name: 'Adam',    role: 'Core Maintainer', avatar: '/contributors/adam.png' },
-  { name: 'Uzemiu',  role: 'Contributor',     avatar: '/contributors/uzemiu.png' },
-  { name: 'Musuyin', role: 'Contributor',     avatar: '/contributors/musuyin.png' },
+  { name: '沫路',  alias: 'Adam Zhang',         role: 'Core Architect', avatar: '/contributors/adam.png',    pct: 50, color: '#818cf8' },
+  { name: '玛叔叔', alias: 'Wang / Uzemiu',       role: 'Frontend Lead',  avatar: '/contributors/uzemiu.png',  pct: 28, color: '#67e8f9' },
+  { name: '令姐姐', alias: 'Wu Lvsheng / Musuyin', role: 'Adapter Layer',  avatar: '/contributors/musuyin.png', pct: 20, color: '#6ee7b7' },
 ]
 const features = [
   { label: 'Parallel Agents',         desc: 'Multiple AI models run simultaneously',    svg: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>` },
@@ -1010,7 +1077,7 @@ const features = [
   display: flex; align-items: center; justify-content: center;
 }
 .support-modal {
-  width: 420px; max-width: calc(100vw - 32px);
+  width: 460px; max-width: calc(100vw - 32px);
   background: #141220; border: 1px solid rgba(255,255,255,0.09);
   border-radius: 16px; overflow: hidden;
   box-shadow: 0 24px 64px rgba(0,0,0,0.6);
@@ -1036,6 +1103,31 @@ const features = [
 }
 .support-link svg { width: 16px; height: 16px; flex-shrink: 0; color: rgba(167,139,250,0.65); }
 .support-link:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+/* Support modal — donut + contributors */
+.support-donut-row { display: flex; align-items: center; gap: 16px; }
+.support-donut-wrap { position: relative; flex-shrink: 0; }
+.support-donut-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; pointer-events: none;
+}
+.support-donut-legend { display: flex; flex-direction: column; gap: 7px; flex: 1; }
+.support-leg-item { display: flex; align-items: flex-start; gap: 8px; }
+.support-leg-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+.support-leg-name { font-size: 12px; font-weight: 600; }
+.support-leg-pct { font-size: 11px; font-weight: 700; font-family: monospace; }
+.support-leg-alias { font-size: 10px; color: rgba(255,255,255,0.25); margin-top: 1px; }
+.support-contrib-cards { display: flex; flex-direction: column; gap: 6px; }
+.support-contrib-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 9px;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+}
+.support-contrib-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+.support-contrib-info { flex: 1; min-width: 0; }
+.support-contrib-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
+.support-contrib-role { font-size: 10px; color: rgba(255,255,255,0.3); }
+.support-contrib-pct { font-size: 13px; font-weight: 800; font-family: monospace; flex-shrink: 0; }
 
 /* ══════════════════════════════════════════
    亮色模式 — 左侧面板文字颜色覆盖

@@ -131,7 +131,7 @@ export default {
     memberRemoved: '已移除',
     removeFailed: '移除失败,请重试',
     sessionSettingsTitle: '会话设置(成员 / Token 用量)',
-    settings: '设置',
+    settings: '群聊设置',
   },
 
   // ─── 新建聊天对话框 ────────────────────────────────────────────────────────────
