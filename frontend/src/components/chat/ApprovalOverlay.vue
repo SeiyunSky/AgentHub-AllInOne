@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex items-center gap-2 mb-2">
       <el-icon :size="16" class="text-amber-600"><Warning /></el-icon>
-      <span class="text-[13px] font-semibold text-amber-800">Approval Required</span>
+      <span class="text-[13px] font-semibold text-amber-800">{{ t('approvalOverlay.title') }}</span>
     </div>
 
     <!-- Action + Detail -->
@@ -18,7 +18,7 @@
         ref="reasonInput"
         v-model="rejectReason"
         type="text"
-        placeholder="Reason for rejection (optional)"
+        :placeholder="t('approval.rejectReasonPlaceholder')"
         class="w-full px-3 py-1.5 text-[12px] border border-red-200 rounded-lg focus:outline-none focus:border-red-400 bg-white"
         @keydown.enter="confirmReject"
         @keydown.escape="showRejectInput = false"
@@ -31,30 +31,33 @@
         class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
         @click="$emit('approve')"
       >
-        Approve (Y)
+        {{ t('approval.approveButton') }}
       </button>
       <button
         v-if="!showRejectInput"
         class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer"
         @click="showRejectInput = true"
       >
-        Reject (N)
+        {{ t('approval.rejectButton') }}
       </button>
       <button
         v-else
         class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer"
         @click="confirmReject"
       >
-        Confirm
+        {{ t('approval.confirmReject') }}
       </button>
-      <span class="text-[10px] text-amber-600 ml-auto">Press Y / N</span>
+      <span class="text-[10px] text-amber-600 ml-auto">{{ t('approval.keyboardHint') }}</span>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Warning } from '@element-plus/icons-vue'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   approval: { messageId: string; blockId: string; action: string; detail: string }

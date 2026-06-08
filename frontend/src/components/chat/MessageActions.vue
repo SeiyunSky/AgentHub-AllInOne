@@ -5,7 +5,7 @@
       v-if="variant === 'agent'"
       class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150"
       :class="reaction === 'like' ? 'text-brand bg-brand/20 scale-110' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
-      title="Like"
+      :title="t('messageActions.like')"
       @click="handleReact('like')"
     >
       <span class="text-[14px]">😀</span>
@@ -16,7 +16,7 @@
       v-if="variant === 'agent'"
       class="w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-150"
       :class="reaction === 'dislike' ? 'text-red-500 bg-red-200 scale-110' : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'"
-      title="Dislike"
+      :title="t('messageActions.dislike')"
       @click="handleReact('dislike')"
     >
       <span class="text-[14px]">🙁</span>
@@ -25,7 +25,7 @@
     <!-- Reply -->
     <button
       class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface cursor-pointer transition-colors"
-      title="Reply"
+      :title="t('messageActions.reply')"
       @click="$emit('reply', messageId)"
     >
       <el-icon :size="14"><ChatRound /></el-icon>
@@ -34,7 +34,7 @@
     <!-- Copy -->
     <button
       class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface cursor-pointer transition-colors"
-      title="Copy"
+      :title="t('messageActions.copy')"
       @click="handleCopy"
     >
       <el-icon :size="14"><component :is="copied ? Select : DocumentCopy" /></el-icon>

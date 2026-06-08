@@ -2,14 +2,14 @@
   <Splitpanes class="splitpanes-theme" @resized="onPaneResized">
     <Pane :size="chatPaneSize" :min-size="35">
       <PanelContainer
-        :title="isEditMode ? 'Edit Agent' : 'Create Agent'"
+        :title="isEditMode ? t('agentFormPanel.editTitle') : t('agentFormPanel.createTitle')"
         :icon="User"
         variant="brand"
       >
         <template #headerActions>
           <div class="flex items-center gap-2">
             <span v-if="isReadOnly" class="text-[11px] text-on-surface-variant px-2 py-1 rounded bg-surface-container">
-              {{ readOnlyTooltip }}（只读）
+              {{ readOnlyTooltip }}{{ t('agentFormPanel.readonlyTag') }}
             </span>
             <button
               v-if="isEditMode"
@@ -19,13 +19,13 @@
               @click="handleDelete"
             >
               <el-icon v-if="isDeleting" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
-              Delete
+              {{ t('agentFormPanel.delete') }}
             </button>
             <button
               class="h-8 px-4 rounded-lg text-[13px] font-medium border border-outline-variant bg-white text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all cursor-pointer"
               @click="handleCancel"
             >
-              Cancel
+              {{ t('agentFormPanel.cancel') }}
             </button>
             <button
               class="h-8 px-4 rounded-lg text-[13px] font-medium bg-gradient-to-r from-brand to-brand-dark text-white shadow-soft hover:shadow-glow hover:-translate-y-px transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
@@ -34,7 +34,7 @@
               @click="handleSave"
             >
               <el-icon v-if="isSaving" :size="14" class="is-loading mr-1.5"><Loading /></el-icon>
-              {{ isEditMode ? 'Save Changes' : 'Create Agent' }}
+              {{ isEditMode ? t('agentFormPanel.saveChanges') : t('agentFormPanel.createAgent') }}
             </button>
             <button
               class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
@@ -75,6 +75,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { User, ArrowRight, ArrowLeft, Loading } from '@element-plus/icons-vue'
 import { Splitpanes, Pane } from 'splitpanes'
@@ -91,6 +92,7 @@ const route = useRoute()
 const router = useRouter()
 const agentsStore = useAgentsStore()
 const authStore = useAuthStore()
+const { t } = useI18n()
 
 // 只读判断：编辑模式下，owner 不是当前用户（含内置 GUGA 资源 / 他人创建）→ 只读
 const isReadOnly = computed(() => {
@@ -100,7 +102,7 @@ const isReadOnly = computed(() => {
 })
 const isBuiltin = computed(() => loadedOwnerId.value === 'GUGA')
 const readOnlyTooltip = computed(() =>
-  isBuiltin.value ? '内置 Agent 不可修改' : '无权修改他人创建的 Agent'
+  isBuiltin.value ? t('agentFormPanel.readonlyBuiltin') : t('agentFormPanel.readonlyOther')
 )
 
 const isSaving = ref(false)
@@ -158,7 +160,7 @@ async function loadAgentById(id: string) {
     loadedOwnerId.value = raw.user_id ?? null
     localDraft.value = rawToDraft(raw)
   } catch {
-    ElMessage.error('Failed to load agent')
+    ElMessage.error(t('agentFormPanel.loadFailed'))
     router.push({ name: 'agents' })
   } finally {
     isLoading.value = false
@@ -202,9 +204,9 @@ function toggleChat() {
 async function handleDelete() {
   try {
     await ElMessageBox.confirm(
-      `Delete agent "${localDraft.value.name}"? This cannot be undone.`,
-      'Delete Agent',
-      { confirmButtonText: 'Delete', cancelButtonText: 'Cancel', type: 'warning' },
+      t('agentFormPanel.deleteConfirm', { name: localDraft.value.name }),
+      t('agentFormPanel.deleteTitle'),
+      { confirmButtonText: t('agentFormPanel.delete'), cancelButtonText: t('common.cancel'), type: 'warning' },
     )
   } catch {
     return
@@ -213,10 +215,10 @@ async function handleDelete() {
   try {
     await agentsApi.delete(agentId.value!)
     agentsStore.removeAgent(agentId.value!)
-    ElMessage.success('Agent deleted')
+    ElMessage.success(t('agentFormPanel.deleted'))
     router.push({ name: 'agents' })
   } catch {
-    ElMessage.error('Failed to delete agent')
+    ElMessage.error(t('agentFormPanel.deleteFailed'))
   } finally {
     isDeleting.value = false
   }
@@ -224,7 +226,7 @@ async function handleDelete() {
 
 async function handleSave() {
   if (!localDraft.value.name.trim()) {
-    ElMessage.warning('Agent name is required')
+    ElMessage.warning(t('agentFormPanel.nameRequired'))
     return
   }
   isSaving.value = true
@@ -253,12 +255,12 @@ async function handleSave() {
       saved = await agentsApi.create(payload)
     }
     agentsStore.upsertAgent(saved)
-    ElMessage.success(isEditMode.value ? 'Agent updated' : 'Agent created')
+    ElMessage.success(isEditMode.value ? t('agentFormPanel.updated') : t('agentFormPanel.created'))
     if (!isEditMode.value) {
       router.replace({ name: 'agent-edit', params: { agentId: saved.id } })
     }
   } catch {
-    ElMessage.error('Failed to save agent')
+    ElMessage.error(t('agentFormPanel.saveFailed'))
   } finally {
     isSaving.value = false
   }

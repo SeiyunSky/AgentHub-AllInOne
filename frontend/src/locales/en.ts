@@ -390,6 +390,149 @@ export default {
     errorPrefix: '[Error] ',
   },
 
+  // ─── Approval Overlay ─────────────────────────────────────────────────────────
+  approvalOverlay: {
+    title: 'Approval Required',
+  },
+
+  // ─── Message Actions ──────────────────────────────────────────────────────────
+  messageActions: {
+    like: 'Like',
+    dislike: 'Dislike',
+    reply: 'Reply',
+    copy: 'Copy',
+  },
+
+  // ─── Time Ago ─────────────────────────────────────────────────────────────────
+  timeAgo: {
+    justNow: 'just now',
+    minutesAgo: '{n}m ago',
+    hoursAgo: '{n}h ago',
+  },
+
+  // ─── Nav Extra ────────────────────────────────────────────────────────────────
+  navExtra: {
+    search: 'Search',
+    support: 'About',
+    settings: 'Settings',
+    collapse: 'Collapse',
+    chatLabel: 'Chat',
+    agentsLabel: 'Agents',
+    skillsLabel: 'Skills',
+    searchDialogTitle: 'Search',
+    searchDialogConfirm: 'Search',
+    searchDialogPlaceholder: 'Search conversations, agents, skills...',
+  },
+
+  // ─── Agent Form Panel ─────────────────────────────────────────────────────────
+  agentFormPanel: {
+    editTitle: 'Edit Agent',
+    createTitle: 'Create Agent',
+    readonlyTag: '(Read-only)',
+    readonlyBuiltin: 'Built-in agents cannot be modified',
+    readonlyOther: 'You do not have permission to modify this agent',
+    delete: 'Delete',
+    cancel: 'Cancel',
+    saveChanges: 'Save Changes',
+    createAgent: 'Create Agent',
+    loadFailed: 'Failed to load agent',
+    deleteConfirm: 'Delete agent "{name}"? This cannot be undone.',
+    deleteTitle: 'Delete Agent',
+    deleted: 'Agent deleted',
+    deleteFailed: 'Failed to delete agent',
+    nameRequired: 'Agent name is required',
+    updated: 'Agent updated',
+    created: 'Agent created',
+    saveFailed: 'Failed to save agent',
+  },
+
+  // ─── Skill Form Panel ─────────────────────────────────────────────────────────
+  skillFormPanel: {
+    editTitle: 'Edit Skill',
+    createTitle: 'Create Skill',
+    readonlyTag: '(Read-only)',
+    readonlyBuiltin: 'Built-in skills cannot be modified',
+    readonlyOther: 'You do not have permission to modify this skill',
+    delete: 'Delete',
+    cancel: 'Cancel',
+    saveChanges: 'Save Changes',
+    createSkill: 'Create Skill',
+    loadFailed: 'Failed to load skill',
+    deleteConfirm: 'Delete skill "{name}"? This cannot be undone.',
+    deleteTitle: 'Delete Skill',
+    deleted: 'Skill deleted',
+    deleteFailed: 'Failed to delete skill',
+    nameRequired: 'Skill name is required',
+    nameFormat: 'Skill name must be lowercase letters, numbers, hyphens, or underscores',
+    contentRequired: 'Skill content is required',
+    updated: 'Skill updated',
+    created: 'Skill created',
+    saveFailed: 'Failed to save skill',
+  },
+
+  // ─── Right Panel ──────────────────────────────────────────────────────────────
+  rightPanel: {
+    view: 'View',
+    edit: 'Edit',
+    closePreview: 'Close preview (back to last tab)',
+    running: 'Running',
+    idle: 'Idle',
+    tabWorkflow: 'Workflow',
+    tabFiles: 'Files',
+    tabDeploy: 'Deploy',
+    tabPreview: 'Preview',
+    titleFiles: 'Files',
+    titleDeployments: 'Deployments',
+    titleWorkflow: 'Workflow',
+  },
+
+  // ─── Settings Dialog ──────────────────────────────────────────────────────────
+  settings: {
+    title: 'Settings',
+    accentColor: 'Accent Color',
+    language: 'Language',
+    langChinese: 'Chinese',
+    langEnglish: 'English',
+  },
+
+  // ─── New Chat Dialog Extra ────────────────────────────────────────────────────
+  newChatExtra: {
+    title: 'New Chat',
+    subtitle: 'Set up your conversation',
+    squadTemplates: 'Squad Templates',
+    chatTitleLabel: 'Title',
+    chatTitlePlaceholder: 'Enter chat title...',
+    modeLabel: 'Mode',
+    taskMode: 'Task',
+    broadcastMode: 'Broadcast',
+    inviteAgents: 'Invite Agents',
+    addMoreAgents: 'Add more agents',
+    selectAgents: 'Select agents',
+    searchAgents: 'Search agents...',
+    noAgentsAvailable: 'No agents available',
+    creating: 'Creating...',
+    createChat: 'Create Chat',
+  },
+
+  // ─── Chat Input Extra ─────────────────────────────────────────────────────────
+  chatInputExtra: {
+    replyingTo: 'Replying to {name}',
+    filesAttached: '{n} file(s) attached',
+    attachFiles: 'Attach files (uploads to conversation sandbox)',
+    placeholder: 'Ask anything...',
+  },
+
+  // ─── Conversation Item ────────────────────────────────────────────────────────
+  convItem: {
+    noMessages: 'No messages yet',
+    rename: 'Rename',
+    unpin: 'Unpin',
+    pin: 'Pin',
+    unarchive: 'Unarchive',
+    archive: 'Archive',
+    delete: 'Delete',
+  },
+
   // ─── Element Plus locale name ─────────────────────────────────────────────────
   lang: 'English',
 }

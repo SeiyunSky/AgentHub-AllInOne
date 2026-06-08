@@ -391,6 +391,149 @@ export default {
     errorPrefix: '[错误] ',
   },
 
+  // ─── 审批浮层（Overlay） ───────────────────────────────────────────────────────
+  approvalOverlay: {
+    title: '等待审批',
+  },
+
+  // ─── 消息操作 ─────────────────────────────────────────────────────────────────
+  messageActions: {
+    like: '点赞',
+    dislike: '点踩',
+    reply: '回复',
+    copy: '复制',
+  },
+
+  // ─── 相对时间 ─────────────────────────────────────────────────────────────────
+  timeAgo: {
+    justNow: '刚刚',
+    minutesAgo: '{n}分钟前',
+    hoursAgo: '{n}小时前',
+  },
+
+  // ─── 导航栏（扩展） ───────────────────────────────────────────────────────────
+  navExtra: {
+    search: '搜索',
+    support: '关于',
+    settings: '设置',
+    collapse: '收起',
+    chatLabel: '聊天',
+    agentsLabel: 'Agents',
+    skillsLabel: '技能',
+    searchDialogTitle: '搜索',
+    searchDialogConfirm: '搜索',
+    searchDialogPlaceholder: '搜索会话、Agent、技能...',
+  },
+
+  // ─── Agent 表单面板 ───────────────────────────────────────────────────────────
+  agentFormPanel: {
+    editTitle: '编辑 Agent',
+    createTitle: '新建 Agent',
+    readonlyTag: '（只读）',
+    readonlyBuiltin: '内置 Agent 不可修改',
+    readonlyOther: '无权修改他人创建的 Agent',
+    delete: '删除',
+    cancel: '取消',
+    saveChanges: '保存修改',
+    createAgent: '新建 Agent',
+    loadFailed: '加载 Agent 失败',
+    deleteConfirm: '确认删除 Agent "{name}"？此操作不可恢复。',
+    deleteTitle: '删除 Agent',
+    deleted: 'Agent 已删除',
+    deleteFailed: '删除失败',
+    nameRequired: 'Agent 名称不能为空',
+    updated: 'Agent 已更新',
+    created: 'Agent 已创建',
+    saveFailed: '保存失败',
+  },
+
+  // ─── Skill 表单面板 ──────────────────────────────────────────────────────────
+  skillFormPanel: {
+    editTitle: '编辑技能',
+    createTitle: '新建技能',
+    readonlyTag: '（只读）',
+    readonlyBuiltin: '内置 Skill 不可修改',
+    readonlyOther: '无权修改他人创建的 Skill',
+    delete: '删除',
+    cancel: '取消',
+    saveChanges: '保存修改',
+    createSkill: '新建技能',
+    loadFailed: '加载技能失败',
+    deleteConfirm: '确认删除技能 "{name}"？此操作不可恢复。',
+    deleteTitle: '删除技能',
+    deleted: '技能已删除',
+    deleteFailed: '删除失败',
+    nameRequired: '技能名称不能为空',
+    nameFormat: '技能名称只允许小写字母、数字、连字符或下划线',
+    contentRequired: '技能内容不能为空',
+    updated: '技能已更新',
+    created: '技能已创建',
+    saveFailed: '保存失败',
+  },
+
+  // ─── 右侧面板 ─────────────────────────────────────────────────────────────────
+  rightPanel: {
+    view: '预览',
+    edit: '编辑',
+    closePreview: '关闭预览（返回上一个标签）',
+    running: '运行中',
+    idle: '待命',
+    tabWorkflow: 'Workflow',
+    tabFiles: '文件',
+    tabDeploy: '部署',
+    tabPreview: '预览',
+    titleFiles: '文件',
+    titleDeployments: '部署',
+    titleWorkflow: 'Workflow',
+  },
+
+  // ─── 设置对话框 ───────────────────────────────────────────────────────────────
+  settings: {
+    title: '设置',
+    accentColor: '主题色',
+    language: '语言',
+    langChinese: '中文',
+    langEnglish: 'English',
+  },
+
+  // ─── 新建聊天对话框（扩展） ──────────────────────────────────────────────────
+  newChatExtra: {
+    title: '新建聊天',
+    subtitle: '配置你的会话',
+    squadTemplates: '小队模板',
+    chatTitleLabel: '标题',
+    chatTitlePlaceholder: '输入聊天标题...',
+    modeLabel: '模式',
+    taskMode: '任务',
+    broadcastMode: '广播',
+    inviteAgents: '邀请 Agents',
+    addMoreAgents: '添加更多 Agents',
+    selectAgents: '选择 Agents',
+    searchAgents: '搜索 Agents...',
+    noAgentsAvailable: '暂无可用 Agent',
+    creating: '创建中...',
+    createChat: '创建聊天',
+  },
+
+  // ─── 聊天输入（扩展） ────────────────────────────────────────────────────────
+  chatInputExtra: {
+    replyingTo: '回复 {name}',
+    filesAttached: '已附件 {n} 个文件',
+    attachFiles: '附件（上传到会话沙箱）',
+    placeholder: '输入消息...',
+  },
+
+  // ─── 会话列表项 ──────────────────────────────────────────────────────────────
+  convItem: {
+    noMessages: '暂无消息',
+    rename: '重命名',
+    unpin: '取消置顶',
+    pin: '置顶',
+    unarchive: '取消归档',
+    archive: '归档',
+    delete: '删除',
+  },
+
   // ─── Element Plus 组件语言 ────────────────────────────────────────────────────
   lang: '简体中文',
 }

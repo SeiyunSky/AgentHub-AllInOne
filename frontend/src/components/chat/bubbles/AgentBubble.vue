@@ -327,9 +327,9 @@ const timeAgo = computed(() => {
   const now = new Date()
   const diff = now.getTime() - props.message.timestamp.getTime()
   const minutes = Math.floor(diff / 60000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m ago`
-  return `${Math.floor(minutes / 60)}h ago`
+  if (minutes < 1) return t('timeAgo.justNow')
+  if (minutes < 60) return t('timeAgo.minutesAgo', { n: minutes })
+  return t('timeAgo.hoursAgo', { n: Math.floor(minutes / 60) })
 })
 </script>
 

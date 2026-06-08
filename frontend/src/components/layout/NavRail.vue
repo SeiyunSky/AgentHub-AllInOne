@@ -20,7 +20,7 @@
       @click="showSearchDialog"
     >
       <el-icon :size="18"><Search /></el-icon>
-      <span class="text-[13px] font-medium">Search</span>
+      <span class="text-[13px] font-medium">{{ t('navExtra.search') }}</span>
     </button>
 
     <!-- Divider -->
@@ -40,9 +40,9 @@
 
     <!-- Bottom Icons -->
     <div class="flex flex-col gap-1 w-full px-2 border-t border-rail-border pt-3 mt-3">
-      <NavRailItem :icon="QuestionFilled" label="Support" @click="showSupportDialog" />
-      <NavRailItem :icon="Setting" label="Settings" @click="settingsVisible = true" />
-      <NavRailItem :icon="DArrowLeft" label="Collapse" @click="uiStore.toggleNavRail" />
+      <NavRailItem :icon="QuestionFilled" :label="t('navExtra.support')" @click="showSupportDialog" />
+      <NavRailItem :icon="Setting" :label="t('navExtra.settings')" @click="settingsVisible = true" />
+      <NavRailItem :icon="DArrowLeft" :label="t('navExtra.collapse')" @click="uiStore.toggleNavRail" />
     </div>
 
     <!-- User card: 头像 + display_name + username + 退出按钮 -->
@@ -484,11 +484,11 @@ function workGroupsOf(c: ContribWithWork) {
   return []
 }
 
-const navItems = [
-  { id: 'chat', icon: ChatDotRound, label: 'Chat', routeName: 'chat' as const },
-  { id: 'agents', icon: User, label: 'Agents', routeName: 'agents' as const },
-  { id: 'skills', icon: MagicStick, label: 'Skills', routeName: 'skills' as const },
-] as const
+const navItems = computed(() => [
+  { id: 'chat', icon: ChatDotRound, label: t('navExtra.chatLabel'), routeName: 'chat' as const },
+  { id: 'agents', icon: User, label: t('navExtra.agentsLabel'), routeName: 'agents' as const },
+  { id: 'skills', icon: MagicStick, label: t('navExtra.skillsLabel'), routeName: 'skills' as const },
+])
 
 function isActive(item: { id: string; routeName: string }): boolean {
   if (item.id === 'chat') return route.name === 'chat' || route.name === 'chat-detail'
@@ -503,10 +503,10 @@ function navigateTo(routeName: string) {
 }
 
 function showSearchDialog() {
-  ElMessageBox.prompt('', 'Search', {
-    confirmButtonText: 'Search',
-    cancelButtonText: 'Cancel',
-    inputPlaceholder: 'Search conversations, agents, skills...',
+  ElMessageBox.prompt('', t('navExtra.searchDialogTitle'), {
+    confirmButtonText: t('navExtra.searchDialogConfirm'),
+    cancelButtonText: t('common.cancel'),
+    inputPlaceholder: t('navExtra.searchDialogPlaceholder'),
     customStyle: { borderRadius: '16px' },
   }).catch(() => {})
 }

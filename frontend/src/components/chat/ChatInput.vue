@@ -21,7 +21,7 @@
           class="flex items-center gap-2 px-3 py-2 bg-brand-light/20 border-b border-outline-variant"
         >
           <div class="flex-1 min-w-0 border-l-2 border-brand pl-2">
-            <span class="text-[11px] text-brand font-semibold">Replying to {{ replyTo.senderName }}</span>
+            <span class="text-[11px] text-brand font-semibold">{{ t('chatInputExtra.replyingTo', { name: replyTo.senderName }) }}</span>
             <p class="text-[11px] text-on-surface-variant truncate">{{ replyTo.content }}</p>
           </div>
           <button
@@ -65,7 +65,7 @@
           ref="editorRef"
           contenteditable="true"
           class="w-full min-h-[80px] max-h-[200px] px-4 pt-3 pb-1 bg-transparent text-[13px] text-on-surface outline-none resize-none leading-relaxed overflow-y-auto custom-scrollbar"
-          :data-placeholder="placeholder"
+          :data-placeholder="effectivePlaceholder"
           @input="onEditorInput"
           @keydown="onEditorKeydown"
           @compositionstart="isComposing = true"
@@ -80,7 +80,7 @@
             <button
               class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
               :class="attachedFiles.length > 0 ? 'text-brand bg-brand-light/40 hover:bg-brand-light' : 'text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container'"
-              :title="!hasConversation ? t('chat.noSessionOpen') : (attachedFiles.length > 0 ? `${attachedFiles.length} file(s) attached` : 'Attach files (uploads to conversation sandbox)')"
+              :title="!hasConversation ? t('chat.noSessionOpen') : (attachedFiles.length > 0 ? t('chatInputExtra.filesAttached', { n: attachedFiles.length }) : t('chatInputExtra.attachFiles'))"
               :disabled="!hasConversation"
               @click="fileInputRef?.click()"
             >
@@ -145,10 +145,11 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   streaming?: boolean
 }>(), {
-  placeholder: 'Ask anything...',
   streaming: false,
   htmlDraft: '',
 })
+
+const effectivePlaceholder = computed(() => props.placeholder ?? t('chatInputExtra.placeholder'))
 
 const emit = defineEmits<{
   'update:modelValue': [value: string, html?: string]

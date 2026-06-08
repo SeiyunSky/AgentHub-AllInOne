@@ -19,7 +19,7 @@
                 <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background: color-mix(in srgb, var(--color-brand) 12%, transparent);">
                   <el-icon :size="15" style="color: var(--color-brand)"><Setting /></el-icon>
                 </div>
-                <span class="text-[15px] font-semibold text-on-surface">Settings</span>
+                <span class="text-[15px] font-semibold text-on-surface">{{ t('settings.title') }}</span>
               </div>
               <button
                 class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all"
@@ -36,7 +36,7 @@
               <section>
                 <div class="section-heading">
                   <el-icon :size="12"><Brush /></el-icon>
-                  Accent Color
+                  {{ t('settings.accentColor') }}
                 </div>
                 <div class="grid grid-cols-6 gap-2.5">
                   <button
@@ -62,7 +62,7 @@
               <section>
                 <div class="section-heading">
                   <el-icon :size="12"><ChatLineRound /></el-icon>
-                  Language
+                  {{ t('settings.language') }}
                 </div>
                 <div class="grid grid-cols-2 gap-2.5">
                   <button
@@ -93,6 +93,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useThemeStore, ACCENTS } from '@/stores/theme'
 import type { LangKey } from '@/stores/theme'
 import { Setting, Close, Check, Brush, ChatLineRound } from '@element-plus/icons-vue'
@@ -101,15 +103,16 @@ defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ (e: 'update:visible', v: boolean): void }>()
 
 const themeStore = useThemeStore()
+const { t } = useI18n()
 
 function close() {
   emit('update:visible', false)
 }
 
-const langOptions: { value: LangKey; name: string; native: string; flag: string }[] = [
-  { value: 'zh', name: 'Chinese', native: '简体中文', flag: '🇨🇳' },
-  { value: 'en', name: 'English', native: 'English',  flag: '🇺🇸' },
-]
+const langOptions = computed<{ value: LangKey; name: string; native: string; flag: string }[]>(() => [
+  { value: 'zh', name: t('settings.langChinese'), native: '简体中文', flag: '🇨🇳' },
+  { value: 'en', name: t('settings.langEnglish'), native: 'English', flag: '🇺🇸' },
+])
 </script>
 
 <style scoped>

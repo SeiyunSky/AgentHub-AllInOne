@@ -33,7 +33,7 @@
         <p class="text-[14px] font-semibold text-on-surface truncate flex-1 min-w-0">{{ conv.title }}</p>
         <span class="text-[11px] text-on-surface-variant/60 whitespace-nowrap group-hover:opacity-0 transition-opacity duration-150 select-none shrink-0">{{ lastMessageTime }}</span>
       </div>
-      <p class="text-[11px] text-on-surface-variant truncate mt-0.5 pr-6">{{ conv.last_message_preview ?? 'No messages yet' }}</p>
+      <p class="text-[11px] text-on-surface-variant truncate mt-0.5 pr-6">{{ conv.last_message_preview ?? t('convItem.noMessages') }}</p>
     </div>
 
     <!-- Actions button (absolute, overlays time on hover) -->
@@ -57,19 +57,19 @@
       <div class="py-1">
         <button class="conv-action-item" @click.stop="$emit('rename', conv)">
           <el-icon :size="14"><Edit /></el-icon>
-          <span>Rename</span>
+          <span>{{ t('convItem.rename') }}</span>
         </button>
         <button class="conv-action-item" @click.stop="$emit('togglePin', conv)">
           <el-icon :size="14"><component :is="conv.is_pinned ? Aim : Promotion" /></el-icon>
-          <span>{{ conv.is_pinned ? 'Unpin' : 'Pin' }}</span>
+          <span>{{ conv.is_pinned ? t('convItem.unpin') : t('convItem.pin') }}</span>
         </button>
         <button class="conv-action-item" @click.stop="$emit('toggleArchive', conv)">
           <el-icon :size="14"><component :is="conv.is_archived ? FolderOpened : Folder" /></el-icon>
-          <span>{{ conv.is_archived ? 'Unarchive' : 'Archive' }}</span>
+          <span>{{ conv.is_archived ? t('convItem.unarchive') : t('convItem.archive') }}</span>
         </button>
         <button class="conv-action-item !text-error hover:!bg-error-light" @click.stop="handleDelete">
           <el-icon :size="14"><Delete /></el-icon>
-          <span>Delete</span>
+          <span>{{ t('convItem.delete') }}</span>
         </button>
       </div>
     </el-popover>

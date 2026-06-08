@@ -16,7 +16,7 @@
             @click="setMode('preview')"
           >
             <el-icon :size="12" class="mr-1"><View /></el-icon>
-            View
+            {{ t('rightPanel.view') }}
           </button>
           <button
             class="px-2 py-1 rounded text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -25,12 +25,12 @@
             @click="setMode('edit')"
           >
             <el-icon :size="12" class="mr-1"><Edit /></el-icon>
-            Edit
+            {{ t('rightPanel.edit') }}
           </button>
         </div>
         <button
           class="w-7 h-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-          title="Close preview (back to last tab)"
+          :title="t('rightPanel.closePreview')"
           @click="closeArtifact"
         >
           <el-icon :size="14"><Close /></el-icon>
@@ -82,6 +82,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUIStore } from '@/stores/ui'
 import { useArtifactPreview } from '@/composables/useArtifactPreview'
 import { useChatStore } from '@/stores/chat'
@@ -106,6 +107,7 @@ import {
 } from '@element-plus/icons-vue'
 
 const uiStore = useUIStore()
+const { t } = useI18n()
 const chatStore = useChatStore()
 const conversationsStore = useConversationsStore()
 const deploymentsStore = useDeploymentsStore()
@@ -116,7 +118,7 @@ const previewMode = computed(() => uiStore.activeArtifact?.mode ?? 'preview')
 const convId = computed(() => conversationsStore.currentId ?? '')
 
 const workflowStatus = computed(() =>
-  chatStore.isStreamingFor(convId.value) ? 'Running' : 'Idle'
+  chatStore.isStreamingFor(convId.value) ? t('rightPanel.running') : t('rightPanel.idle')
 )
 
 // Edit 模式可用 = 有 filePath(老路径)或 convId+path(沙箱)
@@ -129,18 +131,18 @@ const deploymentCount = computed(() => deploymentsStore.getCount(convId.value))
 
 // 4 个 tab,Preview 在选中 artifact 时可用
 const tabs = computed(() => [
-  { id: 'workflow' as const, label: 'Workflow', icon: Share, disabled: false, badge: 0 },
-  { id: 'files' as const, label: 'Files', icon: FolderOpened, disabled: false, badge: 0 },
+  { id: 'workflow' as const, label: t('rightPanel.tabWorkflow'), icon: Share, disabled: false, badge: 0 },
+  { id: 'files' as const, label: t('rightPanel.tabFiles'), icon: FolderOpened, disabled: false, badge: 0 },
   {
     id: 'deployments' as const,
-    label: 'Deploy',
+    label: t('rightPanel.tabDeploy'),
     icon: Promotion,
     disabled: false,
     badge: deploymentCount.value,
   },
   {
     id: 'preview' as const,
-    label: 'Preview',
+    label: t('rightPanel.tabPreview'),
     icon: View,
     disabled: !activeArtifact.value,
     badge: 0,
@@ -148,10 +150,10 @@ const tabs = computed(() => [
 ])
 
 const panelTitle = computed(() => {
-  if (activeTab.value === 'preview') return activeArtifact.value?.item?.name ?? 'Preview'
-  if (activeTab.value === 'files') return 'Files'
-  if (activeTab.value === 'deployments') return 'Deployments'
-  return 'Workflow'
+  if (activeTab.value === 'preview') return activeArtifact.value?.item?.name ?? t('rightPanel.tabPreview')
+  if (activeTab.value === 'files') return t('rightPanel.titleFiles')
+  if (activeTab.value === 'deployments') return t('rightPanel.titleDeployments')
+  return t('rightPanel.titleWorkflow')
 })
 
 const panelIcon = computed(() => {
