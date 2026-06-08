@@ -194,14 +194,6 @@ async def get_chat_stream(
                                     event_json[:100],
                                 )
 
-            # 2. 如果没有活跃 Thread 或没有回放内容，立即断开
-            if after_message_id is not None and not has_replay:
-                logger.info(
-                    "No active threads or replay events for conv=%s, close SSE",
-                    conversation_id,
-                )
-                return  # 直接结束生成器，断开 SSE 连接
-
             # 3. 继续消费实时事件
             async for event in stream_service.consume(session):
                 # sse_starlette 接受 dict 形态:{"event": <type>, "data": <str>}
