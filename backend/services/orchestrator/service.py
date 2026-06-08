@@ -114,6 +114,7 @@ class OrchestratorService:
         conversation_id: str,
         user_message_id: str,
         user_id: str,
+        silent: bool = False,
     ) -> None:
         """
         启动主 Agent loop。被 chat_service._group_orchestrate_flow 调。
@@ -191,19 +192,20 @@ class OrchestratorService:
                     orchestrator_avatar = _row.avatar if _row else None
             except Exception:
                 pass
-            try:
-                await stream_service.push_event(
-                    conversation_id,
-                    AgentStartEvent(
-                        agent_id="orchestrator",
-                        thread_id=thread_id,
-                        message_id=thread_id,  # 占位,respond_to_user 会推真的 message_id
-                        agent_name="Orchestrator",
-                        agent_avatar=orchestrator_avatar,
-                    ),
-                )
-            except Exception:
-                logger.exception("failed to push orchestrator agent_start (non-fatal)")
+            if not silent:
+                try:
+                    await stream_service.push_event(
+                        conversation_id,
+                        AgentStartEvent(
+                            agent_id="orchestrator",
+                            thread_id=thread_id,
+                            message_id=thread_id,  # 占位,respond_to_user 会推真的 message_id
+                            agent_name="Orchestrator",
+                            agent_avatar=orchestrator_avatar,
+                        ),
+                    )
+                except Exception:
+                    logger.exception("failed to push orchestrator agent_start (non-fatal)")
 
             total_tokens_in, total_tokens_out = await self._agent_loop(
                 thread_id=thread_id,

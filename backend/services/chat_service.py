@@ -455,6 +455,12 @@ class ChatService:
         # 必须 commit,否则 start_loop 起的独立 session 查不到这条 thread,
         # mark_running / mark_done 全部 no-op,thread 永远停在 init 状态
         self.session.commit()
+        # @ 非 orchestrator 子 Agent 时：orchestrator 做隐式调度，不显示自己的气泡
+        is_mention_dispatch = bool(
+            request.mention_ids
+            and len(request.mention_ids) == 1
+            and request.mention_ids[0] != ORCHESTRATOR_AGENT_ID
+        )
         # start_loop 改为后台 Task:让锁立即释放,stop 时可以 cancel
         task = asyncio.create_task(
             orchestrator_service.start_loop(  # type: ignore[union-attr]
@@ -462,6 +468,7 @@ class ChatService:
                 conversation_id=request.conversation_id,
                 user_message_id=self._msg_id(user_msg),
                 user_id=user_id,
+                silent=is_mention_dispatch,
             )
         )
         _orchestrator_tasks[request.conversation_id] = task
