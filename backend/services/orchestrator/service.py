@@ -335,7 +335,19 @@ class OrchestratorService:
             ]
             _user_text = "\n\n".join(_user_text_parts).strip()
             if _user_text:
-                messages.append({"role": "user", "content": _user_text})
+                # 如果 orchestrator thread 有 dispatch_prompt（如 @ 隐式调度时注入的 mention hint），
+                # 把它前置到用户消息文本，让 orchestrator 一开始就知道该 dispatch 给谁
+                _dispatch_hint = ""
+                try:
+                    from backend.core.database import db_session as _dbs
+                    from backend.repositories.thread_repo import ThreadRepository as _TR
+                    with _dbs() as _s:
+                        _t = _TR(_s).get(thread_id)
+                        _dispatch_hint = (_t.dispatch_prompt or "") if _t else ""
+                except Exception:
+                    pass
+                _full_text = (_dispatch_hint + _user_text) if _dispatch_hint else _user_text
+                messages.append({"role": "user", "content": _full_text})
 
         # 三路恢复 attempt 计数器(每路独立维护,某路重试成功后**不**重置:
         # 同一 loop 内累计触发次数,达到上限 → give up)

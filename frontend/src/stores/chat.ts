@@ -503,7 +503,13 @@ export const useChatStore = defineStore('chat', () => {
       const content: string = ((b as any).content ?? '').trim()
       return content === 'READ_RECEIPT' || content.includes('READ_RECEIPT')
     })
-    if (streaming.blocks.length > 0 && !isSentinelOnly) {
+    // orchestrator 在 @ 隐式调度场景下只产出 tool_use blocks（dispatch/create_file 等），
+    // 没有 text block，不需要显示气泡——用户只应看到子 Agent 的回复。
+    const isOrchestratorDispatchOnly =
+      agentId === 'orchestrator' &&
+      streaming.blocks.length > 0 &&
+      streaming.blocks.every(b => (b as any).type === 'tool_use')
+    if (streaming.blocks.length > 0 && !isSentinelOnly && !isOrchestratorDispatchOnly) {
       const msgs = [...getMessages(convId)]
       // 从当前会话的 agent 列表中查找头像和名称作为兜底（数据库是真相源）
       const conversationsStore = useConversationsStore()
