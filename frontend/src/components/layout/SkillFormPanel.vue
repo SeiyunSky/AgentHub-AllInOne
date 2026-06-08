@@ -168,7 +168,7 @@ watch(skillId, async (newId) => {
 })
 
 function handleCancel() {
-  router.push({ name: 'skills' })
+  router.back()
 }
 
 async function handleDelete() {
@@ -186,7 +186,7 @@ async function handleDelete() {
     await skillsApi.remove(skillId.value!)
     skillsStore.removeSkill(skillId.value!)
     ElMessage.success(t('skillFormPanel.deleted'))
-    router.push({ name: 'skills' })
+    router.back()
   } catch {
     ElMessage.error(t('skillFormPanel.deleteFailed'))
   } finally {
@@ -246,6 +246,8 @@ async function handleSave() {
 
     if (!isEditMode.value) {
       router.replace({ name: 'skill-edit', params: { skillId: saved.id } })
+    } else {
+      router.back()
     }
   } catch {
     ElMessage.error(t('skillFormPanel.saveFailed'))

@@ -72,10 +72,14 @@
           v-for="skill in filteredSkills"
           :key="skill.id"
           class="premium-card overflow-hidden cursor-pointer hover:-translate-y-0.5"
+          :class="categoryStyle[skill.category ?? '']?.card"
           @click="router.push({ name: 'skill-edit', params: { skillId: skill.id } })"
         >
-          <!-- Brand accent strip -->
-          <div class="h-1 bg-gradient-to-r from-brand-light to-brand"></div>
+          <!-- Category accent strip -->
+          <div
+            class="h-1 bg-gradient-to-r"
+            :class="categoryStyle[skill.category ?? '']?.strip ?? 'from-brand-light to-brand'"
+          ></div>
 
           <div class="p-5">
             <div class="flex items-start gap-3 mb-3">
@@ -101,7 +105,8 @@
             <div class="flex items-center justify-between">
               <span
                 v-if="skill.category"
-                class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-surface-container-low text-on-surface-variant"
+                class="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                :class="categoryStyle[skill.category]?.tag ?? 'bg-surface-container-low text-on-surface-variant'"
               >
                 {{ skill.category }}
               </span>
@@ -129,13 +134,26 @@ const skillsStore = useSkillsStore()
 const isLoading = ref(false)
 const activeFilter = ref('all')
 
-const filterOptions = computed(() => [
-  { label: t('skillsPanel.filterAll'), value: 'all' },
-  { label: '代码', value: '代码' },
-  { label: '安全', value: '安全' },
-  { label: '领域知识', value: '领域知识' },
-  { label: '通用', value: '通用' },
-])
+const filterOptions = [
+  { label: 'All', value: 'all' },
+  { label: '代码实现', value: '代码实现' },
+  { label: '数据分析', value: '数据分析' },
+  { label: '角色扮演', value: '角色扮演' },
+  { label: '容器部署', value: '容器部署' },
+  { label: '规则设定', value: '规则设定' },
+  { label: '背景说明', value: '背景说明' },
+  { label: '通用知识', value: '通用知识' },
+]
+
+const categoryStyle: Record<string, { card: string; strip: string; tag: string }> = {
+  '代码实现': { card: 'bg-blue-500/5',   strip: 'from-blue-400 to-blue-600',     tag: 'bg-blue-500/10 text-blue-400' },
+  '数据分析': { card: 'bg-purple-500/5', strip: 'from-purple-400 to-purple-600', tag: 'bg-purple-500/10 text-purple-400' },
+  '角色扮演': { card: 'bg-pink-500/5',   strip: 'from-pink-400 to-pink-600',     tag: 'bg-pink-500/10 text-pink-400' },
+  '容器部署': { card: 'bg-teal-500/5',   strip: 'from-teal-400 to-teal-600',     tag: 'bg-teal-500/10 text-teal-400' },
+  '规则设定': { card: 'bg-orange-500/5', strip: 'from-orange-400 to-orange-600', tag: 'bg-orange-500/10 text-orange-400' },
+  '背景说明': { card: 'bg-yellow-500/5', strip: 'from-yellow-400 to-yellow-500', tag: 'bg-yellow-500/10 text-yellow-400' },
+  '通用知识': { card: 'bg-zinc-500/5',   strip: 'from-zinc-400 to-zinc-600',     tag: 'bg-zinc-500/10 text-zinc-400' },
+}
 
 const filteredSkills = computed(() => {
   if (activeFilter.value === 'all') return skillsStore.skills

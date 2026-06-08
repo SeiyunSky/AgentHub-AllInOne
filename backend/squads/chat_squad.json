@@ -1,7 +1,12 @@
 {
   "id": "chat_squad",
-  "name": "闲聊小队",
-  "description": "轻松对话、问答、头脑风暴，暂无预设成员，请手动添加 Agent",
+  "name": "岁家小队",
+  "description": "用于展示类似星野的多agent群聊功能的响应设计，作为本平台的第二个商业化思路展示方向",
   "icon": "chat",
-  "agent_ids": []
+  "agent_ids": [
+    "agent-nian-builtin",
+    "agent-yu-builtin",
+    "agent-xi-builtin",
+    "agent-wang-builtin"
+  ]
 }

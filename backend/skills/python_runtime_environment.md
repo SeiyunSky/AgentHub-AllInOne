@@ -1,5 +1,6 @@
 ---
-name: python_runtime_environment
+name: 沙箱容器白名单
+category: 容器部署
 description: AgentHub 内置 Docker 容器的 Python 运行时白名单。代码 Agent / 部署 Agent / 数据分析 Agent 必读,只能用清单内的库。
 trigger_keywords: [Python, 部署, 运行, 依赖, requirements, import]
 applicable_agents: [claude, custom]

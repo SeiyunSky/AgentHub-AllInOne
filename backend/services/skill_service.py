@@ -93,6 +93,14 @@ class SkillService:
                 if not existing.description and fm.get("description"):
                     existing.description = fm["description"]
                     changed = True
+                # display_name / category 也强制同步
+                new_display_name = fm.get("display_name") or fm.get("name")
+                if new_display_name and existing.display_name != new_display_name:
+                    existing.display_name = new_display_name
+                    changed = True
+                if fm.get("category") and existing.category != fm["category"]:
+                    existing.category = fm["category"]
+                    changed = True
                 if changed:
                     logger.info("Skill scan: updated %s", name)
                     affected += 1

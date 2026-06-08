@@ -151,7 +151,7 @@ def _build_runtime_context_header(
 你可以在回复里插入表情包，格式：[MEME:表情包ID]
 可用表情包：
 {meme_lines}
-例：哈哈哈[MEME:pepe_laugh]这也太好笑了"""
+例：哈哈哈[MEME:nianjie_stifle]这也太好笑了"""
 
         collab_section = f"""【协作】
 这是 broadcast 闲聊模式。没有主 Agent 统筹，你直接面对用户消息，自己决定要不要回复。
@@ -159,7 +159,7 @@ def _build_runtime_context_header(
 回复规则：
 - 消息与你相关、你有话说 → 直接用你的角色身份回复，正常输出。
 - 消息与你无关、你不想参与 → 只输出以下这一行，不要加任何其他文字：
-  __READ_RECEIPT__
+  READ_RECEIPT
 - 若消息里有"[用户在群聊中直接 @ 了你，你必须回复]"前缀 → 必须回复，不得发已读。
 
 已读回执的判断准则（参考，不是硬规则）：
@@ -1153,9 +1153,9 @@ class ThreadService:
     ) -> bool:
         """
         判断 LLM 输出内容是否是已读回执 sentinel。
-        兼容 LLM 输出格式不严格的情况：__READ_RECEIPT__ / READ_RECEIPT 均识别。
+        判断 LLM 输出内容是否是已读回执 sentinel。
         """
-        _SENTINELS = ("__READ_RECEIPT__", "READ_RECEIPT")
+        _SENTINELS = ("READ_RECEIPT",)
         parts: list[str] = []
         for block_id in block_order:
             state = block_states.get(block_id, {})

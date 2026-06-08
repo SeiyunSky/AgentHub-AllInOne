@@ -1,5 +1,6 @@
 ---
-name: python_expert
+name: Python代码专家
+category: 代码实现
 description: Python 3.11+ / asyncio / FastAPI / SQLAlchemy 2.x / Pydantic v2 专项知识，编写或审查 Python 代码时自动激活。
 trigger_keywords: [python, 异步, asyncio, FastAPI]
 applicable_agents: [claude, custom]

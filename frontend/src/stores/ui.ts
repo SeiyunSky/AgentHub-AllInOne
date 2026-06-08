@@ -6,6 +6,8 @@ export const useUIStore = defineStore('ui', () => {
   // Sidebar
   const sidebarCollapsed = ref(false)
   const navRailCollapsed = ref(false)
+  const navRailWidth = ref(160)
+  const listPanelWidth = ref(280)
 
   function toggleNavRail() {
     navRailCollapsed.value = !navRailCollapsed.value
@@ -28,8 +30,16 @@ export const useUIStore = defineStore('ui', () => {
 
   const sidebarWidth = computed(() => {
     if (navRailCollapsed.value) return 0
-    return sidebarCollapsed.value ? 160 : 440
+    return sidebarCollapsed.value ? navRailWidth.value : navRailWidth.value + listPanelWidth.value
   })
+
+  function setNavRailWidth(w: number) {
+    navRailWidth.value = Math.max(120, Math.min(240, w))
+  }
+
+  function setListPanelWidth(w: number) {
+    listPanelWidth.value = Math.max(200, Math.min(480, w))
+  }
 
   function toggleSidebar() {
     sidebarCollapsed.value = !sidebarCollapsed.value
@@ -96,6 +106,8 @@ export const useUIStore = defineStore('ui', () => {
   return {
     navRailCollapsed,
     sidebarCollapsed,
+    navRailWidth,
+    listPanelWidth,
     chatPanePercent,
     rightPanelActiveTab,
     rightPanelVisible,
@@ -105,6 +117,8 @@ export const useUIStore = defineStore('ui', () => {
     sidebarWidth,
     toggleNavRail,
     toggleSidebar,
+    setNavRailWidth,
+    setListPanelWidth,
     openArtifact,
     closeArtifact,
     setPreviewMode,

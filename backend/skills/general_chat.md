@@ -1,5 +1,6 @@
 ---
-name: general_chat
+name: 头脑风暴
+category: 通用知识
 description: 通用对话 Skill，适合闲聊、问答、头脑风暴等非编码场景，保持自然友好的对话风格。
 trigger_keywords: [聊天, 问答, 闲聊, 帮我想, 头脑风暴]
 applicable_agents: [claude, custom]

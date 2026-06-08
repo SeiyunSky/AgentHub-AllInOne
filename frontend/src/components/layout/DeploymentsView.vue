@@ -111,7 +111,8 @@ const copied = ref(false)
 const iframeKey = ref(0)
 
 function fullUrl(rel: string): string {
-  // rel 是 /preview/{conv_id}/,显示带 host 让用户知道完整 URL
+  // 已经是绝对 URL（http://localhost:xxxx/）直接返回，否则拼 origin
+  if (rel.startsWith('http://') || rel.startsWith('https://')) return rel
   return `${window.location.origin}${rel}`
 }
 

@@ -1,5 +1,6 @@
 ---
-name: data_storytelling
+name: 数据报告输出规范
+category: 数据分析
 description: 数据分析报告的输出规范 — 先观点后证据,数字配比较,可读性优于详尽
 trigger_keywords: [报告, 结论, 总结, 数据分析]
 applicable_agents: [claude, custom]

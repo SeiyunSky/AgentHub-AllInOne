@@ -531,6 +531,28 @@ class OrchestratorService:
 
             # ---- 步 5:tool_use 派发 ----
             if has_tool_calls(response):
+                # ---- 步 5-pre：多文件写入批量审批 ----
+                # 本轮有 ≥2 个 create_file / edit_file 时合并为一个 ApprovalBlock，
+                # 避免用户一个个点审批框。单个文件写工具仍走原来的逐一 ApprovalHook。
+                _FILE_WRITE_TOOLS = {"create_file", "edit_file"}
+                file_write_calls = [c for c in response.tool_calls if c.name in _FILE_WRITE_TOOLS]
+                if len(file_write_calls) >= 2:
+                    from backend.hooks.approval import batch_request_file_approval
+                    batch_decision = await batch_request_file_approval(
+                        conversation_id=conversation_id,
+                        thread_id=thread_id,
+                        user_id=user_id,
+                        agent_id="orchestrator",
+                        calls=file_write_calls,
+                    )
+                    if batch_decision == "reject":
+                        # 批量拒绝：把所有文件写工具标为 blocked，其他工具正常走
+                        batch_blocked_ids = {c.id for c in file_write_calls}
+                    else:
+                        batch_blocked_ids: set[str] = set()
+                else:
+                    batch_blocked_ids: set[str] = set()
+
                 # 关键时序:先全部 fire PRE_TOOL_USE 拿到最终 input,**再**写 assistant_blocks
                 # 否则:assistant_blocks 用改前 input,实际执行用改后 input,
                 # messages 历史里 tool_use 块和 tool_result 的入参对不上 → LLM 看到错位易产生幻觉
@@ -539,6 +561,11 @@ class OrchestratorService:
                 # 不真正执行,直接合成 error tool_result 返回给 LLM
                 blocked_calls: dict[str, str] = {}  # call_id → block_reason
                 for call in response.tool_calls:
+                    # 批量审批已拒绝的文件写工具直接 block，跳过 ApprovalHook
+                    if call.id in batch_blocked_ids:
+                        blocked_calls[call.id] = "批量审批：用户拒绝执行该文件写入操作"
+                        resolved_calls.append((call, call.input))
+                        continue
                     pre_ctx = HookContext(
                         event=HookEvent.PRE_TOOL_USE,
                         trace_id=thread_id,
@@ -549,6 +576,11 @@ class OrchestratorService:
                         agent_id="orchestrator",
                         tool_name=call.name,
                         tool_input=call.input,
+                        # 批量审批已通过的文件写工具：告知 ApprovalHook 跳过逐一审批
+                        extra={"batch_approved": True} if (
+                            call.name in _FILE_WRITE_TOOLS and len(file_write_calls) >= 2
+                            and call.id not in batch_blocked_ids
+                        ) else {},
                     )
                     # hook_manager.fire 在任一 sync hook 返回 block 时会抛 HookBlockedException,
                     # 不会以 HookResult(decision="block") 返回。这里捕获后转成 blocked_calls,
@@ -640,6 +672,10 @@ class OrchestratorService:
                             thread_id,
                         )
 
+                    logger.info(
+                        "orchestrator %s executing tool=%s call_id=%s",
+                        thread_id, effective_call.name, effective_call.id,
+                    )
                     tool_result = await dispatch_tool_call(effective_call, ctx=tool_ctx)
 
                     # 推 BlockStop:把 status / output 落到前端 workflow,转圈停下来

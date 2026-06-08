@@ -66,6 +66,13 @@ class ReadThreadResultInput(BaseModel):
     """读取 Thread 完整结果(含中间产物)"""
 
     thread_id: str
+    text_only: bool = Field(
+        default=False,
+        description=(
+            "True 时只返回消息的纯文本内容（去掉所有元数据、id、timestamp），"
+            "节省 token / 减少被截断的风险。适合主 Agent 读取代码产出后调 create_file 的场景。"
+        ),
+    )
 
 
 class CancelThreadInput(BaseModel):
@@ -229,6 +236,12 @@ class DeployAppInput(BaseModel):
         default="app.py",
         description="入口文件名(沙箱根目录下相对路径),默认 app.py。容器内会跑 "
                     "uvicorn {entry_module}:app --host 0.0.0.0 --port 8000",
+    )
+    app_route: str = Field(
+        default="/",
+        description="应用首页路由路径，例如 '/dashboard'。"
+                    "如果应用首页不在根路径 /，需要指定实际路由，否则 iframe 预览会白屏。"
+                    "默认 '/'。",
     )
 
 

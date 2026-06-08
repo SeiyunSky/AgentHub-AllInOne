@@ -1,5 +1,6 @@
 ---
-name: web_app_development_workflow
+name: 需求至部署WEB的SOP
+category: 规则设定
 description: 从需求到部署的标准 web 应用开发 SOP。Coder / Architect / Reviewer 在 dev 群组协作时遵守这个流程。
 trigger_keywords: [开发, 实现, 写应用, 做一个, app]
 applicable_agents: [claude, custom]

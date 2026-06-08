@@ -48,7 +48,7 @@
             class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
             @click="handleApprove"
           >
-            {{ t('approval.approveButton') }}
+            {{ isBatch ? t('approval.approveAllButton', { count: batchFileCount }) : t('approval.approveButton') }}
           </button>
           <button
             v-if="!showRejectInput"
@@ -98,6 +98,15 @@ const chatStore = useChatStore()
 const showRejectInput = ref(false)
 const rejectReason = ref('')
 const reasonInput = ref<HTMLInputElement | null>(null)
+
+// batch_write_files: detail = {"files": [{op, path, size}, ...], "total": N}
+const isBatch = computed(() => props.action === 'batch_write_files')
+const batchFileCount = computed(() => {
+  if (!isBatch.value) return 0
+  try {
+    return JSON.parse(props.detail)?.total ?? 0
+  } catch { return 0 }
+})
 
 async function postDecision(decision: 'approve' | 'reject', reason?: string) {
   const convId = conversationsStore.currentId

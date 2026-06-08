@@ -38,43 +38,46 @@
       </template>
     </template>
 
-    <!-- 主体:左侧内容 + 右侧竖向 tabs -->
-    <div class="h-full flex">
-      <!-- 内容区 -->
-      <div class="flex-1 min-w-0 overflow-hidden">
-        <WorkflowView v-if="activeTab === 'workflow'" />
-        <SandboxFilesView v-else-if="activeTab === 'files'" />
-        <DeploymentsView v-else-if="activeTab === 'deployments'" />
-        <ArtifactRouter v-else :mode="previewMode" />
-      </div>
-
-      <!-- 竖向 tab 侧栏(放右边,块内容靠左) -->
-      <nav class="shrink-0 w-12 border-l border-outline-variant bg-surface-container-low/50 flex flex-col py-2 gap-1">
-        <button
-          v-for="t in tabs"
-          :key="t.id"
-          :title="t.label"
-          :disabled="t.disabled"
-          class="vertical-tab"
-          :class="[
-            activeTab === t.id ? 'vertical-tab-active' : 'vertical-tab-idle',
-            t.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
-          ]"
-          @click="!t.disabled && uiStore.setRightPanelTab(t.id)"
-        >
-          <el-icon :size="16">
-            <component :is="t.icon" />
-          </el-icon>
-          <span class="text-[9px] mt-1 leading-none">{{ t.label }}</span>
-          <!-- badge: 数量 -->
-          <span v-if="t.badge"
-                class="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-brand text-white text-[9px] font-bold flex items-center justify-center"
+    <!-- 主体:内容区 + 竖向 tabs，支持拖拽 -->
+    <Splitpanes class="splitpanes-theme" style="height: 100%">
+      <Pane :min-size="30">
+        <!-- 内容区 -->
+        <div class="h-full min-w-0 overflow-hidden">
+          <WorkflowView v-if="activeTab === 'workflow'" />
+          <SandboxFilesView v-else-if="activeTab === 'files'" />
+          <DeploymentsView v-else-if="activeTab === 'deployments'" />
+          <ArtifactRouter v-else :mode="previewMode" />
+        </div>
+      </Pane>
+      <Pane :size="6" :min-size="4" :max-size="20">
+        <!-- 竖向 tab 侧栏 -->
+        <nav class="h-full border-l border-outline-variant bg-surface-container-low/50 flex flex-col py-2 gap-1">
+          <button
+            v-for="t in tabs"
+            :key="t.id"
+            :title="t.label"
+            :disabled="t.disabled"
+            class="vertical-tab"
+            :class="[
+              activeTab === t.id ? 'vertical-tab-active' : 'vertical-tab-idle',
+              t.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+            ]"
+            @click="!t.disabled && uiStore.setRightPanelTab(t.id)"
           >
-            {{ t.badge }}
-          </span>
-        </button>
-      </nav>
-    </div>
+            <el-icon :size="16">
+              <component :is="t.icon" />
+            </el-icon>
+            <span class="text-[9px] mt-1 leading-none">{{ t.label }}</span>
+            <!-- badge: 数量 -->
+            <span v-if="t.badge"
+                  class="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-brand text-white text-[9px] font-bold flex items-center justify-center"
+            >
+              {{ t.badge }}
+            </span>
+          </button>
+        </nav>
+      </Pane>
+    </Splitpanes>
 
 
   </PanelContainer>
@@ -105,6 +108,8 @@ import {
   FolderOpened,
   Promotion,
 } from '@element-plus/icons-vue'
+import { Splitpanes, Pane } from 'splitpanes'
+import 'splitpanes/dist/splitpanes.css'
 
 const uiStore = useUIStore()
 const { t } = useI18n()

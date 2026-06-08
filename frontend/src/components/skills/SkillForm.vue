@@ -140,12 +140,7 @@ defineProps<{
   readonly?: boolean
 }>()
 
-const categoryOptions = computed(() => [
-  { value: '代码', label: t('skillForm.categoryCode') },
-  { value: '安全', label: t('skillForm.categorySecurity') },
-  { value: '领域知识', label: t('skillForm.categoryDomainKnowledge') },
-  { value: '通用', label: t('skillForm.categoryGeneral') },
-])
+const categoryOptions = ['代码实现', '数据分析', '角色扮演', '容器部署', '规则设定', '背景说明', '通用知识']
 </script>
 
 <style scoped>

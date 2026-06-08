@@ -3,7 +3,7 @@
     <!-- Left Sidebar -->
     <LeftPanel />
 
-    <!-- NavRail expand button — rendered at root level so z-index is independent -->
+    <!-- NavRail expand button -->
     <button
       v-if="uiStore.navRailCollapsed"
       class="fixed left-0 top-1/2 -translate-y-1/2 z-[100] w-5 h-14 flex items-center justify-center bg-white border border-l-0 border-outline-variant shadow-card hover:bg-surface-container hover:border-brand hover:text-brand rounded-r-xl text-on-surface-variant transition-all duration-200"
@@ -13,7 +13,7 @@
       <el-icon :size="12"><ArrowRight /></el-icon>
     </button>
 
-    <!-- Main Content Area — driven by router -->
+    <!-- Main Content Area -->
     <div
       id="main-content"
       class="flex-1 flex flex-col transition-all duration-300 overflow-hidden"

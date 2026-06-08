@@ -1,5 +1,6 @@
 ---
-name: data_analysis_workflow
+name: 数据分析师SOP
+category: 数据分析
 description: 数据分析师专用工作流 — 从加载到结论的标准 SOP,搭配 pandas/numpy/matplotlib 用
 trigger_keywords: [数据分析, 分析数据, 报表, 指标, 趋势]
 applicable_agents: [claude, custom]

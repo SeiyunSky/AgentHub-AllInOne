@@ -173,6 +173,7 @@ export default {
     waitingApproval: 'Waiting for approval...',
     rejectReasonPlaceholder: 'Reason for rejection (optional)',
     approveButton: 'Approve (Y)',
+    approveAllButton: 'Approve All ({count} files) (Y)',
     rejectButton: 'Reject (N)',
     confirmReject: 'Confirm',
     keyboardHint: 'Press Y / N',

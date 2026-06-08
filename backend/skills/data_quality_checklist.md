@@ -1,5 +1,6 @@
 ---
-name: data_quality_checklist
+name: 数据脚本自检
+category: 数据分析
 description: 数据脚本与分析结论的质量检查清单 — 给 reviewer_data 用,也给 data_analyst 自检
 trigger_keywords: [审查, 检查, 数据质量, review]
 applicable_agents: [claude, custom]
