@@ -533,6 +533,46 @@ export default {
     delete: 'Delete',
   },
 
+  // ─── App Layout ───────────────────────────────────────────────────────────────
+  appLayout: {
+    expandSidebar: 'Expand sidebar',
+  },
+
+  // ─── Chat Panel ───────────────────────────────────────────────────────────────
+  chatPanel: {
+    defaultTitle: 'Chat',
+    readyStatus: 'Ready',
+  },
+
+  // ─── Conversation Settings Extra ──────────────────────────────────────────────
+  convSettingsExtra: {
+    removeMember: 'Remove {name} from conversation',
+  },
+
+  // ─── Code Block Extra ─────────────────────────────────────────────────────────
+  codeBlockExtra: {
+    defaultLabel: 'Code',
+  },
+
+  // ─── Image Block ──────────────────────────────────────────────────────────────
+  imageBlock: {
+    defaultLabel: 'Image',
+    defaultAlt: 'Image',
+  },
+
+  // ─── Deployments Extra ────────────────────────────────────────────────────────
+  deploymentsExtra: {
+    copied: '✓ Copied',
+    activeStatus: 'ACTIVE',
+  },
+
+  // ─── Skills List ──────────────────────────────────────────────────────────────
+  skillsList: {
+    libraryTitle: 'Skills Library',
+    newSkill: 'New Skill',
+    noDescription: 'No description',
+  },
+
   // ─── Element Plus locale name ─────────────────────────────────────────────────
   lang: 'English',
 }

@@ -1,6 +1,6 @@
 <template>
   <div class="px-4 py-4">
-    <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">Skills Library</div>
+    <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">{{ t('skillsList.libraryTitle') }}</div>
     <div class="space-y-2">
       <!-- New Skill -->
       <div
@@ -13,7 +13,7 @@
         <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-light">
           <el-icon :size="16" class="text-brand"><Plus /></el-icon>
         </div>
-        <span class="text-[13px] font-medium">New Skill</span>
+        <span class="text-[13px] font-medium">{{ t('skillsList.newSkill') }}</span>
       </div>
       <!-- Skills list -->
       <div
@@ -31,7 +31,7 @@
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-[14px] font-semibold text-on-surface truncate">{{ skill.displayName || skill.name }}</p>
-            <p class="text-[11px] text-on-surface-variant truncate">{{ skill.description || 'No description' }}</p>
+            <p class="text-[11px] text-on-surface-variant truncate">{{ skill.description || t('skillsList.noDescription') }}</p>
           </div>
         </div>
       </div>
@@ -42,12 +42,14 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { MagicStick, Plus } from '@element-plus/icons-vue'
 import { useSkillsStore } from '@/stores/skills'
 
 const router = useRouter()
 const route = useRoute()
 const skillsStore = useSkillsStore()
+const { t } = useI18n()
 
 const currentSkillId = computed(() => route.params.skillId as string | undefined)
 

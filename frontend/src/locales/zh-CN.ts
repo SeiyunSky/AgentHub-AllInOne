@@ -265,7 +265,7 @@ export default {
   agentsPanel: {
     title: 'Agents',
     emptyTitle: '还没有 Agent',
-    emptyDesc: '创建你的第一个 AI Agent 开始使用，每个 Agent 可拥有独特的技能和行为。',
+    emptyDesc: '创建你的第一个 AI Agent 开始使用，每个 Agent 可拥有独特的 Skill 和行为。',
     createAgent: '创建 Agent',
     noMatch: '没有符合搜索条件的 Agent',
     filterAll: '全部',
@@ -280,11 +280,11 @@ export default {
 
   // ─── Skills 面板 ──────────────────────────────────────────────────────────────
   skillsPanel: {
-    title: '技能',
-    emptyTitle: '还没有技能',
-    emptyDesc: '创建你的第一个技能，为 Agent 定义可复用的知识和行为。',
-    createSkill: '创建技能',
-    noMatch: '没有符合筛选条件的技能',
+    title: 'Skills',
+    emptyTitle: '还没有 Skill',
+    emptyDesc: '创建你的第一个 Skill，为 Agent 定义可复用的知识和行为。',
+    createSkill: '创建 Skill',
+    noMatch: '没有符合筛选条件的 Skill',
     filterAll: '全部',
     noDescription: '暂无描述',
     tooltipActive: '活跃',
@@ -336,16 +336,16 @@ export default {
     descriptionLabel: '描述',
     descriptionPlaceholder: '简要描述此 Agent 的职责...',
     platformLabel: '平台',
-    skillsLabel: '技能',
-    addMoreSkills: '添加更多技能',
-    selectSkills: '选择技能',
+    skillsLabel: 'Skills',
+    addMoreSkills: '添加更多 Skill',
+    selectSkills: '选择 Skill',
     capabilitiesGroup: '能力',
-    skillsGroup: '技能',
+    skillsGroup: 'Skills',
     loadingSkills: '加载中...',
-    noSkillsAvailable: '暂无可用技能',
+    noSkillsAvailable: '暂无可用 Skill',
     systemPromptLabel: '系统提示词',
     markdownSupported: '支持 Markdown',
-    systemPromptPlaceholder: '### 目标\n定义 Agent 应完成的任务...\n### 技能\n列出 Agent 的核心能力...\n### 工作流\n描述 Agent 的工作方式...\n### 约束\n设定边界和限制...',
+    systemPromptPlaceholder: '### 目标\n定义 Agent 应完成的任务...\n### Skills\n列出 Agent 的核心能力...\n### 工作流\n描述 Agent 的工作方式...\n### 约束\n设定边界和限制...',
     tagsLabel: '标签',
     addTagPlaceholder: '添加标签...',
     addTagHelper: '按 Enter 添加标签',
@@ -368,18 +368,18 @@ export default {
     displayNameLabel: '显示名称',
     displayNamePlaceholder: '中文名称（可选）',
     descriptionLabel: '描述',
-    descriptionPlaceholder: '简要描述此技能的作用...',
+    descriptionPlaceholder: '简要描述此 Skill 的作用...',
     categoryLabel: '分类',
     selectCategory: '选择分类',
     contentLabel: '内容',
     markdownSupported: '支持 Markdown',
-    contentPlaceholder: '### 概述\n描述技能的目的和范围...\n### 说明\n为 Agent 提供分步指导...\n### 示例\n提供输入/输出示例...\n### 约束\n设定边界和限制...',
+    contentPlaceholder: '### 概述\n描述 Skill 的目的和范围...\n### 说明\n为 Agent 提供分步指导...\n### 示例\n提供输入/输出示例...\n### 约束\n设定边界和限制...',
     visibilityLabel: '可见性',
-    publicSkill: '公开技能',
-    publicSkillDesc: '允许其他用户发现并使用此技能',
+    publicSkill: '公开 Skill',
+    publicSkillDesc: '允许其他用户发现并使用此 Skill',
     statusLabel: '状态',
     activeLabel: '活跃',
-    disabledSkillDesc: '已禁用的技能无法被 Agent 选择',
+    disabledSkillDesc: '已禁用的 Skill 无法被 Agent 选择',
     categoryCode: '代码',
     categorySecurity: '安全',
     categoryDomainKnowledge: '领域知识',
@@ -419,10 +419,10 @@ export default {
     collapse: '收起',
     chatLabel: '聊天',
     agentsLabel: 'Agents',
-    skillsLabel: '技能',
+    skillsLabel: 'Skills',
     searchDialogTitle: '搜索',
     searchDialogConfirm: '搜索',
-    searchDialogPlaceholder: '搜索会话、Agent、技能...',
+    searchDialogPlaceholder: '搜索会话、Agent、Skill...',
   },
 
   // ─── Agent 表单面板 ───────────────────────────────────────────────────────────
@@ -449,25 +449,25 @@ export default {
 
   // ─── Skill 表单面板 ──────────────────────────────────────────────────────────
   skillFormPanel: {
-    editTitle: '编辑技能',
-    createTitle: '新建技能',
+    editTitle: '编辑 Skill',
+    createTitle: '新建 Skill',
     readonlyTag: '（只读）',
     readonlyBuiltin: '内置 Skill 不可修改',
     readonlyOther: '无权修改他人创建的 Skill',
     delete: '删除',
     cancel: '取消',
     saveChanges: '保存修改',
-    createSkill: '新建技能',
-    loadFailed: '加载技能失败',
-    deleteConfirm: '确认删除技能 "{name}"？此操作不可恢复。',
-    deleteTitle: '删除技能',
-    deleted: '技能已删除',
+    createSkill: '新建 Skill',
+    loadFailed: '加载 Skill 失败',
+    deleteConfirm: '确认删除 Skill "{name}"？此操作不可恢复。',
+    deleteTitle: '删除 Skill',
+    deleted: 'Skill 已删除',
     deleteFailed: '删除失败',
-    nameRequired: '技能名称不能为空',
-    nameFormat: '技能名称只允许小写字母、数字、连字符或下划线',
-    contentRequired: '技能内容不能为空',
-    updated: '技能已更新',
-    created: '技能已创建',
+    nameRequired: 'Skill 名称不能为空',
+    nameFormat: 'Skill 名称只允许小写字母、数字、连字符或下划线',
+    contentRequired: 'Skill 内容不能为空',
+    updated: 'Skill 已更新',
+    created: 'Skill 已创建',
     saveFailed: '保存失败',
   },
 
@@ -478,13 +478,13 @@ export default {
     closePreview: '关闭预览（返回上一个标签）',
     running: '运行中',
     idle: '待命',
-    tabWorkflow: 'Workflow',
+    tabWorkflow: '工作流',
     tabFiles: '文件',
     tabDeploy: '部署',
     tabPreview: '预览',
     titleFiles: '文件',
     titleDeployments: '部署',
-    titleWorkflow: 'Workflow',
+    titleWorkflow: '工作流',
   },
 
   // ─── 设置对话框 ───────────────────────────────────────────────────────────────
@@ -532,6 +532,46 @@ export default {
     unarchive: '取消归档',
     archive: '归档',
     delete: '删除',
+  },
+
+  // ─── 应用布局 ─────────────────────────────────────────────────────────────────
+  appLayout: {
+    expandSidebar: '展开侧栏',
+  },
+
+  // ─── 聊天面板 ─────────────────────────────────────────────────────────────────
+  chatPanel: {
+    defaultTitle: '聊天',
+    readyStatus: '就绪',
+  },
+
+  // ─── 会话设置（扩展） ─────────────────────────────────────────────────────────
+  convSettingsExtra: {
+    removeMember: '从会话移除 {name}',
+  },
+
+  // ─── 代码块（扩展） ──────────────────────────────────────────────────────────
+  codeBlockExtra: {
+    defaultLabel: '代码',
+  },
+
+  // ─── 图片块 ──────────────────────────────────────────────────────────────────
+  imageBlock: {
+    defaultLabel: '图片',
+    defaultAlt: '图片',
+  },
+
+  // ─── 部署（扩展） ────────────────────────────────────────────────────────────
+  deploymentsExtra: {
+    copied: '✓ 已复制',
+    activeStatus: '活跃',
+  },
+
+  // ─── Skills 侧栏 ─────────────────────────────────────────────────────────────
+  skillsList: {
+    libraryTitle: 'Skills 库',
+    newSkill: '新建 Skill',
+    noDescription: '暂无描述',
   },
 
   // ─── Element Plus 组件语言 ────────────────────────────────────────────────────
