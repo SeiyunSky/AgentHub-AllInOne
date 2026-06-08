@@ -308,7 +308,10 @@ async def read_thread_status(tool_input: dict[str, Any], *, ctx: ToolContext) ->
 
 @register_tool(
     name="read_thread_result",
-    description="读子 Thread 的完整产出(状态 + 子 Agent 的回复消息列表)。",
+    description=(
+        "读子 Thread 的完整产出(状态 + 子 Agent 的回复消息列表)。"
+        "text_only=true 时只返回纯文本内容，节省 token，适合读取代码文件内容后调 create_file 的场景。"
+    ),
     input_model=ReadThreadResultInput,
 )
 async def read_thread_result(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[str, Any]:
@@ -316,6 +319,9 @@ async def read_thread_result(tool_input: dict[str, Any], *, ctx: ToolContext) ->
     读取 Thread 完整结果。返回:
     - status / agent_id / 时间戳 / token / 错误
     - messages: 该 Thread 产出的所有 assistant 消息列表(序列化的 ContentBlock 数组)
+
+    text_only=True 时：只返回每条消息里 type=text 的 content 字段拼接，
+    去掉所有 id / role / created_at 等元数据，显著减少体积，降低被 16KB 截断的概率。
     """
     from backend.core.database import SessionLocal
     from backend.repositories.message_repo import MessageRepository
@@ -330,6 +336,25 @@ async def read_thread_result(tool_input: dict[str, Any], *, ctx: ToolContext) ->
         if thread is None:
             return {"error": f"Thread {parsed.thread_id} 不存在"}
         messages = MessageRepository(session).list_by_thread(parsed.thread_id)
+
+        if parsed.text_only:
+            # 只拼 text block 的纯文本，极致精简体积
+            parts: list[str] = []
+            for m in messages:
+                if not m.content:
+                    continue
+                for block in m.content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text = block.get("content", "")
+                        if text:
+                            parts.append(text)
+            return {
+                "thread_id": thread.id,
+                "status": thread.status,
+                "error_message": thread.error_message,
+                "text": "\n\n---\n\n".join(parts),
+            }
+
         return {
             "thread_id": thread.id,
             "agent_id": thread.agent_id,

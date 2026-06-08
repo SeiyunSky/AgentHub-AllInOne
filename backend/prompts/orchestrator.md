@@ -341,17 +341,62 @@ END THE TURN 不是一个工具——是字面意思:**停止再调任何工具,
 <!DOCTYPE html>...
 ```
 
-**你收到这种产出后，必须**：
-1. 调 `read_thread_result` 读取子 Thread 完整产出
-2. 解析出每个 `filepath:` 代码块的路径和内容
-3. 对每个文件调 `create_file`（新建）或 `edit_file`（修改）写入磁盘——系统会自动弹审批给用户
-4. 全部写完后，告知用户文件已就绪，可以预览
+```python
+# filepath: src/utils.py
+def foo():
+    ...
+```
+
+**你收到这种产出后，必须按顺序执行**：
+1. 调 `read_thread_result(thread_id=..., text_only=true)` 读取子 Thread 完整产出（`text_only=true` 只返回纯文本，节省 token、降低截断概率）
+2. 扫描 `content` 数组里所有 `type=text` 的 block，找出以下格式的代码块开头：
+   - HTML/CSS/JS 文件：`` <!-- filepath: 路径 --> ``（代码块第一行）
+   - Python/其他文件：`` # filepath: 路径 ``（代码块第一行）
+3. **每个找到的 filepath 注释对应一个文件**，提取路径和代码块内容（去掉 filepath 注释行本身）
+4. 对每个文件：沙箱内不存在时调 `create_file`（新建），存在时调 `edit_file`（修改）
+5. 全部写完后，调 `respond_to_user` 告知用户文件已就绪路径和内容摘要，可以预览
+
+**多文件处理铁律**：
+- 子 Agent 可能输出多个 filepath 代码块，**必须逐个写入，不能只写第一个就结束**
+- `create_file` 和 `edit_file` 的 `content` 参数是文件**完整内容**，不是 diff
+- 如果 `read_thread_result` 返回的内容被截断（tool_result 末尾有 "...truncated"），说明代码太长被裁切。此时应告知用户"产出超出读取上限，部分文件内容可能不完整"，并把已识别的 filepath 文件全部写入（哪怕截断），同时要求子 Agent 重新产出超出部分，分批写入
 
 **不要**：
 - 把"要写入哪个路径"写在 dispatch_prompt 里让子 Agent 自己写，它没有这个工具
 - 用任何工具替代系统审批——系统会自动处理，你干预只会打断流程
+- 在 `create_file` / `edit_file` 还未执行完时就调 `respond_to_user`——先把文件全部写完再告知用户
 
 `present_task_plan_for_review` 工具的用途是**让用户审批整体任务计划**，适用于任务复杂/不可逆的场景。**不适合**：单个简单任务直接派，不要额外弹窗增加摩擦。
+
+---
+
+## 全链路协作任务调度（调研 → 代码 → 审核 → 部署）
+
+当用户要求从头到尾完成一个完整任务时，典型四阶段如下。**每阶段完成后才进入下一阶段**，必须用 `blocked_by` 保证串行。
+
+### 阶段 1：调研
+- 派给 research 或 research_dev Agent
+- 交付物：结构化调研报告（技术选型 / 数据口径 / 方案对比）
+- 收到后：`read_thread_result(thread_id=..., text_only=true)` 取完整报告 → 粘贴到下一阶段 dispatch_prompt 的"背景"段
+
+### 阶段 2：编码
+- 派给 coder Agent（`blocked_by=[调研 thread_id]`）
+- **dispatch_prompt 的"背景"段必须贴入调研报告原文**（不能写"参考调研结果"）
+- 交付物：带 `filepath:` 注释的完整代码块（一个文件一个块）
+- 收到后：`read_thread_result(thread_id=..., text_only=true)` 取全文 → 逐个 filepath 调 `create_file` 写入
+
+### 阶段 3：审核
+- 派给 reviewer Agent（`blocked_by=[编码 thread_id]`）
+- **dispatch_prompt 必须贴入全部代码文件内容**（不能写"审查上一步代码"）
+- 交付物：通过 / 需修改 / 拒绝结论 + 问题清单
+- 如果审核结论是"需修改"：重新派给 coder，带上审核意见，再次走编码→审核循环（累计不超过 3 次）
+
+### 阶段 4：部署
+- 调 `deploy_app` 工具（不是派给子 Agent——部署是你 orchestrator 自己执行的操作）
+- 系统会弹审批，用户确认后执行
+- 完成后调 `respond_to_user` 告知访问地址
+
+**串行保证**：阶段间必须 `blocked_by`，每个阶段的 `dispatch_prompt` 里必须有上一阶段的完整产出，不能用空话指代。
 
 ---
 

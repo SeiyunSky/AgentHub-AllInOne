@@ -66,6 +66,13 @@ class ReadThreadResultInput(BaseModel):
     """读取 Thread 完整结果(含中间产物)"""
 
     thread_id: str
+    text_only: bool = Field(
+        default=False,
+        description=(
+            "True 时只返回消息的纯文本内容（去掉所有元数据、id、timestamp），"
+            "节省 token / 减少被截断的风险。适合主 Agent 读取代码产出后调 create_file 的场景。"
+        ),
+    )
 
 
 class CancelThreadInput(BaseModel):
