@@ -1247,8 +1247,10 @@ async def deploy_app(tool_input: dict[str, Any], *, ctx: ToolContext) -> dict[st
         }
 
     # Step 8: 成功 —— 返回 URL
-    # URL 是 AgentHub reverse proxy 路径,需要 Phase 2.D 接通才能真访问
-    url = f"/preview/{ctx.conversation_id}/"
+    # 直接用 Docker 映射出来的宿主机端口，浏览器直连不经过反向代理
+    route = (parsed.app_route or "/").lstrip("/")
+    base = f"http://localhost:{handle.host_port}"
+    url = f"{base}/{route}" if route else f"{base}/"
     accumulated_logs.append(f"[deploy_app] healthy at {url}")
     logger.info(
         "deploy_app success conv=%s entry=%s url=%s",

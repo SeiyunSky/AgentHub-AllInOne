@@ -237,6 +237,12 @@ class DeployAppInput(BaseModel):
         description="入口文件名(沙箱根目录下相对路径),默认 app.py。容器内会跑 "
                     "uvicorn {entry_module}:app --host 0.0.0.0 --port 8000",
     )
+    app_route: str = Field(
+        default="/",
+        description="应用首页路由路径，例如 '/dashboard'。"
+                    "如果应用首页不在根路径 /，需要指定实际路由，否则 iframe 预览会白屏。"
+                    "默认 '/'。",
+    )
 
 
 class StopAppInput(BaseModel):
