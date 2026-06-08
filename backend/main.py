@@ -170,6 +170,19 @@ async def lifespan(app: FastAPI):
         logger.info("seed_agents: %d rows affected", n_agents)
 
         await adapter_registry.seed_from_db(db)
+
+        # 加载 orchestrator 自己的 MCP 客户端，重建单例以注入
+        try:
+            from backend.adapters.registry import connect_mcp_clients_for_agent
+            from backend.services.orchestrator.service import orchestrator_service as _orch_svc
+            orch_mcp_clients = await connect_mcp_clients_for_agent("orchestrator", db)
+            _orch_svc._mcp_clients = orch_mcp_clients
+            logger.info(
+                "orchestrator MCP clients loaded: %d server(s)",
+                len(orch_mcp_clients),
+            )
+        except Exception:
+            logger.exception("orchestrator MCP client init failed (non-fatal)")
     except Exception:
         logger.exception("seed / skill scan / adapter seed failed (non-fatal)")
     finally:

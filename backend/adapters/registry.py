@@ -91,6 +91,16 @@ class AdapterRegistry:
 # Factory
 # ---------------------------------------------------------------------------
 
+async def connect_mcp_clients_for_agent(agent_id: str, db: "Session") -> list[MCPClient]:
+    """Load and connect MCP servers for the given agent_id.
+
+    Public helper used by OrchestratorService at startup so the orchestrator
+    can call MCP tools directly (without going through an AgentAdapter).
+    """
+    mcp_servers = _load_mcp_servers(agent_id, db)
+    return await _connect_mcp_clients(agent_id, mcp_servers)
+
+
 async def _connect_mcp_clients(agent_id: str, mcp_servers) -> list[MCPClient]:
     """Connect MCP servers and return live MCPClient instances (for API-based adapters)."""
     clients: list[MCPClient] = []

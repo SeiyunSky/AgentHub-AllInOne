@@ -1,5 +1,5 @@
 <template>
-  <nav class="w-[160px] h-full flex flex-col py-4 shrink-0 border-r border-rail-border relative overflow-hidden"
+  <nav class="w-full h-full flex flex-col py-4 shrink-0 border-r border-rail-border relative overflow-hidden"
        :style="{
          background: `linear-gradient(180deg, var(--color-rail-bg) 0%, var(--color-rail-surface) 60%, var(--color-rail-bg) 100%)`
        }">    <!-- subtle grid texture -->

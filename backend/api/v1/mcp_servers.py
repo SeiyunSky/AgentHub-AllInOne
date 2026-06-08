@@ -64,6 +64,13 @@ def _assert_agent_writable(agent, user_id: str) -> None:
 
 
 async def _rebuild_adapter(agent_id: str, agent, db) -> None:
+    if agent_id == "orchestrator":
+        from backend.services.orchestrator.service import reload_orchestrator_mcp_clients
+        try:
+            await reload_orchestrator_mcp_clients(db)
+        except Exception:
+            logger.warning("mcp_servers change: reload orchestrator MCP clients failed")
+        return
     from backend.adapters.registry import registry, _build_adapter
     try:
         registry.register(agent_id, await _build_adapter(agent, db))
