@@ -93,6 +93,8 @@ class ClaudeAdapter(AgentAdapter):
                 # Claude CLI 非交互模式默认拒绝 MCP 工具调用，需显式授权
                 cmd += ["--allowedTools", "mcp__*"]
 
+        logger.debug("CCADAPTER CMD : %s", cmd)
+
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -300,30 +302,44 @@ def _build_system_prompt(base: str | None, skills: list) -> str:
 def _write_mcp_config(mcp_configs: list[MCPServerConfig]) -> str | None:
     """Write a temporary --mcp-config JSON file for the Claude CLI.
 
-    Claude CLI format:
-        {"mcpServers": {"<server_id>": {"command": "...", "args": [...], "env": {...}}}}
-
-    Only stdio transports are supported by Claude CLI's --mcp-config.
-    SSE entries are skipped with a warning.
+    Claude CLI format (supports both stdio and SSE/http):
+        {"mcpServers": {
+            "<server_id>": {
+                "type": "stdio",
+                "command": "...", "args": [...], "env": {...}
+            },
+            "<server_id>": {
+                "type": "http",
+                "url": "http://...", "headers": {...}
+            }
+        }}
 
     Returns the temp file path, or None if nothing was written.
     """
     servers: dict = {}
     for cfg in mcp_configs:
-        if cfg.transport != "stdio":
+        if cfg.transport == "stdio":
+            if not cfg.command:
+                logger.warning("ClaudeAdapter: stdio MCP server '%s' has no command, skipping", cfg.server_id)
+                continue
+            entry: dict = {"type": "stdio", "command": cfg.command, "args": cfg.args}
+            if cfg.env:
+                entry["env"] = cfg.env
+            servers[cfg.server_id] = entry
+        elif cfg.transport == "sse":
+            if not cfg.url:
+                logger.warning("ClaudeAdapter: sse MCP server '%s' has no url, skipping", cfg.server_id)
+                continue
+            entry: dict = {"type": "sse", "url": cfg.url}
+            if cfg.headers:
+                entry["headers"] = cfg.headers
+            servers[cfg.server_id] = entry
+        else:
             logger.warning(
-                "ClaudeAdapter: MCP server '%s' uses transport '%s' — "
-                "only stdio is supported via --mcp-config, skipping",
+                "ClaudeAdapter: MCP server '%s' has unknown transport '%s', skipping",
                 cfg.server_id, cfg.transport,
             )
             continue
-        if not cfg.command:
-            logger.warning("ClaudeAdapter: stdio MCP server '%s' has no command, skipping", cfg.server_id)
-            continue
-        entry: dict = {"command": cfg.command, "args": cfg.args}
-        if cfg.env:
-            entry["env"] = cfg.env
-        servers[cfg.server_id] = entry
 
     if not servers:
         return None
