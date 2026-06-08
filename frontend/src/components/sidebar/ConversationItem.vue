@@ -79,10 +79,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { MoreFilled, Edit, Aim, Promotion, Folder, FolderOpened, Delete } from '@element-plus/icons-vue'
 import { useConversationsStore } from '@/stores/conversations'
 import { useRouter } from 'vue-router'
 import type { ConversationListItem } from '@/types/conversation'
+
+const { t } = useI18n()
 
 const props = defineProps<{ conv: ConversationListItem }>()
 const emit = defineEmits<{
@@ -144,9 +147,9 @@ function getInitials(name: string) {
 
 async function handleDelete() {
   try {
-    await ElMessageBox.confirm('确认删除该会话？此操作不可恢复。', '删除会话', {
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('conversation.deleteConfirm'), t('conversation.deleteTitle'), {
+      confirmButtonText: t('conversation.deleteTitle'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning',
       confirmButtonClass: 'el-button--danger',
       customStyle: { borderRadius: '16px' },
@@ -160,7 +163,7 @@ async function handleDelete() {
       router.push({ name: 'chat' })
     }
   } catch {
-    ElMessage({ message: '删除失败，请重试', type: 'error', duration: 2000, plain: true })
+    ElMessage({ message: t('conversation.deleteFailed'), type: 'error', duration: 2000, plain: true })
   }
 }
 

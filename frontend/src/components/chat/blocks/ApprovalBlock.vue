@@ -13,12 +13,12 @@
       <!-- Status indicators -->
       <div v-if="status === 'approved'" class="flex items-center gap-1.5 text-[11px] text-emerald-600">
         <el-icon :size="12"><CircleCheck /></el-icon>
-        <span>Approved{{ decidedAt ? ' at ' + formatTime(decidedAt) : '' }}</span>
+        <span>{{ decidedAt ? t('approval.approvedAt', { time: formatTime(decidedAt) }) : t('approval.approved') }}</span>
       </div>
       <div v-else-if="status === 'rejected'" class="space-y-1">
         <div class="flex items-center gap-1.5 text-[11px] text-red-600">
           <el-icon :size="12"><CircleClose /></el-icon>
-          <span>Rejected{{ decidedAt ? ' at ' + formatTime(decidedAt) : '' }}</span>
+          <span>{{ decidedAt ? t('approval.rejectedAt', { time: formatTime(decidedAt) }) : t('approval.rejected') }}</span>
         </div>
         <p v-if="rejectReason" class="text-[11px] text-red-500 pl-5">{{ rejectReason }}</p>
       </div>
@@ -27,7 +27,7 @@
       <div v-else class="space-y-2">
         <div class="flex items-center gap-1.5 text-[11px] text-amber-600">
           <el-icon class="animate-pulse" :size="12"><Warning /></el-icon>
-          <span>Waiting for approval...</span>
+          <span>{{ t('approval.waitingApproval') }}</span>
         </div>
 
         <!-- Reject reason input -->
@@ -36,7 +36,7 @@
             ref="reasonInput"
             v-model="rejectReason"
             type="text"
-            placeholder="Reason for rejection (optional)"
+            :placeholder="t('approval.rejectReasonPlaceholder')"
             class="w-full px-3 py-1.5 text-[12px] border border-red-200 rounded-lg focus:outline-none focus:border-red-400 bg-white"
             @keydown.enter="confirmReject"
             @keydown.escape="showRejectInput = false"
@@ -48,23 +48,23 @@
             class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
             @click="handleApprove"
           >
-            Approve (Y)
+            {{ t('approval.approveButton') }}
           </button>
           <button
             v-if="!showRejectInput"
             class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer"
             @click="showRejectInput = true; nextTick(() => reasonInput?.focus())"
           >
-            Reject (N)
+            {{ t('approval.rejectButton') }}
           </button>
           <button
             v-else
             class="px-4 py-1.5 text-[12px] font-medium rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer"
             @click="confirmReject"
           >
-            Confirm
+            {{ t('approval.confirmReject') }}
           </button>
-          <span class="text-[10px] text-amber-600 ml-auto">Press Y / N</span>
+          <span class="text-[10px] text-amber-600 ml-auto">{{ t('approval.keyboardHint') }}</span>
         </div>
       </div>
     </div>
@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Warning, CircleCheck, CircleClose, Lock } from '@element-plus/icons-vue'
 import CollapsibleBlock from './CollapsibleBlock.vue'
 import ApprovalDetail from './ApprovalDetail.vue'
@@ -90,6 +91,7 @@ const props = defineProps<{
   rejectReason?: string
 }>()
 
+const { t } = useI18n()
 const conversationsStore = useConversationsStore()
 const chatStore = useChatStore()
 

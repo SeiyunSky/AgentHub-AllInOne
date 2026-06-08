@@ -14,6 +14,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { MagicStick } from '@element-plus/icons-vue'
 import CollapsibleBlock from './CollapsibleBlock.vue'
 
@@ -25,7 +26,9 @@ const props = withDefaults(defineProps<{
   defaultExpanded: false,
 })
 
-const label = computed(() => 'Thinking')
+const { t } = useI18n()
+
+const label = computed(() => t('thinking.label'))
 
 const durationText = computed(() => {
   if (!props.duration) return ''

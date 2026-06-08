@@ -31,7 +31,7 @@
         class="!text-[11px] !text-brand !px-1.5 !py-0.5"
         @click="onOpen"
       >
-        Full Preview
+        {{ t('previewCard.fullPreview') }}
       </el-button>
     </div>
   </div>
@@ -39,6 +39,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DOMPurify from 'dompurify'
 import { useArtifactPreview } from '@/composables/useArtifactPreview'
 import type { ArtifactItem } from '@/types/artifact'
@@ -49,6 +50,7 @@ const props = defineProps<{
   itemIndex: number
 }>()
 
+const { t } = useI18n()
 const { openArtifact } = useArtifactPreview()
 
 const localRendererType = computed(() => {

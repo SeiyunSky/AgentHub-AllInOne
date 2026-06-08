@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import type { ContentBlock, MessageResponse } from '@/types/api'
 import type { AgentMessage, Message, UIBlock, UIApprovalBlock, ReplyPreview } from '@/types/chat'
 import { useConversationsStore } from '@/stores/conversations'
+import { i18n } from '@/i18n'
 
 type StreamingBlock = UIBlock & { block_id?: string }
 
@@ -532,7 +533,7 @@ export const useChatStore = defineStore('chat', () => {
     const streaming = inner?.get(agentId)
     if (streaming) {
       // 错误信息追加为 text block
-      streaming.blocks = [...streaming.blocks, { type: 'text', content: `\n\n[错误] ${error}` }]
+      streaming.blocks = [...streaming.blocks, { type: 'text', content: `\n\n${i18n.global.t('sse.errorPrefix')}${error}` }]
     }
     commitAgentStreaming(convId, agentId)
     markThreadError(convId, agentId, error)

@@ -5,6 +5,7 @@ import { useConversationsStore } from '@/stores/conversations'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useSandboxFilesStore } from '@/stores/sandboxFiles'
 import { useDeploymentsStore } from '@/stores/deployments'
+import { i18n } from '@/i18n'
 import type { SSEEvent } from '@/types/api'
 
 const controllers = ref<Map<string, AbortController>>(new Map())
@@ -115,7 +116,7 @@ function handleEvent(convId: string, event: SSEEvent) {
             active: status === 'running',
             startedAt: Date.now(),
             logs: out?.logs ?? '',
-            errorMessage: status === 'error' ? (out?.error ?? '部署失败') : undefined,
+            errorMessage: status === 'error' ? (out?.error ?? i18n.global.t('deployments.deployFailed')) : undefined,
           })
         } catch (e) {
           console.warn('[SSE] deploy_app result parse failed', e)

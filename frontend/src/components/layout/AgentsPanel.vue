@@ -1,5 +1,5 @@
 <template>
-  <PanelContainer title="Agents" :icon="User" variant="brand">
+  <PanelContainer :title="t('agentsPanel.title')" :icon="User" variant="brand">
     <!-- Content area -->
     <div class="p-6 overflow-y-auto h-full custom-scrollbar">
 
@@ -26,13 +26,13 @@
         <div class="w-20 h-20 rounded-3xl bg-gradient-to-br from-brand-light to-brand-subtle flex items-center justify-center mb-5 shadow-soft">
           <el-icon :size="36" class="text-brand"><User /></el-icon>
         </div>
-        <h3 class="text-[16px] font-semibold text-on-surface mb-1.5">No agents yet</h3>
+        <h3 class="text-[16px] font-semibold text-on-surface mb-1.5">{{ t('agentsPanel.emptyTitle') }}</h3>
         <p class="text-[13px] text-on-surface-variant mb-5 text-center max-w-[260px]">
-          Create your first AI agent to get started. Each agent can have unique skills and behaviors.
+          {{ t('agentsPanel.emptyDesc') }}
         </p>
         <button class="btn-create" @click="router.push({ name: 'agent-create' })">
           <el-icon :size="14"><Plus /></el-icon>
-          Create Agent
+          {{ t('agentsPanel.createAgent') }}
         </button>
       </div>
 
@@ -42,7 +42,7 @@
         class="flex flex-col items-center justify-center h-64 text-on-surface-variant fade-in-up"
       >
         <el-icon :size="32" class="opacity-30 mb-3"><Search /></el-icon>
-        <p class="text-[13px]">No agents match your search</p>
+        <p class="text-[13px]">{{ t('agentsPanel.noMatch') }}</p>
       </div>
 
       <!-- Loading skeleton -->
@@ -90,12 +90,12 @@
               <div
                 class="shrink-0 mt-1.5"
                 :class="agent.isActive ? 'status-dot-active agent-pulse' : 'status-dot-inactive'"
-                :title="agent.isActive ? 'Active' : 'Inactive'"
+                :title="agent.isActive ? t('agentsPanel.tooltipActive') : t('agentsPanel.tooltipInactive')"
               ></div>
             </div>
 
             <p class="text-[12px] text-on-surface-variant line-clamp-2 mb-3 min-h-[32px]">
-              {{ agent.description || 'No description' }}
+              {{ agent.description || t('agentsPanel.noDescription') }}
             </p>
 
             <AgentCapabilityTags :capabilities="agent.capabilities" />
@@ -133,6 +133,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { User, Plus, Search } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
@@ -140,19 +141,20 @@ import AgentCapabilityTags from '@/components/agents/AgentCapabilityTags.vue'
 import AgentBuilderDialog from '@/components/agents/AgentBuilderDialog.vue'
 import { getAgentTypeIcon } from '@/utils/agentIcons'
 
+const { t } = useI18n()
 const router = useRouter()
 const agentsStore = useAgentsStore()
 
 const showBuilderDialog = ref(false)
 const activeFilter = ref('all')
 
-const filterOptions = [
-  { label: 'All', value: 'all' },
-  { label: 'Active', value: 'active' },
-  { label: 'Claude', value: 'claude' },
-  { label: 'Codex', value: 'codex' },
-  { label: 'Custom', value: 'custom' },
-]
+const filterOptions = computed(() => [
+  { label: t('agentsPanel.filterAll'), value: 'all' },
+  { label: t('agentsPanel.filterActive'), value: 'active' },
+  { label: t('agentsPanel.filterClaude'), value: 'claude' },
+  { label: t('agentsPanel.filterCodex'), value: 'codex' },
+  { label: t('agentsPanel.filterCustom'), value: 'custom' },
+])
 
 const filteredAgents = computed(() => {
   const agents = agentsStore.agents

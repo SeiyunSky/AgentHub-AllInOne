@@ -42,7 +42,7 @@
               <span v-if="squad.agents.length > 0" class="text-[10px] text-on-surface-variant">
                 {{ squad.agents.map(a => a.name).join(' · ') }}
               </span>
-              <span v-else class="text-[10px] text-on-surface-variant italic">暂无预设成员</span>
+              <span v-else class="text-[10px] text-on-surface-variant italic">{{ t('newChat.noPresetMembers') }}</span>
             </div>
           </button>
         </div>
@@ -76,7 +76,7 @@
             <span class="text-[13px]">⚙️</span>
             <div class="text-left">
               <p class="text-[12px] font-semibold leading-tight">Task</p>
-              <p class="text-[10px] text-on-surface-variant leading-tight">Orchestrator 统筹任务</p>
+              <p class="text-[10px] text-on-surface-variant leading-tight">{{ t('newChat.taskModeDesc') }}</p>
             </div>
           </button>
           <button
@@ -87,7 +87,7 @@
             <span class="text-[13px]">💬</span>
             <div class="text-left">
               <p class="text-[12px] font-semibold leading-tight">Broadcast</p>
-              <p class="text-[10px] text-on-surface-variant leading-tight">闲聊，各自回复</p>
+              <p class="text-[10px] text-on-surface-variant leading-tight">{{ t('newChat.broadcastModeDesc') }}</p>
             </div>
           </button>
         </div>
@@ -173,7 +173,7 @@
     <!-- Footer -->
     <template #footer>
       <div class="flex justify-end gap-2.5 pt-2">
-        <button class="btn-cancel" @click="close">Cancel</button>
+        <button class="btn-cancel" @click="close">{{ t('common.cancel') }}</button>
         <button
           class="btn-create"
           :class="{ 'btn-create-disabled': !canCreate }"
@@ -190,6 +190,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Close, Plus, ChatDotRound, EditPen, Loading } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
 import { useConversationsStore } from '@/stores/conversations'
@@ -206,6 +207,7 @@ const emit = defineEmits<{
 
 const agentsStore = useAgentsStore()
 const conversationsStore = useConversationsStore()
+const { t } = useI18n()
 
 const visible = computed({
   get: () => props.modelValue,

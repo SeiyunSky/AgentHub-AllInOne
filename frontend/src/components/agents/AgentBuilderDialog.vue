@@ -14,8 +14,8 @@
           <el-icon :size="18" class="text-white"><MagicStick /></el-icon>
         </div>
         <div>
-          <h3 class="text-[15px] font-semibold text-on-surface leading-tight">Build with AI</h3>
-          <p class="text-[11px] text-on-surface-variant">Describe your agent and I'll generate it</p>
+          <h3 class="text-[15px] font-semibold text-on-surface leading-tight">{{ t('agentBuilder.title') }}</h3>
+          <p class="text-[11px] text-on-surface-variant">{{ t('agentBuilder.subtitle') }}</p>
         </div>
       </div>
     </template>
@@ -82,7 +82,7 @@
           <input
             v-model="input"
             type="text"
-            placeholder="Describe the agent you want to build..."
+            :placeholder="t('agentBuilder.inputPlaceholder')"
             class="w-full pl-4 pr-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low text-[13px] outline-none transition-all focus:border-brand focus:bg-white focus:shadow-[0_0_0_3px_rgba(59,130,246,0.08)]"
             :disabled="isThinking"
             @keyup.enter="sendMessage"
@@ -101,14 +101,14 @@
 
     <template #footer>
       <div class="flex justify-end gap-2.5">
-        <button class="btn-cancel" @click="handleClose">Cancel</button>
+        <button class="btn-cancel" @click="handleClose">{{ t('agentBuilder.cancel') }}</button>
         <button
           class="btn-create"
           :class="{ 'btn-create-disabled': !draft }"
           :disabled="!draft"
           @click="confirmDraft"
         >
-          Use This Agent
+          {{ t('agentBuilder.useAgent') }}
         </button>
       </div>
     </template>
@@ -118,10 +118,13 @@
 <script setup lang="ts">
 import { ref, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { User, MagicStick, Loading, Promotion } from '@element-plus/icons-vue'
 import type { AgentDraft } from '@/types/agent'
 import { agentsApi } from '@/api/agents'
 import type { AgentBuildDraft } from '@/api/agents'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: boolean
@@ -142,7 +145,7 @@ const messages = ref<ChatMessage[]>([
   {
     id: '0',
     role: 'assistant',
-    content: 'Hi! Describe the agent you want to build and I\'ll generate a configuration for you. For example: "A customer support agent that handles refund requests professionally."',
+    content: t('agentBuilder.greetingInitial'),
   },
 ])
 const input = ref('')
@@ -156,7 +159,7 @@ watch(() => props.modelValue, (open) => {
     messages.value = [{
       id: '0',
       role: 'assistant',
-      content: 'Hi! Describe the agent you want to build and I\'ll generate a configuration for you.',
+      content: t('agentBuilder.greetingSimple'),
     }]
     draft.value = null
     sessionId.value = null
@@ -180,15 +183,15 @@ async function sendMessage() {
     messages.value.push({
       id: String(Date.now() + 1),
       role: 'assistant',
-      content: `I've drafted an agent called "${result.draft.name}". You can review it above and click "Use This Agent" to create it, or keep chatting to refine.`,
+      content: t('agentBuilder.draftConfirmation', { name: result.draft.name }),
     })
   } catch {
     messages.value.push({
       id: String(Date.now() + 1),
       role: 'assistant',
-      content: 'Sorry, I had trouble generating the agent. Please try again.',
+      content: t('agentBuilder.errorGeneration'),
     })
-    ElMessage.error('Build request failed')
+    ElMessage.error(t('agentBuilder.errorBuildFailed'))
   } finally {
     isThinking.value = false
     await scrollToBottom()

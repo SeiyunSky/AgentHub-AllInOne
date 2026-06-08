@@ -44,6 +44,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { ChatRound, DocumentCopy, Select } from '@element-plus/icons-vue'
 
@@ -61,6 +62,7 @@ const emit = defineEmits<{
 }>()
 
 const copied = ref(false)
+const { t } = useI18n()
 
 function handleCopy() {
   navigator.clipboard.writeText(props.content)
@@ -73,10 +75,10 @@ function handleReact(type: 'like' | 'dislike') {
   const isToggleOff = props.reaction === type
   emit('react', props.messageId, type)
   if (isToggleOff) {
-    ElMessage({ message: '已撤销反馈', type: 'info', duration: 1500, plain: true })
+    ElMessage({ message: t('chat.feedbackWithdrawn'), type: 'info', duration: 1500, plain: true })
   } else {
     ElMessage({
-      message: type === 'like' ? '👍 反馈已提交' : '👎 反馈已提交',
+      message: type === 'like' ? t('chat.feedbackThumbsUp') : t('chat.feedbackThumbsDown'),
       type: 'success',
       duration: 1500,
       plain: true,

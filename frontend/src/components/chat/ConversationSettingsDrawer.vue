@@ -15,7 +15,7 @@
             <el-icon :size="18" class="text-brand"><Setting /></el-icon>
           </div>
           <div>
-            <h3 class="text-[15px] font-semibold text-on-surface leading-tight">会话设置</h3>
+            <h3 class="text-[15px] font-semibold text-on-surface leading-tight">{{ t('conversationSettings.title') }}</h3>
             <p class="text-[11px] text-on-surface-variant truncate max-w-[300px]">{{ conversationTitle }}</p>
           </div>
         </div>
@@ -34,20 +34,20 @@
       <!-- ── 群成员管理 ── -->
       <section>
         <div class="flex items-center justify-between mb-3">
-          <h4 class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest">群成员 ({{ members.length }})</h4>
+          <h4 class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest">{{ t('conversationSettings.members') }} ({{ members.length }})</h4>
           <button
             class="text-[11px] font-medium text-brand hover:underline inline-flex items-center gap-1"
             @click="showAddPicker = !showAddPicker"
           >
             <el-icon :size="11"><Plus /></el-icon>
-            {{ showAddPicker ? '收起' : '添加成员' }}
+            {{ showAddPicker ? t('collapsible.collapse') : t('conversationSettings.addMember') }}
           </button>
         </div>
 
         <!-- 添加 Agent 选择器 -->
         <div v-if="showAddPicker" class="mb-3 p-3 rounded-xl bg-surface-container/60 border border-outline-variant space-y-1">
           <div v-if="addableAgents.length === 0" class="text-[12px] text-on-surface-variant text-center py-3">
-            没有可添加的 Agent
+            {{ t('conversationSettings.noAgentsToAdd') }}
           </div>
           <div
             v-for="agent in addableAgents"
@@ -92,7 +92,7 @@
                 <span
                   v-if="member.id === 'orchestrator'"
                   class="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase bg-brand text-white"
-                >系统 · 群主</span>
+                >{{ t('conversationSettings.orchestratorLabel') }}</span>
                 <span
                   v-else
                   class="text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase"
@@ -102,7 +102,7 @@
               <div class="text-[10px] text-on-surface-variant mt-0.5 tabular-nums">
                 <span class="text-brand font-medium">{{ formatNum(tokensFor(member.id).input) }}</span> in /
                 <span class="text-success font-medium">{{ formatNum(tokensFor(member.id).output) }}</span> out ·
-                {{ tokensFor(member.id).count }} 条消息
+                {{ tokensFor(member.id).count }} {{ t('conversationSettings.messages') }}
               </div>
             </div>
             <button
@@ -119,7 +119,7 @@
 
       <!-- ── Token 用量 ── -->
       <section>
-        <h4 class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-3">Token 用量</h4>
+        <h4 class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-3">{{ t('conversationSettings.tokenUsage') }}</h4>
 
         <div v-if="loadingTokens" class="text-[12px] text-on-surface-variant text-center py-6">
           加载中...
@@ -129,15 +129,15 @@
           <!-- 总用量大数字 -->
           <div class="p-4 rounded-xl bg-gradient-to-br from-brand-light to-brand-subtle border border-brand/10 mb-3">
             <div class="flex items-baseline gap-2">
-              <span class="text-[11px] font-semibold text-brand uppercase tracking-wider">总 Token 用量</span>
+              <span class="text-[11px] font-semibold text-brand uppercase tracking-wider">{{ t('conversationSettings.totalToken') }}</span>
             </div>
             <div class="text-[28px] font-bold text-brand-dark mt-1 tabular-nums leading-none">
               {{ formatNum(totalTokens) }}
             </div>
             <div class="text-[10px] text-on-surface-variant mt-2 tabular-nums">
-              <span class="text-brand font-medium">{{ formatNum(tokenUsage?.total.tokens_input ?? 0) }}</span> 输入
+              <span class="text-brand font-medium">{{ formatNum(tokenUsage?.total.tokens_input ?? 0) }}</span> {{ t('conversationSettings.inputToken') }}
               <span class="mx-1.5 opacity-40">·</span>
-              <span class="text-success font-medium">{{ formatNum(tokenUsage?.total.tokens_output ?? 0) }}</span> 输出
+              <span class="text-success font-medium">{{ formatNum(tokenUsage?.total.tokens_output ?? 0) }}</span> {{ t('conversationSettings.outputToken') }}
             </div>
           </div>
 
@@ -152,11 +152,11 @@
               <div class="flex-1 min-w-0">
                 <div class="text-[12px] font-medium text-on-surface truncate">{{ row.agent_name }}</div>
                 <div class="text-[10px] text-on-surface-variant mt-0.5">
-                  <span>{{ formatNum(row.tokens_input) }} 输入</span>
+                  <span>{{ formatNum(row.tokens_input) }} {{ t('conversationSettings.inputToken') }}</span>
                   <span class="mx-1 opacity-40">·</span>
-                  <span>{{ formatNum(row.tokens_output) }} 输出</span>
+                  <span>{{ formatNum(row.tokens_output) }} {{ t('conversationSettings.outputToken') }}</span>
                   <span class="mx-1 opacity-40">·</span>
-                  <span>{{ row.messages_count }} 条</span>
+                  <span>{{ row.messages_count }} {{ t('conversationSettings.messages') }}</span>
                 </div>
               </div>
               <span class="text-brand-dark font-bold tabular-nums">
@@ -165,7 +165,7 @@
             </div>
           </div>
           <div v-else class="text-[11px] text-on-surface-variant text-center py-4">
-            本会话还没有 token 消耗
+            {{ t('conversationSettings.noTokenUsage') }}
           </div>
         </template>
       </section>
@@ -179,7 +179,7 @@
           @click="loadTokenUsage"
         >
           <el-icon :size="11"><Refresh /></el-icon>
-          刷新用量
+          {{ t('conversationSettings.refreshUsage') }}
         </button>
       </div>
     </template>
@@ -188,6 +188,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Close, Plus, Delete, Setting, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { useConversationsStore } from '@/stores/conversations'
@@ -211,10 +212,11 @@ const visible = computed({
 
 const conversationsStore = useConversationsStore()
 const agentsStore = useAgentsStore()
+const { t } = useI18n()
 
 const conversationTitle = computed(() => {
   const conv = conversationsStore.conversations.find(c => c.id === props.conversationId)
-  return conv?.title ?? '未命名会话'
+  return conv?.title ?? t('conversationSettings.unnamedSession')
 })
 
 const members = computed<AgentMember[]>(() => {
@@ -318,10 +320,10 @@ async function onAdd(agentId: string) {
     await conversationsApi.addAgent(props.conversationId, agentId)
     await refreshConversation()
     showAddPicker.value = false
-    ElMessage({ message: '已添加', type: 'success', duration: 1500, plain: true })
+    ElMessage({ message: t('conversationSettings.memberAdded'), type: 'success', duration: 1500, plain: true })
   } catch (err) {
     console.error(err)
-    ElMessage({ message: '添加失败,请重试', type: 'error', duration: 2000, plain: true })
+    ElMessage({ message: t('conversationSettings.addFailed'), type: 'error', duration: 2000, plain: true })
   }
 }
 
@@ -329,10 +331,10 @@ async function onRemove(agentId: string) {
   try {
     await conversationsApi.removeAgent(props.conversationId, agentId)
     await refreshConversation()
-    ElMessage({ message: '已移除', type: 'success', duration: 1500, plain: true })
+    ElMessage({ message: t('conversationSettings.memberRemoved'), type: 'success', duration: 1500, plain: true })
   } catch (err) {
     console.error(err)
-    ElMessage({ message: '移除失败,请重试', type: 'error', duration: 2000, plain: true })
+    ElMessage({ message: t('conversationSettings.removeFailed'), type: 'error', duration: 2000, plain: true })
   }
 }
 

@@ -29,19 +29,19 @@
 
       <!-- Logs preview -->
       <div v-if="logs" class="text-[11px]">
-        <span class="text-on-surface-variant font-medium">Logs:</span>
+        <span class="text-on-surface-variant font-medium">{{ t('deploymentBlock.labelLogs') }}</span>
         <pre class="mt-1 text-slate-600 bg-slate-50 rounded-lg px-2 py-1.5 overflow-x-auto font-mono max-h-24 text-[10px] leading-relaxed">{{ logs }}</pre>
       </div>
 
       <!-- Status indicator -->
       <div v-if="status === 'deploying'" class="flex items-center gap-2 text-[11px] text-blue-600">
         <el-icon class="animate-spin" :size="12"><Loading /></el-icon>
-        <span>Deploying...</span>
+        <span>{{ t('deploymentBlock.deploying') }}</span>
       </div>
 
       <div v-else-if="status === 'error'" class="flex items-center gap-2 text-[11px] text-red-600">
         <el-icon :size="12"><CircleClose /></el-icon>
-        <span>Deployment failed</span>
+        <span>{{ t('deploymentBlock.failed') }}</span>
       </div>
     </div>
   </CollapsibleBlock>
@@ -49,6 +49,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Promotion, Link, Loading, CircleClose } from '@element-plus/icons-vue'
 import CollapsibleBlock from './CollapsibleBlock.vue'
 
@@ -62,6 +63,8 @@ const props = withDefaults(defineProps<{
 }>(), {
   defaultExpanded: true,
 })
+
+const { t } = useI18n()
 
 const statusVariant = computed(() => {
   if (props.status === 'deploying') return 'tool'

@@ -12,7 +12,7 @@
         class="text-[10px] text-brand hover:text-brand/80 transition-colors px-1.5 py-0.5 rounded hover:bg-brand/10 cursor-pointer"
         @click.stop="openPreview"
       >
-        Preview
+        {{ t('codeBlock.preview') }}
       </button>
       <button
         v-if="oldCode && messageId"
@@ -33,7 +33,7 @@
         class="text-[10px] text-neutral-500 hover:text-neutral-700 transition-colors px-1.5 py-0.5 rounded hover:bg-neutral-200 cursor-pointer"
         @click.stop="handleCopy"
       >
-        {{ copied ? 'Copied!' : 'Copy' }}
+        {{ copied ? t('codeBlock.copied') : t('codeBlock.copy') }}
       </button>
     </template>
     <CodeBlock
@@ -48,6 +48,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Document } from '@element-plus/icons-vue'
 import CollapsibleBlock from './CollapsibleBlock.vue'
 import CodeBlock from '../CodeBlock.vue'
@@ -65,6 +66,7 @@ const props = withDefaults(defineProps<{
   defaultExpanded: true,
 })
 
+const { t } = useI18n()
 const codeBlockRef = ref<InstanceType<typeof CodeBlock>>()
 const copied = ref(false)
 const { openArtifact } = useArtifactPreview()
@@ -95,10 +97,10 @@ const applyState = ref<ApplyState>('idle')
 
 const applyLabel = computed(() => {
   switch (applyState.value) {
-    case 'loading': return 'Applying…'
-    case 'done': return 'Applied ✓'
-    case 'error': return 'Failed ✗'
-    default: return 'Apply'
+    case 'loading': return t('codeBlock.applying')
+    case 'done': return t('codeBlock.applied')
+    case 'error': return t('codeBlock.failed')
+    default: return t('codeBlock.apply')
   }
 })
 

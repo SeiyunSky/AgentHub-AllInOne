@@ -14,7 +14,7 @@
           <div class="hero-logo">🐧</div>
           <div>
             <div class="hero-title">AgentHub</div>
-            <div class="hero-subtitle">Agent Orchestrator Platform</div>
+            <div class="hero-subtitle">{{ t('auth.brandSubtitle') }}</div>
           </div>
         </div>
 
@@ -39,9 +39,9 @@
 
         <!-- Stats row -->
         <div class="hero-stats">
-          <div v-for="s in stats" :key="s.label" class="hero-stat">
+          <div v-for="s in stats" :key="s.labelKey" class="hero-stat">
             <div class="hero-stat-value">{{ s.value }}</div>
-            <div class="hero-stat-label">{{ s.label }}</div>
+            <div class="hero-stat-label">{{ t(s.labelKey) }}</div>
           </div>
         </div>
       </div>
@@ -56,8 +56,8 @@
           <h1 class="mobile-logo-name">AgentHub</h1>
         </div>
 
-        <h2 class="form-heading">Welcome back</h2>
-        <p class="form-sub">Sign in to your account to continue</p>
+        <h2 class="form-heading">{{ t('auth.loginTitle') }}</h2>
+        <p class="form-sub">{{ t('auth.loginSubtitle') }}</p>
 
         <el-form
           ref="formRef"
@@ -69,7 +69,7 @@
           <el-form-item prop="username">
             <el-input
               v-model="form.username"
-              placeholder="Username"
+              :placeholder="t('auth.username')"
               size="large"
               :prefix-icon="User"
               class="auth-input"
@@ -80,7 +80,7 @@
             <el-input
               v-model="form.password"
               type="password"
-              placeholder="Password"
+              :placeholder="t('auth.password')"
               size="large"
               :prefix-icon="Lock"
               show-password
@@ -95,7 +95,7 @@
               :class="{ loading }"
               :disabled="loading"
             >
-              <span v-if="!loading" class="btn-label">Sign In</span>
+              <span v-if="!loading" class="btn-label">{{ t('auth.signIn') }}</span>
               <span v-else class="btn-spinner">
                 <span class="typing-dot"></span>
                 <span class="typing-dot"></span>
@@ -107,16 +107,16 @@
           <div v-if="errorMsg" class="auth-error">{{ errorMsg }}</div>
 
           <div class="auth-switch">
-            New here?
+            {{ t('auth.newHere') }}
             <router-link :to="{ name: 'register', query: route.query }" class="auth-link">
-              Create an account
+              {{ t('auth.createAccountLink') }}
             </router-link>
           </div>
         </el-form>
 
         <!-- Provider strip -->
         <div class="provider-strip">
-          <div class="provider-strip-label">Supports leading AI providers</div>
+          <div class="provider-strip-label">{{ t('auth.providersLabel') }}</div>
           <div class="provider-icons">
             <img v-for="p in providers" :key="p.name" :src="p.src" :alt="p.name" class="provider-icon" />
           </div>
@@ -127,8 +127,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import { User, Lock } from '@element-plus/icons-vue'
@@ -138,6 +139,7 @@ import claudecodeIcon from '@/assets/icons/claudecode-color.svg'
 import codexIcon from '@/assets/icons/codex-color.svg'
 import opencodeIcon from '@/assets/icons/opencode.svg'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
@@ -148,10 +150,10 @@ const errorMsg = ref('')
 
 const form = reactive({ username: '', password: '' })
 
-const rules: FormRules = {
-  username: [{ required: true, message: 'Please enter username', trigger: 'blur' }],
-  password: [{ required: true, message: 'Please enter password', trigger: 'blur' }],
-}
+const rules = computed<FormRules>(() => ({
+  username: [{ required: true, message: t('auth.validation.usernameRequired'), trigger: 'blur' }],
+  password: [{ required: true, message: t('auth.validation.passwordRequired'), trigger: 'blur' }],
+}))
 
 const agentIcons = [
   { src: claudecodeIcon, name: 'Claude Code' },
@@ -165,11 +167,17 @@ const providers = [
   { src: opencodeIcon, name: 'OpenCode' },
 ]
 
-const pills = ['Multi-Agent', 'Streaming', 'Parallel Execution', 'Diff & Preview']
+const pills = computed(() => [
+  t('auth.featureMultiAgent'),
+  t('auth.featureStreaming'),
+  t('auth.featureParallelExecution'),
+  t('auth.featureDiffPreview'),
+])
+
 const stats = [
-  { value: '3', label: 'AI Providers' },
-  { value: '∞', label: 'Concurrent Agents' },
-  { value: 'SSE', label: 'Real-time Stream' },
+  { value: '3', labelKey: 'auth.statProviders' },
+  { value: '∞', labelKey: 'auth.statConcurrentAgents' },
+  { value: 'SSE', labelKey: 'auth.statRealTimeStream' },
 ]
 
 function orbitStyle(i: number, total: number) {
@@ -198,7 +206,7 @@ async function handleLogin() {
     const redirect = (route.query.redirect as string) || '/chat'
     router.push(redirect)
   } catch (err) {
-    errorMsg.value = err instanceof Error ? err.message : '登录失败，请稍后重试'
+    errorMsg.value = err instanceof Error ? err.message : t('auth.loginFailed')
   } finally {
     loading.value = false
   }

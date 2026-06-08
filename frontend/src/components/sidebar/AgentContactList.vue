@@ -1,6 +1,6 @@
 <template>
   <div class="px-4 py-4">
-    <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">Active Agents</div>
+    <div class="text-[10px] uppercase font-semibold text-on-surface-variant tracking-widest mb-3">{{ t('agentContacts.activeAgents') }}</div>
     <div class="space-y-2">
       <!-- New Agent -->
       <div
@@ -13,7 +13,7 @@
         <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-brand-light">
           <el-icon :size="16" class="text-brand"><Plus /></el-icon>
         </div>
-        <span class="text-[13px] font-medium">New Agent</span>
+        <span class="text-[13px] font-medium">{{ t('agentContacts.newAgent') }}</span>
       </div>
       <!-- Agent list -->
       <div
@@ -35,7 +35,7 @@
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-[14px] font-semibold text-on-surface truncate">{{ agent.name }}</p>
-            <p class="text-[11px] text-on-surface-variant truncate">{{ agent.description || 'No description' }}</p>
+            <p class="text-[11px] text-on-surface-variant truncate">{{ agent.description || t('agentContacts.noDescription') }}</p>
           </div>
           <div
             class="shrink-0"
@@ -50,10 +50,12 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Plus } from '@element-plus/icons-vue'
 import { useAgentsStore } from '@/stores/agents'
 import { getAgentTypeIcon } from '@/utils/agentIcons'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const agentsStore = useAgentsStore()

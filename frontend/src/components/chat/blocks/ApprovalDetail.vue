@@ -8,7 +8,7 @@
         <span class="text-on-surface-variant/60">·</span>
         <span class="text-[11px] text-on-surface-variant font-mono">{{ formatBytes(contentBytes) }}</span>
         <span v-if="lang" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-400/15 text-sky-600">{{ lang }}</span>
-        <span v-if="lineCount" class="text-[10px] text-on-surface-variant/50 ml-auto">{{ lineCount }} lines</span>
+        <span v-if="lineCount" class="text-[10px] text-on-surface-variant/50 ml-auto">{{ t('approval.lineCount', { n: lineCount }) }}</span>
       </div>
 
       <div class="rounded-lg border border-outline-variant bg-[#f6f8fa] overflow-hidden">
@@ -19,7 +19,7 @@
           <el-icon :size="12" class="text-on-surface-variant transition-transform" :class="{ 'rotate-90': expandedContent }">
             <ArrowRight />
           </el-icon>
-          <span class="text-[11px] text-on-surface-variant">{{ expandedContent ? 'Hide content' : 'Show content' }}</span>
+          <span class="text-[11px] text-on-surface-variant">{{ expandedContent ? t('approval.hideContent') : t('approval.showContent') }}</span>
         </div>
         <pre v-if="expandedContent" class="text-[11px] font-mono px-3 py-2 overflow-x-auto leading-relaxed max-h-[320px] overflow-y-auto whitespace-pre"><code>{{ parsed.content }}</code></pre>
       </div>
@@ -41,12 +41,12 @@
           <el-icon :size="12" class="text-on-surface-variant transition-transform" :class="{ 'rotate-90': expandedContent }">
             <ArrowRight />
           </el-icon>
-          <span class="text-[11px] text-on-surface-variant">{{ expandedContent ? 'Hide diff' : 'Show diff' }}</span>
+          <span class="text-[11px] text-on-surface-variant">{{ expandedContent ? t('approval.hideDiff') : t('approval.showDiff') }}</span>
         </div>
         <div v-if="expandedContent" class="bg-white">
-          <div class="px-3 py-1 text-[10px] font-mono text-red-600 bg-red-50 border-b border-red-100">- old</div>
+          <div class="px-3 py-1 text-[10px] font-mono text-red-600 bg-red-50 border-b border-red-100">{{ t('approval.labelOld') }}</div>
           <pre class="text-[11px] font-mono px-3 py-2 overflow-x-auto leading-relaxed max-h-[200px] overflow-y-auto whitespace-pre bg-red-50/30 text-red-900"><code>{{ parsed.old_text }}</code></pre>
-          <div class="px-3 py-1 text-[10px] font-mono text-emerald-600 bg-emerald-50 border-b border-t border-emerald-100">+ new</div>
+          <div class="px-3 py-1 text-[10px] font-mono text-emerald-600 bg-emerald-50 border-b border-t border-emerald-100">{{ t('approval.labelNew') }}</div>
           <pre class="text-[11px] font-mono px-3 py-2 overflow-x-auto leading-relaxed max-h-[200px] overflow-y-auto whitespace-pre bg-emerald-50/30 text-emerald-900"><code>{{ parsed.new_text }}</code></pre>
         </div>
       </div>
@@ -63,7 +63,7 @@
             <ArrowRight />
           </el-icon>
           <span class="text-[11px] text-on-surface-variant">
-            {{ expandedContent ? 'Hide details' : `Show details (${formatBytes(rawBytes)})` }}
+            {{ expandedContent ? t('approval.hideDetails') : t('approval.showDetails', { size: formatBytes(rawBytes) }) }}
           </span>
         </div>
         <pre v-if="expandedContent" class="text-[11px] font-mono px-3 py-2 overflow-x-auto leading-relaxed max-h-[320px] overflow-y-auto whitespace-pre-wrap break-all">{{ rawDetail }}</pre>
@@ -74,12 +74,15 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Document, Edit, ArrowRight } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   action: string
   detail: string
 }>()
+
+const { t } = useI18n()
 
 // approval 详情默认折叠,避免几十 KB content 直接撑满消息流
 const expandedContent = ref(false)

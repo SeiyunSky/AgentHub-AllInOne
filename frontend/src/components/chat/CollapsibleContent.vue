@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { shallowRef, computed, onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = withDefaults(defineProps<{
   maxHeight?: number
@@ -42,6 +43,8 @@ const gradientStyle = computed(() => ({
 }))
 
 const isCollapsed = computed(() => overflows.value && !expanded.value && !props.streaming)
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -66,7 +69,7 @@ const isCollapsed = computed(() => overflows.value && !expanded.value && !props.
       >
         <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <span>{{ expanded ? '收起' : '展开全部' }}</span>
+      <span>{{ expanded ? t('collapsible.collapse') : t('collapsible.expandAll') }}</span>
     </button>
   </div>
 </template>

@@ -80,7 +80,7 @@
             <button
               class="w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
               :class="attachedFiles.length > 0 ? 'text-brand bg-brand-light/40 hover:bg-brand-light' : 'text-on-surface-variant/60 hover:text-on-surface-variant hover:bg-surface-container'"
-              :title="!hasConversation ? '请先打开或创建一个会话' : (attachedFiles.length > 0 ? `${attachedFiles.length} file(s) attached` : 'Attach files (uploads to conversation sandbox)')"
+              :title="!hasConversation ? t('chat.noSessionOpen') : (attachedFiles.length > 0 ? `${attachedFiles.length} file(s) attached` : 'Attach files (uploads to conversation sandbox)')"
               :disabled="!hasConversation"
               @click="fileInputRef?.click()"
             >
@@ -126,6 +126,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Paperclip, Promotion, Close, Document, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MentionPicker from './MentionPicker.vue'
@@ -133,6 +134,8 @@ import { sandboxApi } from '@/api/sandbox'
 import { useConversationsStore } from '@/stores/conversations'
 import { useSandboxFilesStore } from '@/stores/sandboxFiles'
 import type { ChatAgent, ReplyPreview } from '@/types/chat'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -182,7 +185,7 @@ async function onFilesSelected(e: Event) {
 
   const convId = conversationsStore.currentId
   if (!convId) {
-    ElMessage({ message: '请先打开或创建一个会话', type: 'warning', duration: 1500, plain: true })
+    ElMessage({ message: t('chat.noSessionOpen'), type: 'warning', duration: 1500, plain: true })
     input.value = ''
     return
   }
@@ -218,7 +221,7 @@ async function onFilesSelected(e: Event) {
   } catch {
     // Remove the failed placeholders
     attachedFiles.value.splice(startIdx, selected.length)
-    ElMessage({ message: '文件上传失败，请重试', type: 'error', duration: 2000, plain: true })
+    ElMessage({ message: t('chat.uploadFailed'), type: 'error', duration: 2000, plain: true })
   }
 }
 
@@ -438,7 +441,7 @@ function handleSend() {
 
   // Don't send while any file is still uploading
   if (attachedFiles.value.some(f => f.uploading)) {
-    ElMessage({ message: '文件上传中，请稍候', type: 'warning', duration: 1500, plain: true })
+    ElMessage({ message: t('chat.uploadInProgress'), type: 'warning', duration: 1500, plain: true })
     return
   }
 

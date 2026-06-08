@@ -10,13 +10,13 @@
         <div class="flex-1 min-w-0">
           <el-input
             v-model="draft.name"
-            placeholder="Agent Name"
+            :placeholder="t('agentForm.namePlaceholder')"
             size="large"
             class="borderless-input"
             input-style="padding: 0; font-size: 28px; font-weight: 600;"
             :disabled="readonly"
           />
-          <p v-if="!draft.name" class="text-[11px] text-on-surface-variant mt-1">Give your agent a memorable name</p>
+          <p v-if="!draft.name" class="text-[11px] text-on-surface-variant mt-1">{{ t('agentForm.nameHelper') }}</p>
         </div>
       </section>
 
@@ -24,13 +24,13 @@
       <section>
         <h3 class="section-heading">
           <el-icon :size="14"><Document /></el-icon>
-          Description
+          {{ t('agentForm.descriptionLabel') }}
         </h3>
         <el-input
           v-model="draft.description"
           type="textarea"
           :rows="2"
-          placeholder="Brief description of what this agent does..."
+          :placeholder="t('agentForm.descriptionPlaceholder')"
           resize="none"
           input-style="padding: 12px 16px; font-size: 13px; resize: none; line-height: 1.5;"
           :disabled="readonly"
@@ -41,7 +41,7 @@
       <section>
         <h3 class="section-heading">
           <el-icon :size="14"><SetUp /></el-icon>
-          Platform
+          {{ t('agentForm.platformLabel') }}
         </h3>
         <div class="grid grid-cols-3 gap-3">
           <button
@@ -78,7 +78,7 @@
       <section>
         <h3 class="section-heading">
           <el-icon :size="14"><SetUp /></el-icon>
-          Skills
+          {{ t('agentForm.skillsLabel') }}
         </h3>
 
         <!-- Selected tags: capabilities + API skills -->
@@ -128,13 +128,13 @@
           <template #reference>
             <button class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium border border-outline-variant bg-white hover:border-brand hover:bg-brand-light/20 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60" :disabled="readonly">
               <el-icon :size="14"><Plus /></el-icon>
-              {{ totalSelected > 0 ? 'Add more skills' : 'Select skills' }}
+              {{ totalSelected > 0 ? t('agentForm.addMoreSkills') : t('agentForm.selectSkills') }}
             </button>
           </template>
 
           <div class="py-1.5 max-h-[320px] overflow-y-auto custom-scrollbar">
             <!-- Capabilities group -->
-            <p class="px-3 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">Capabilities</p>
+            <p class="px-3 pt-1 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">{{ t('agentForm.capabilitiesGroup') }}</p>
             <div
               v-for="skill in allSkills"
               :key="skill.key"
@@ -158,9 +158,9 @@
             <div class="my-1.5 mx-3 border-t border-outline-variant/60" />
 
             <!-- API Skills group -->
-            <p class="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">Skills</p>
-            <div v-if="skillsStore.isLoading" class="px-3 py-2 text-[13px] text-on-surface-variant">Loading...</div>
-            <div v-else-if="skillsStore.skills.length === 0" class="px-3 py-2 text-[13px] text-on-surface-variant">No skills available</div>
+            <p class="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">{{ t('agentForm.skillsGroup') }}</p>
+            <div v-if="skillsStore.isLoading" class="px-3 py-2 text-[13px] text-on-surface-variant">{{ t('agentForm.loadingSkills') }}</div>
+            <div v-else-if="skillsStore.skills.length === 0" class="px-3 py-2 text-[13px] text-on-surface-variant">{{ t('agentForm.noSkillsAvailable') }}</div>
             <div
               v-else
               v-for="skill in skillsStore.skills"
@@ -191,8 +191,8 @@
       <section class="form-section !p-0 overflow-hidden">
         <div class="code-container-header">
           <el-icon :size="12"><Document /></el-icon>
-          System Prompt
-          <span class="ml-auto text-[10px] opacity-60">Markdown supported</span>
+          {{ t('agentForm.systemPromptLabel') }}
+          <span class="ml-auto text-[10px] opacity-60">{{ t('agentForm.markdownSupported') }}</span>
         </div>
         <div class="code-container">
           <el-input
@@ -200,7 +200,7 @@
             type="textarea"
             :rows="12"
             resize="none"
-            placeholder="### Goals&#10;Define what the agent should accomplish...&#10;&#10;### Skills&#10;List the agent's core capabilities...&#10;&#10;### Workflow&#10;Describe how the agent should work...&#10;&#10;### Constraints&#10;Set boundaries and limitations..."
+            :placeholder="t('agentForm.systemPromptPlaceholder')"
             input-style="padding: 16px; font-size: 13px; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; line-height: 1.7; resize: none; border: none; box-shadow: none; background: transparent;"
             :disabled="readonly"
           />
@@ -211,7 +211,7 @@
       <section>
         <h3 class="section-heading">
           <el-icon :size="14"><PriceTag /></el-icon>
-          Tags
+          {{ t('agentForm.tagsLabel') }}
         </h3>
         <div class="flex flex-wrap items-center gap-1.5 p-3 rounded-xl border border-outline-variant bg-white min-h-[44px] focus-within:border-brand focus-within:shadow-[0_0_0_3px_rgba(59,130,246,0.08)] transition-all">
           <span
@@ -231,26 +231,26 @@
           <input
             v-model="tagInput"
             type="text"
-            placeholder="Add tag..."
+            :placeholder="t('agentForm.addTagPlaceholder')"
             class="flex-1 min-w-[100px] px-2 py-1 text-[13px] outline-none bg-transparent disabled:cursor-not-allowed"
             :disabled="readonly"
             @keyup.enter="addTag"
             @blur="addTag"
           />
         </div>
-        <p class="text-[11px] text-on-surface-variant mt-2">Press Enter to add a tag</p>
+        <p class="text-[11px] text-on-surface-variant mt-2">{{ t('agentForm.addTagHelper') }}</p>
       </section>
 
       <!-- Visibility -->
       <section>
         <h3 class="section-heading">
           <el-icon :size="14"><View /></el-icon>
-          Visibility
+          {{ t('agentForm.visibilityLabel') }}
         </h3>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-[13px] font-medium text-on-surface">Public Agent</p>
-            <p class="text-[12px] text-on-surface-variant">Allow other users to discover and use this agent</p>
+            <p class="text-[13px] font-medium text-on-surface">{{ t('agentForm.publicAgent') }}</p>
+            <p class="text-[12px] text-on-surface-variant">{{ t('agentForm.publicAgentDesc') }}</p>
           </div>
           <el-switch v-model="draft.isPublic" :disabled="readonly" />
         </div>
@@ -260,12 +260,12 @@
       <section v-if="editMode">
         <h3 class="section-heading">
           <el-icon :size="14"><CircleCheck /></el-icon>
-          Status
+          {{ t('agentForm.statusLabel') }}
         </h3>
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-[13px] font-medium text-on-surface">Active</p>
-            <p class="text-[12px] text-on-surface-variant">Disabled agents cannot be used in conversations</p>
+            <p class="text-[13px] font-medium text-on-surface">{{ t('agentForm.activeLabel') }}</p>
+            <p class="text-[12px] text-on-surface-variant">{{ t('agentForm.disabledAgentDesc') }}</p>
           </div>
           <el-switch v-model="draft.isActive" :disabled="readonly" />
         </div>
@@ -276,11 +276,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AgentDraft, AgentCapabilities, AgentType } from '@/types/agent'
 import type { Component } from 'vue'
 import { Close, Document, SetUp, Picture, Cpu, Select, PriceTag, View, Plus, CircleCheck, Promotion } from '@element-plus/icons-vue'
 import { getAgentTypeIcon } from '@/utils/agentIcons'
 import { useSkillsStore } from '@/stores/skills'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   draft: AgentDraft
@@ -303,19 +306,19 @@ interface SkillDef {
   tagClass: string
 }
 
-const allSkills: SkillDef[] = [
-  { key: 'supportsCode', label: 'Code Execution', icon: Cpu, tagClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/60' },
-  { key: 'supportsDiff', label: 'Diff Review', icon: Document, tagClass: 'bg-blue-50 text-blue-700 border-blue-200/60' },
-  { key: 'supportsApproval', label: 'Approval Flow', icon: SetUp, tagClass: 'bg-amber-50 text-amber-700 border-amber-200/60' },
-  { key: 'supportsImage', label: 'Image Processing', icon: Picture, tagClass: 'bg-purple-50 text-purple-700 border-purple-200/60' },
-]
+const allSkills = computed<SkillDef[]>(() => [
+  { key: 'supportsCode', label: t('agentForm.skillCodeExecution'), icon: Cpu, tagClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/60' },
+  { key: 'supportsDiff', label: t('agentForm.skillDiffReview'), icon: Document, tagClass: 'bg-blue-50 text-blue-700 border-blue-200/60' },
+  { key: 'supportsApproval', label: t('agentForm.skillApprovalFlow'), icon: SetUp, tagClass: 'bg-amber-50 text-amber-700 border-amber-200/60' },
+  { key: 'supportsImage', label: t('agentForm.skillImageProcessing'), icon: Picture, tagClass: 'bg-purple-50 text-purple-700 border-purple-200/60' },
+])
 
 const selectedSkills = computed(() =>
-  allSkills.filter(s => props.draft.capabilities[s.key]).map(s => s.key),
+  allSkills.value.filter(s => props.draft.capabilities[s.key]).map(s => s.key),
 )
 
 const activeSkillDefs = computed(() =>
-  allSkills.filter(s => props.draft.capabilities[s.key]),
+  allSkills.value.filter(s => props.draft.capabilities[s.key]),
 )
 
 const totalSelected = computed(() =>

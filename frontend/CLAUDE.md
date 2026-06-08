@@ -49,6 +49,18 @@ src/
 现有模式是 `View → composable → store`，不要在组件里直接 `import useChatStore` 然后调 action。  
 composable 里包着副作用（比如 `useChat` 管着 SSE 连接），绕过它直接操作 store 会让这些副作用不触发。
 
+### 所有 UI 文字必须走 i18n，不能硬编码
+
+项目已接入 `vue-i18n@9`（legacy: false）。语言包在 `src/locales/zh-CN.ts` 和 `src/locales/en.ts`，按模块分组（`auth` / `chat` / `approval` / `workflow` 等）。
+
+**新增任何 UI 文字时**：
+1. 同时在两个语言包里加对应 key（中文 + 英文）
+2. Vue SFC 里用 `const { t } = useI18n()`，模板写 `{{ t('key') }}`，属性写 `:placeholder="t('key')"`
+3. 普通 `.ts` 文件（store / composable / api）不能用 `useI18n()`，改用 `import { i18n } from '@/i18n'` 然后 `i18n.global.t('key')`
+4. 语言切换由 `stores/theme.ts` 的 `lang`（`'zh' | 'en'`）驱动，`App.vue` 里的 `watch` 负责同步给 vue-i18n；**不要**自己改 `i18n.global.locale`
+
+**不需要翻译的内容**：代码注释、专有名词（AgentHub、Claude、Codex 等品牌名）、emoji、动态数据（来自后端的字符串）。
+
 ### 颜色用 CSS 变量，不硬编码
 
 品牌色由 `stores/theme.ts` 在运行时写入 CSS 变量（6 套 accent，亮/暗各一份）。  
