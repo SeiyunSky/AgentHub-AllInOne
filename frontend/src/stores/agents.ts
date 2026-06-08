@@ -20,6 +20,8 @@ function mapAgentResponse(a: AgentResponse): Agent {
     tags: a.tags,
     isPublic: a.is_public,
     isActive: a.is_active,
+    skillIds: a.skill_ids ?? [],
+    mcpServerIds: a.mcp_server_ids ?? [],
     createdAt: new Date(a.created_at),
     updatedAt: new Date(a.updated_at),
   }

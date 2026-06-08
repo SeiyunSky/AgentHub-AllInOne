@@ -18,6 +18,8 @@ export interface Agent {
   tags: string[]
   isPublic: boolean
   isActive: boolean
+  skillIds: string[]
+  mcpServerIds: string[]
   createdAt: Date
   updatedAt: Date
 }
@@ -33,4 +35,5 @@ export interface AgentDraft {
   isPublic: boolean
   isActive: boolean
   skillIds: string[]
+  mcpServerIds: string[]
 }

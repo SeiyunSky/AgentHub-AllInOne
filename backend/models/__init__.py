@@ -14,6 +14,7 @@ from backend.models.user import User
 from backend.models.agent import Agent
 from backend.models.skill import Skill
 from backend.models.agent_skill import AgentSkill
+from backend.models.mcp_server import MCPServer, AgentMCPServer
 from backend.models.conversation import Conversation
 from backend.models.conversation_agent import ConversationAgent
 from backend.models.message import Message
@@ -28,6 +29,8 @@ __all__ = [
     "Agent",
     "Skill",
     "AgentSkill",
+    "MCPServer",
+    "AgentMCPServer",
     "Conversation",
     "ConversationAgent",
     "Message",

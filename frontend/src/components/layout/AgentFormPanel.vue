@@ -124,6 +124,7 @@ const defaultDraft: AgentDraft = {
   isPublic: false,
   isActive: true,
   skillIds: [],
+  mcpServerIds: [],
 }
 
 const localDraft = ref<AgentDraft>({ ...defaultDraft })
@@ -148,6 +149,7 @@ function rawToDraft(raw: AgentResponse): AgentDraft {
     isPublic: raw.is_public,
     isActive: raw.is_active,
     skillIds: raw.skill_ids ?? [],
+    mcpServerIds: raw.mcp_server_ids ?? [],
   }
 }
 
@@ -247,6 +249,7 @@ async function handleSave() {
       is_public: localDraft.value.isPublic,
       is_active: localDraft.value.isActive,
       skill_ids: localDraft.value.skillIds,
+      mcp_server_ids: localDraft.value.mcpServerIds,
     }
     let saved: AgentResponse
     if (isEditMode.value) {

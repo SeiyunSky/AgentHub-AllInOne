@@ -46,10 +46,10 @@ class CustomAdapter(AgentAdapter):
         model: str | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
-        mcp_client: MCPClient | None = None,
+        mcp_clients: list[MCPClient] | None = None,
     ) -> None:
         self.model = model or os.environ.get("OPENAI_MODEL_ID", "gpt-4o")
-        self._mcp_client = mcp_client
+        self._mcp_clients = mcp_clients or []
         self._client = openai.AsyncOpenAI(
             api_key=api_key or os.environ.get("OPENAI_API_KEY") or "sk-placeholder",
             base_url=base_url or os.environ.get("OPENAI_BASE_URL") or None,
@@ -59,7 +59,7 @@ class CustomAdapter(AgentAdapter):
         return AgentCapabilities(
             supports_code=True,
             supports_diff=True,
-            supports_approval=self._mcp_client is not None,
+            supports_approval=bool(self._mcp_clients),
         )
 
     async def stream(self, inp: StreamInput) -> AsyncIterator[AgentEvent]:
@@ -75,14 +75,14 @@ class CustomAdapter(AgentAdapter):
 
         tool_definitions: list[dict[str, Any]] = []
         mcp_tools_by_name: dict[str, MCPTool] = {}
-        if self._mcp_client is not None:
+        for mcp_client in self._mcp_clients:
             try:
-                mcp_tools = await self._mcp_client.list_tools()
+                mcp_tools = await mcp_client.list_tools()
                 for t in mcp_tools:
                     tool_definitions.append(_mcp_tool_to_openai(t))
                     mcp_tools_by_name[t.name] = t
             except Exception as exc:
-                logger.warning("Failed to fetch MCP tools for %s: %s", inp.agent_id, exc)
+                logger.warning("Failed to fetch MCP tools from %s for %s: %s", mcp_client.server_id, inp.agent_id, exc)
 
         def _base() -> dict[str, str]:
             return {"agent_id": inp.agent_id, "thread_id": inp.thread_id, "message_id": inp.message_id}
@@ -183,13 +183,24 @@ class CustomAdapter(AgentAdapter):
                         )
 
                         result_text: str | None = None
-                        if mcp_tool and self._mcp_client is not None:
-                            try:
-                                result = await self._mcp_client.call_tool(tool_name, tool_input)
-                                result_text = _extract_tool_result_text(result)
-                            except Exception as exc:
-                                logger.error("MCP tool call failed (%s): %s", tool_name, exc)
-                                result_text = f"error: {exc}"
+                        if mcp_tool:
+                            # 找到注册了该工具的 MCPClient
+                            owning_client: MCPClient | None = None
+                            for c in self._mcp_clients:
+                                try:
+                                    tools = await c.list_tools()
+                                    if any(t.name == tool_name for t in tools):
+                                        owning_client = c
+                                        break
+                                except Exception:
+                                    pass
+                            if owning_client is not None:
+                                try:
+                                    result = await owning_client.call_tool(tool_name, tool_input)
+                                    result_text = _extract_tool_result_text(result)
+                                except Exception as exc:
+                                    logger.error("MCP tool call failed (%s): %s", tool_name, exc)
+                                    result_text = f"error: {exc}"
 
                         yield BlockStopEvent(
                             **_base(),

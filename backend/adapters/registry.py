@@ -5,7 +5,7 @@ when agents are created or deleted through agent_service.
 
 队伍：咕嘎一辈子队
 修改者：Musuyin
-修改日期：2026-05-22
+修改日期：2026-06-08
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ import os
 from typing import TYPE_CHECKING
 
 from backend.adapters.base import AgentAdapter
+from backend.adapters.mcp_client import MCPClient, MCPRegistry
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -60,11 +61,11 @@ class AdapterRegistry:
     # Lifecycle
     # ------------------------------------------------------------------
 
-    def seed_from_db(self, db: "Session") -> None:
+    async def seed_from_db(self, db: "Session") -> None:
         """Populate registry from the agents table at startup.
 
-        Called during FastAPI lifespan startup. Accepts a plain sync Session
-        (consistent with the rest of the service layer).
+        Called during FastAPI lifespan startup. async because building adapters
+        may connect to MCP servers (MCPClient.connect_stdio/sse are coroutines).
         """
         from sqlalchemy import select
         from backend.models.agent import Agent as AgentModel
@@ -74,7 +75,7 @@ class AdapterRegistry:
         ).scalars().all()
         for row in rows:
             try:
-                adapter = _build_adapter(row)
+                adapter = await _build_adapter(row, db)
                 self.register(row.id, adapter)
             except Exception as exc:
                 logger.error("Failed to build adapter for agent %s (%s): %s", row.id, row.type, exc)
@@ -90,32 +91,92 @@ class AdapterRegistry:
 # Factory
 # ---------------------------------------------------------------------------
 
-def _build_adapter(row: "AgentModel") -> AgentAdapter:  # type: ignore[name-defined]
+async def _connect_mcp_clients(agent_id: str, mcp_servers) -> list[MCPClient]:
+    """Connect MCP servers and return live MCPClient instances (for API-based adapters)."""
+    clients: list[MCPClient] = []
+    for srv in mcp_servers:
+        try:
+            if srv.transport == "stdio":
+                if not srv.command:
+                    logger.warning("Agent %s: stdio MCP server '%s' missing command — skipped", agent_id, srv.id)
+                    continue
+                client = await MCPRegistry.get_or_connect_stdio(
+                    srv.id, srv.command, list(srv.args or []), env=dict(srv.env) if srv.env else None,
+                )
+            else:
+                if not srv.url:
+                    logger.warning("Agent %s: sse MCP server '%s' missing url — skipped", agent_id, srv.id)
+                    continue
+                client = await MCPRegistry.get_or_connect_sse(
+                    srv.id, srv.url, headers=dict(srv.headers) if srv.headers else None,
+                )
+            clients.append(client)
+        except Exception as exc:
+            logger.error("Agent %s: failed to connect MCP server '%s': %s", agent_id, srv.id, exc)
+    return clients
+
+
+def _load_mcp_servers(agent_id: str, db: "Session"):
+    """Load MCPServer ORM rows for an agent via the relation table."""
+    from backend.repositories.mcp_server_repo import MCPServerRepository
+    return MCPServerRepository(db).list_servers_for_agent(agent_id)
+
+
+def _to_mcp_configs(mcp_servers):
+    """Convert MCPServer ORM rows to MCPServerConfig domain objects."""
+    from backend.domain.agent import MCPServerConfig
+    configs = []
+    for srv in mcp_servers:
+        try:
+            configs.append(MCPServerConfig(
+                server_id=srv.id,
+                transport=srv.transport,
+                command=srv.command,
+                args=list(srv.args or []),
+                env=dict(srv.env or {}),
+                url=srv.url,
+                headers=dict(srv.headers or {}),
+            ))
+        except Exception as exc:
+            logger.warning("Agent: invalid MCPServer row %r — skipped (%s)", srv.id, exc)
+    return configs
+
+
+async def _build_adapter(row, db: "Session") -> AgentAdapter:  # type: ignore[name-defined]
     """Build the correct adapter from an ORM Agent row."""
     agent_type: str = row.type
 
+    mcp_servers = _load_mcp_servers(row.id, db)
+    mcp_configs = _to_mcp_configs(mcp_servers)
+
+    # CLI adapters (claude, opencode) receive raw configs so they can write
+    # temp config files. API adapters (custom) receive live MCPClient connections.
     if agent_type == "claude":
         from backend.adapters.claude import ClaudeAdapter
-        return ClaudeAdapter()
+        return ClaudeAdapter(mcp_configs=mcp_configs)
 
     if agent_type == "codex":
         from backend.adapters.codex import CodexAdapter
-        from backend.adapters.mcp_client import MCPRegistry
-        mcp_client = MCPRegistry.get("codex")
-        return CodexAdapter(mcp_client=mcp_client)
+        codex_mcp = MCPRegistry.get("codex")
+        return CodexAdapter(mcp_client=codex_mcp)
 
     if agent_type == "custom":
         from backend.adapters.custom import CustomAdapter
+        mcp_clients = await _connect_mcp_clients(row.id, mcp_servers)
         capabilities: dict = row.capabilities or {}
         return CustomAdapter(
             model=capabilities.get("model"),
             api_key=capabilities.get("api_key"),
             base_url=capabilities.get("base_url"),
+            mcp_clients=mcp_clients,
         )
 
     if agent_type == "opencode":
         from backend.adapters.opencode import OpencodeAdapter
-        return OpencodeAdapter(bin_path=os.environ.get("OPENCODE_BIN_PATH", "opencode"))
+        return OpencodeAdapter(
+            bin_path=os.environ.get("OPENCODE_BIN_PATH", "opencode"),
+            mcp_configs=mcp_configs,
+        )
 
     raise ValueError(f"Unknown agent type: {agent_type!r}")
 

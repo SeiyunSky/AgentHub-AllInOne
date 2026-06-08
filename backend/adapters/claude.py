@@ -21,6 +21,9 @@ import asyncio
 import json as _json
 import logging
 import shutil
+import tempfile
+import os
+from pathlib import Path
 from typing import AsyncIterator
 
 from backend.adapters.base import AgentAdapter, StreamInput
@@ -34,7 +37,7 @@ from backend.adapters.events import (
     BlockStopEvent,
 )
 from backend.core.utils import gen_uuid
-from backend.domain.agent import AgentCapabilities
+from backend.domain.agent import AgentCapabilities, MCPServerConfig
 from backend.domain.message import ContentBlock, TextBlock
 from backend.schemas.message import MessageInHistory
 
@@ -48,8 +51,9 @@ class ClaudeAdapter(AgentAdapter):
     No API key configuration needed.
     """
 
-    def __init__(self, bin_path: str | None = None) -> None:
+    def __init__(self, bin_path: str | None = None, mcp_configs: list[MCPServerConfig] | None = None) -> None:
         self._bin_path = bin_path or "claude"
+        self._mcp_configs = mcp_configs or []
 
     def get_capabilities(self) -> AgentCapabilities:
         return AgentCapabilities(
@@ -71,9 +75,6 @@ class ClaudeAdapter(AgentAdapter):
         bin_path = shutil.which(self._bin_path) or self._bin_path
         prompt = _build_prompt(inp)
 
-        # 不再用 -p 把 prompt 当命令行参数:Windows 命令行硬上限 8191 字符,
-        # 一旦 prompt 含历史/代码长度超限,subprocess 直接报 "The command line is too long"。
-        # 改成 stdin 喂入,长度由 CLI 内部缓冲处理,无 Windows CLI 长度限制。
         cmd = [
             bin_path, "-p",
             "--output-format", "stream-json",
@@ -81,9 +82,16 @@ class ClaudeAdapter(AgentAdapter):
         ]
 
         if inp.system_prompt:
-            # 同 _build_prompt 的换行兼容处理:Windows CLI 不接受 `-p` / `--append-system-prompt`
-            # 含真换行,会让 CLI 退化失败
             cmd += ["--append-system-prompt", _flatten_for_cli(inp.system_prompt)]
+
+        # 写临时 MCP 配置文件（每次 stream() 都独立一份，避免并发污染）
+        mcp_config_path: str | None = None
+        if self._mcp_configs:
+            mcp_config_path = _write_mcp_config(self._mcp_configs)
+            if mcp_config_path:
+                cmd += ["--mcp-config", mcp_config_path]
+                # Claude CLI 非交互模式默认拒绝 MCP 工具调用，需显式授权
+                cmd += ["--allowedTools", "mcp__*"]
 
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -108,6 +116,7 @@ class ClaudeAdapter(AgentAdapter):
             proc.stdin.close()
         except Exception:
             logger.exception("Claude CLI stdin write failed")
+            _cleanup_temp(mcp_config_path)
             yield AgentErrorEvent(**_base(), error="stdin write failed")
             return
 
@@ -128,6 +137,7 @@ class ClaudeAdapter(AgentAdapter):
                 proc.terminate()
                 if text_block_id:
                     yield BlockStopEvent(**_base(), block_id=text_block_id)
+                _cleanup_temp(mcp_config_path)
                 yield AgentErrorEvent(**_base(), error="cancelled")
                 return
 
@@ -185,6 +195,7 @@ class ClaudeAdapter(AgentAdapter):
 
                 if event.get("subtype") != "success" or event.get("is_error"):
                     error_msg = event.get("result") or "Claude CLI returned an error"
+                    _cleanup_temp(mcp_config_path)
                     yield AgentErrorEvent(**_base(), error=error_msg)
                     return
 
@@ -195,6 +206,7 @@ class ClaudeAdapter(AgentAdapter):
                 yield BlockStopEvent(**_base(), block_id=text_block_id)
             assert proc.stderr is not None
             stderr = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
+            _cleanup_temp(mcp_config_path)
             yield AgentErrorEvent(
                 **_base(),
                 error=stderr or f"claude exited with code {proc.returncode}",
@@ -205,6 +217,7 @@ class ClaudeAdapter(AgentAdapter):
         if text_block_id is not None:
             yield BlockStopEvent(**_base(), block_id=text_block_id)
 
+        _cleanup_temp(mcp_config_path)
         yield AgentDoneEvent(
             **_base(),
             tokens_input=last_tokens_input,
@@ -282,3 +295,54 @@ def _build_system_prompt(base: str | None, skills: list) -> str:
         if skill.content:
             parts.append(f"\n---\n{skill.content}")
     return "\n".join(parts)
+
+
+def _write_mcp_config(mcp_configs: list[MCPServerConfig]) -> str | None:
+    """Write a temporary --mcp-config JSON file for the Claude CLI.
+
+    Claude CLI format:
+        {"mcpServers": {"<server_id>": {"command": "...", "args": [...], "env": {...}}}}
+
+    Only stdio transports are supported by Claude CLI's --mcp-config.
+    SSE entries are skipped with a warning.
+
+    Returns the temp file path, or None if nothing was written.
+    """
+    servers: dict = {}
+    for cfg in mcp_configs:
+        if cfg.transport != "stdio":
+            logger.warning(
+                "ClaudeAdapter: MCP server '%s' uses transport '%s' — "
+                "only stdio is supported via --mcp-config, skipping",
+                cfg.server_id, cfg.transport,
+            )
+            continue
+        if not cfg.command:
+            logger.warning("ClaudeAdapter: stdio MCP server '%s' has no command, skipping", cfg.server_id)
+            continue
+        entry: dict = {"command": cfg.command, "args": cfg.args}
+        if cfg.env:
+            entry["env"] = cfg.env
+        servers[cfg.server_id] = entry
+
+    if not servers:
+        return None
+
+    try:
+        fd, path = tempfile.mkstemp(prefix="agenthub-claude-mcp-", suffix=".json")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            _json.dump({"mcpServers": servers}, f)
+        return path
+    except Exception as exc:
+        logger.warning("ClaudeAdapter: failed to write MCP config file: %s", exc)
+        return None
+
+
+def _cleanup_temp(path: str | None) -> None:
+    """Remove a temporary file created by _write_mcp_config."""
+    if path is None:
+        return
+    try:
+        os.unlink(path)
+    except OSError:
+        pass

@@ -75,7 +75,7 @@ from backend.adapters.events import (
     BlockStopEvent,
 )
 from backend.core.utils import gen_uuid
-from backend.domain.agent import AgentCapabilities
+from backend.domain.agent import AgentCapabilities, MCPServerConfig
 from backend.domain.message import ContentBlock, TextBlock, ToolUseBlock
 
 logger = logging.getLogger(__name__)
@@ -88,8 +88,9 @@ class OpencodeAdapter(AgentAdapter):
     a configured provider/model (run `opencode auth` once to set up).
     """
 
-    def __init__(self, bin_path: str | None = None) -> None:
+    def __init__(self, bin_path: str | None = None, mcp_configs: list[MCPServerConfig] | None = None) -> None:
         self._bin_path = bin_path or os.environ.get("OPENCODE_BIN_PATH", "opencode")
+        self._mcp_configs = mcp_configs or []
 
     def get_capabilities(self) -> AgentCapabilities:
         return AgentCapabilities(
@@ -135,15 +136,26 @@ class OpencodeAdapter(AgentAdapter):
             prompt,
         ]
 
+        # 写临时 MCP 配置（通过 OPENCODE_CONFIG 环境变量注入）
+        mcp_config_path: str | None = None
+        proc_env: dict | None = None
+        if self._mcp_configs:
+            mcp_config_path = _write_opencode_mcp_config(self._mcp_configs, sandbox_cwd)
+            if mcp_config_path:
+                import os as _os
+                proc_env = {**_os.environ, "OPENCODE_CONFIG": mcp_config_path}
+
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=sandbox_cwd,
+                env=proc_env,
             )
         except FileNotFoundError:
             _cleanup_sandbox(sandbox_cwd)
+            _cleanup_temp(mcp_config_path)
             yield AgentErrorEvent(
                 **_base(),
                 error=(
@@ -174,8 +186,9 @@ class OpencodeAdapter(AgentAdapter):
                 proc.terminate()
                 if text_block_id is not None:
                     yield BlockStopEvent(**_base(), block_id=text_block_id)
-                yield AgentErrorEvent(**_base(), error="cancelled")
                 _cleanup_sandbox(sandbox_cwd)
+                _cleanup_temp(mcp_config_path)
+                yield AgentErrorEvent(**_base(), error="cancelled")
                 return
 
             line = raw_line.decode("utf-8", errors="replace").strip()
@@ -247,6 +260,7 @@ class OpencodeAdapter(AgentAdapter):
             assert proc.stderr is not None
             stderr = (await proc.stderr.read()).decode("utf-8", errors="replace").strip()
             _cleanup_sandbox(sandbox_cwd)
+            _cleanup_temp(mcp_config_path)
             yield AgentErrorEvent(
                 **_base(),
                 error=stderr or f"opencode exited with code {proc.returncode}",
@@ -254,6 +268,7 @@ class OpencodeAdapter(AgentAdapter):
             return
 
         _cleanup_sandbox(sandbox_cwd)
+        _cleanup_temp(mcp_config_path)
         yield AgentDoneEvent(
             **_base(),
             tokens_input=total_tokens_input,
@@ -319,6 +334,70 @@ def _cleanup_sandbox(path: str | None) -> None:
     except Exception as exc:  # pragma: no cover — defensive only
         logger.debug("OpencodeAdapter: failed to clean up sandbox %s: %s", path, exc)
 
+
+def _write_opencode_mcp_config(
+    mcp_configs: list[MCPServerConfig],
+    sandbox_cwd: str | None,
+) -> str | None:
+    """Write a temporary opencode config JSON with MCP server entries.
+
+    Opencode config format (relevant subset):
+        {
+          "mcp": {
+            "servers": {
+              "<server_id>": {
+                "type": "local",
+                "command": "<executable>",
+                "args": ["..."],
+                "environment": {"KEY": "VAL"}
+              }
+            }
+          }
+        }
+
+    SSE transport is expressed as:
+        {"type": "remote", "url": "<url>"}
+
+    The file is written next to the sandbox dir so opencode can read it
+    via OPENCODE_CONFIG env var. Returns the path, or None on failure.
+    """
+    servers: dict = {}
+    for cfg in mcp_configs:
+        if cfg.transport == "stdio":
+            if not cfg.command:
+                logger.warning("OpencodeAdapter: stdio MCP server '%s' has no command, skipping", cfg.server_id)
+                continue
+            entry: dict = {"type": "local", "command": cfg.command, "args": cfg.args}
+            if cfg.env:
+                entry["environment"] = cfg.env
+        else:  # sse
+            if not cfg.url:
+                logger.warning("OpencodeAdapter: sse MCP server '%s' has no url, skipping", cfg.server_id)
+                continue
+            entry = {"type": "remote", "url": cfg.url}
+        servers[cfg.server_id] = entry
+
+    if not servers:
+        return None
+
+    try:
+        fd, path = tempfile.mkstemp(prefix="agenthub-opencode-mcp-", suffix=".json")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            _json.dump({"mcp": {"servers": servers}}, f)
+        return path
+    except Exception as exc:
+        logger.warning("OpencodeAdapter: failed to write MCP config file: %s", exc)
+        return None
+
+
+def _cleanup_temp(path: str | None) -> None:
+    """Remove a temporary config file, best-effort."""
+    if not path:
+        return
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
 
 # ---------------------------------------------------------------------------
 # Tool-use translation

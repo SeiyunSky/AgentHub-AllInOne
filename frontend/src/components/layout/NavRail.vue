@@ -230,7 +230,7 @@ import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
 import NavRailItem from './NavRailItem.vue'
 import SettingsDialog from '@/components/settings/SettingsDialog.vue'
-import { ChatDotRound, User, MagicStick, QuestionFilled, Setting, Search, DArrowLeft, SwitchButton } from '@element-plus/icons-vue'
+import { ChatDotRound, User, MagicStick, QuestionFilled, Setting, Search, DArrowLeft, SwitchButton, Connection } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
 const router = useRouter()
@@ -488,12 +488,14 @@ const navItems = computed(() => [
   { id: 'chat', icon: ChatDotRound, label: t('navExtra.chatLabel'), routeName: 'chat' as const },
   { id: 'agents', icon: User, label: t('navExtra.agentsLabel'), routeName: 'agents' as const },
   { id: 'skills', icon: MagicStick, label: t('navExtra.skillsLabel'), routeName: 'skills' as const },
+  { id: 'mcp-servers', icon: Connection, label: t('navExtra.mcpServersLabel'), routeName: 'mcp-servers' as const },
 ])
 
 function isActive(item: { id: string; routeName: string }): boolean {
   if (item.id === 'chat') return route.name === 'chat' || route.name === 'chat-detail'
   if (item.id === 'agents') return route.name === 'agents' || route.name === 'agent-create' || route.name === 'agent-edit'
   if (item.id === 'skills') return route.name === 'skills' || route.name === 'skill-create' || route.name === 'skill-edit'
+  if (item.id === 'mcp-servers') return route.name === 'mcp-servers' || route.name === 'mcp-server-create' || route.name === 'mcp-server-edit'
   return route.name === item.routeName
 }
 

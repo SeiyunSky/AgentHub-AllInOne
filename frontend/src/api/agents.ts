@@ -20,6 +20,7 @@ export interface AgentResponse {
   is_public: boolean
   is_active: boolean
   skill_ids: string[]
+  mcp_server_ids: string[]
   created_at: string
   updated_at: string
 }
@@ -34,6 +35,7 @@ export interface AgentCreate {
   tags?: string[]
   is_public?: boolean
   skill_ids?: string[]
+  mcp_server_ids?: string[]
 }
 
 export interface AgentUpdate {
@@ -46,6 +48,7 @@ export interface AgentUpdate {
   is_public?: boolean
   is_active?: boolean
   skill_ids?: string[]
+  mcp_server_ids?: string[]
 }
 
 export interface AgentBuildDraft {
