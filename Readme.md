@@ -5,6 +5,21 @@
 
 ---
 
+## 文档导航
+
+| 文档 | 说明 |
+|------|------|
+| [本地开发配置](All_Things_YOU_NEED_TO_KNOW/本地开发配置.md) | **新成员从这里开始** — 软件安装、环境变量、启动命令、踩坑记录 |
+| [开发日志 1 — 架构选型](All_Things_YOU_NEED_TO_KNOW/开发日志%201%20—%20架构选型.md) | 技术选型背景与决策 |
+| [开发日志 2 — 前端架构设计](All_Things_YOU_NEED_TO_KNOW/开发日志%202%20-%20前端架构设计.md) | 前端模块设计 |
+| [开发日志 3 — 后端架构设计](All_Things_YOU_NEED_TO_KNOW/开发日志%203%20-%20后端架构设计.md) | 后端模块设计 |
+| [开发日志 — Agent 管理与 Skill 子系统](All_Things_YOU_NEED_TO_KNOW/开发日志%20-%20Agent管理与Skill子系统实现.md) | Agent/Skill CRUD 实现过程 |
+| [开发日志 — 适配器层与 MCP 服务实现](All_Things_YOU_NEED_TO_KNOW/开发日志%20-%20适配器层与MCP服务实现.md) | Adapter 层块级协议对齐 |
+| [开发日志 — 消息显示 Bug 修复与 UI 优化](All_Things_YOU_NEED_TO_KNOW/开发日志%20-%20消息显示Bug修复与UI优化.md) | SSE 竞态 Bug 修复、表情包、UI 更新（2026-06-08） |
+| [需求汇总 6.2](All_Things_YOU_NEED_TO_KNOW/AgentHub%206.2%20需求汇总.md) | 待实现功能清单 |
+
+---
+
 ## 一、项目定位
 
 AgentHub 是一个以 **IM 为交互界面的多 Agent 协作平台**，目标是让用户像发消息一样驱动 AI Agent 完成复杂任务。
@@ -389,5 +404,3 @@ deploy_app 工具调用
 - **Prompt 工程**：Orchestrator 系统提示词多轮迭代（六层管道设计；工具描述瘦身；占位符防御与自检清单；子 Agent 身份与人格提示词体系；岁家四角色人设提示词）
 
 **Musuyin** — 启动时幂等建库（MySQL）；Alembic 自动迁移接入；CancelledError 漏 rollback 修复；UTC tzinfo 修复（前端显示晚 8 小时）
-
-*报告结束*
