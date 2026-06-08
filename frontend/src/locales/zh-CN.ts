@@ -174,6 +174,7 @@ export default {
     waitingApproval: '等待审批...',
     rejectReasonPlaceholder: '拒绝原因（可选）',
     approveButton: '批准 (Y)',
+    approveAllButton: '全部批准 ({count} 个文件) (Y)',
     rejectButton: '拒绝 (N)',
     confirmReject: '确认',
     keyboardHint: '按 Y / N',
