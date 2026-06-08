@@ -1,5 +1,6 @@
 ---
-name: deployment_workflow
+name: 部署前合规检查
+category: 容器部署
 description: 部署前合规检查清单与触发条件 — 给主 Agent 决定何时调 deploy_app,给审查 Agent 兼任部署前合规审查
 trigger_keywords: [部署, deploy, 上线, 跑起来]
 applicable_agents: [claude, custom]

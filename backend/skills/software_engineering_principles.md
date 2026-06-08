@@ -1,5 +1,6 @@
 ---
-name: software_engineering_principles
+name: 软件工程基线
+category: 规则设定
 description: 软件工程通则 - YAGNI / KISS / 单一职责 / 不过度设计。所有写代码或评审代码的 Agent 都应挂载,作为统一基线。
 trigger_keywords: [写代码, 实现, 重构, 审查]
 applicable_agents: [claude, custom]

@@ -1,5 +1,6 @@
 ---
-name: sui_lore_lookup
+name: 明日方舟背景查询
+category: 背景说明
 description: 岁家谱系与明日方舟泰拉历史背景查阅 Skill —— 辅助角色 Agent 准确回答岁家排行、权能、关键事件、活动剧情，禁止凭印象编造。专有名词均附带通俗注释，LLM 无需预存明日方舟背景知识。
 trigger_keywords: [岁家, 岁片, 十二兄妹, 权能, 将进酒, 画中人, 登临意, 怀黍离, 辞岁行, 界园志异, 大狩猎, 岁陵, 泰拉年表, 司岁台, 不反, 秉烛人, 黑子]
 applicable_agents: [nian_agent, dusk_agent, yu_agent, wang_agent, sui_family_agent]

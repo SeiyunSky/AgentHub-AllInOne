@@ -18,7 +18,7 @@
         @click="showSettings = true"
       >
         <el-icon :size="14"><Setting /></el-icon>
-        <span class="text-[11px] font-medium">设置</span>
+        <span class="text-[11px] font-medium">群聊设置</span>
       </button>
 
       <el-button

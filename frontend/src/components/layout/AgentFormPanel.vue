@@ -183,7 +183,7 @@ watch(agentId, async (newId) => {
 })
 
 function handleCancel() {
-  router.push({ name: 'agents' })
+  router.back()
 }
 
 function onPaneResized(event: ({ size: number })[]) {
@@ -214,7 +214,7 @@ async function handleDelete() {
     await agentsApi.delete(agentId.value!)
     agentsStore.removeAgent(agentId.value!)
     ElMessage.success('Agent deleted')
-    router.push({ name: 'agents' })
+    router.back()
   } catch {
     ElMessage.error('Failed to delete agent')
   } finally {
@@ -256,6 +256,8 @@ async function handleSave() {
     ElMessage.success(isEditMode.value ? 'Agent updated' : 'Agent created')
     if (!isEditMode.value) {
       router.replace({ name: 'agent-edit', params: { agentId: saved.id } })
+    } else {
+      router.back()
     }
   } catch {
     ElMessage.error('Failed to save agent')

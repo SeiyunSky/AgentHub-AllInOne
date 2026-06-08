@@ -72,7 +72,7 @@ ORCHESTRATOR_AGENT_ID = "orchestrator"
 
 # broadcast 模式下，Agent 不回复时在 dispatch_prompt 里发这个 sentinel；
 # Adapter 层识别后跳过 streaming，直接写 read_receipts 表 + 推 ReadReceiptEvent。
-BROADCAST_NO_REPLY_SENTINEL = "__READ_RECEIPT__"
+BROADCAST_NO_REPLY_SENTINEL = "READ_RECEIPT"
 
 
 # ============================================================

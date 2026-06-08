@@ -137,7 +137,7 @@ defineProps<{
   readonly?: boolean
 }>()
 
-const categoryOptions = ['代码', '安全', '领域知识', '通用']
+const categoryOptions = ['代码实现', '数据分析', '角色扮演', '容器部署', '规则设定', '背景说明', '通用知识']
 </script>
 
 <style scoped>

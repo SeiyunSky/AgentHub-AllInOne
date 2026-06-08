@@ -1,5 +1,6 @@
 ---
-name: code_review
+name: 代码四维审查
+category: 代码实现
 description: 系统性代码审查 Skill，覆盖正确性、可维护性、安全性、性能四个维度，输出结构化审查意见。
 trigger_keywords: [review, 审查, 代码质量, PR]
 applicable_agents: [claude, custom]

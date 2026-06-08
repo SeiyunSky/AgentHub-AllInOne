@@ -1,5 +1,6 @@
 ---
-name: security_audit
+name: 代码安全审计
+category: 代码实现
 description: 对指定代码执行 OWASP Top 10 / ASVS Level 2 安全审计，识别注入、鉴权、加密、配置等漏洞并输出带优先级的修复路线图
 trigger_keywords: [安全, XSS, SQL注入, 鉴权, 漏洞]
 applicable_agents: [claude, custom]

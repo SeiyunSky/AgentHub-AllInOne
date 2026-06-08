@@ -459,8 +459,7 @@ export const useChatStore = defineStore('chat', () => {
     const isSentinelOnly = streaming.blocks.length > 0 && streaming.blocks.every(b => {
       if ((b as any).type !== 'text') return false
       const content: string = ((b as any).content ?? '').trim()
-      return content === '__READ_RECEIPT__' || content.includes('__READ_RECEIPT__') ||
-             content === 'READ_RECEIPT' || content.includes('READ_RECEIPT')
+      return content === 'READ_RECEIPT' || content.includes('READ_RECEIPT')
     })
     if (streaming.blocks.length > 0 && !isSentinelOnly) {
       const msgs = [...getMessages(convId)]
