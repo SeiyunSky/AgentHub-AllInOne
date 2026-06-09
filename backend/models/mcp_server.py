@@ -27,7 +27,7 @@ class MCPServer(Base, TimestampMixin):
     name = Column(String(100), nullable=False, comment="名称")
     description = Column(String(500), nullable=True, comment="功能简介")
     transport = Column(
-        Enum("stdio", "sse", name="mcp_transport"),
+        Enum("stdio", "sse", "streamable_http", name="mcp_transport"),
         nullable=False,
         comment="连接方式",
     )

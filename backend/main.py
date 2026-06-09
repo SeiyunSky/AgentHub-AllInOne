@@ -41,7 +41,7 @@ from backend.hooks.manager import hook_manager
 from backend.hooks.post_execution import PostExecutionHook
 from backend.hooks.pre_execution import PreExecutionHook
 from backend.seeds.agents import seed_agents
-from backend.seeds.mcp_servers import seed_mcp_servers
+from backend.seeds.mcp_servers import seed_mcp_servers, seed_orchestrator_mcp_links
 from backend.seeds.users import seed_users
 
 
@@ -172,6 +172,9 @@ async def lifespan(app: FastAPI):
 
         n_mcp_servers = seed_mcp_servers(db)
         logger.info("seed_mcp_servers: %d rows affected", n_mcp_servers)
+
+        n_orch_links = seed_orchestrator_mcp_links(db)
+        logger.info("seed_orchestrator_mcp_links: %d rows affected", n_orch_links)
 
         await adapter_registry.seed_from_db(db)
 

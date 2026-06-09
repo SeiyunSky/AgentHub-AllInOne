@@ -334,6 +334,14 @@ def _write_mcp_config(mcp_configs: list[MCPServerConfig]) -> str | None:
             if cfg.headers:
                 entry["headers"] = cfg.headers
             servers[cfg.server_id] = entry
+        elif cfg.transport == "streamable_http":
+            if not cfg.url:
+                logger.warning("ClaudeAdapter: streamable_http MCP server '%s' has no url, skipping", cfg.server_id)
+                continue
+            entry: dict = {"type": "http", "url": cfg.url}
+            if cfg.headers:
+                entry["headers"] = cfg.headers
+            servers[cfg.server_id] = entry
         else:
             logger.warning(
                 "ClaudeAdapter: MCP server '%s' has unknown transport '%s', skipping",

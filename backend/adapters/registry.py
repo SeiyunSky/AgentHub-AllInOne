@@ -117,12 +117,20 @@ async def _connect_mcp_clients(agent_id: str, mcp_servers) -> list[MCPClient]:
                 if not srv.url:
                     logger.warning("Agent %s: sse MCP server '%s' missing url — skipped", agent_id, srv.id)
                     continue
-                client = await MCPRegistry.get_or_connect_sse(
-                    srv.id, srv.url, headers=dict(srv.headers) if srv.headers else None,
-                )
+                if srv.transport == "streamable_http":
+                    client = await MCPRegistry.get_or_connect_streamable_http(
+                        srv.id, srv.url, headers=dict(srv.headers) if srv.headers else None,
+                    )
+                else:
+                    client = await MCPRegistry.get_or_connect_sse(
+                        srv.id, srv.url, headers=dict(srv.headers) if srv.headers else None,
+                    )
+            logger.info("Agent %s: MCP server '%s' connected (transport=%s)", agent_id, srv.id, srv.transport)
             clients.append(client)
         except Exception as exc:
-            logger.error("Agent %s: failed to connect MCP server '%s': %s", agent_id, srv.id, exc)
+            logger.error("Agent %s: failed to connect MCP server '%s' (transport=%s): %s", agent_id, srv.id, srv.transport, exc)
+
+    logger.info("Agent %s: connected %d MCP client(s): %s", agent_id, len(clients), [c.server_id for c in clients])
     return clients
 
 

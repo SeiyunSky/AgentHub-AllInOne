@@ -21,7 +21,7 @@ import logging
 
 from sqlalchemy.orm import Session
 
-from backend.models.mcp_server import MCPServer
+from backend.models.mcp_server import MCPServer, AgentMCPServer
 
 logger = logging.getLogger(__name__)
 
@@ -35,52 +35,7 @@ PRESET_MCP_SERVERS: list[dict] = [
         "id": "deepwiki",
         "name": "DeepWiki",
         "description": "DeepWiki MCP Server，提供 Wikipedia 知识库查询能力",
-        "transport": "sse",
-        "url": "https://mcp.deepwiki.com/mcp",
-        "headers": {},
-        "author_id": "GUGA",
-        "is_public": 1,
-        "is_active": 1,
-    },
-    {
-        "id": "law-ai",
-        "name": "LawAI",
-        "description": "LawAI MCP Server，提供法律法规查询与法律知识服务",
-        "transport": "sse",
-        "url": "https://mcp.law.ai",
-        "headers": {},
-        "author_id": "GUGA",
-        "is_public": 1,
-        "is_active": 1,
-    },
-    {
-        "id": "petstore-api",
-        "name": "Petstore API",
-        "description": "Petstore MCP Server，提供宠物商店 API 示例服务",
-        "transport": "sse",
-        "url": "https://petstore.run.mcp.com.ai/mcp",
-        "headers": {},
-        "author_id": "GUGA",
-        "is_public": 1,
-        "is_active": 1,
-    },
-    {
-        "id": "jina-ai",
-        "name": "Jina AI",
-        "description": "Jina AI MCP Server，提供网页内容抓取、向量嵌入与搜索服务",
-        "transport": "sse",
-        "url": "https://mcp.jina.ai/v1",
-        "headers": {},
-        "author_id": "GUGA",
-        "is_public": 1,
-        "is_active": 1,
-    },
-    {
-        "id": "mcp-registry",
-        "name": "MCP Registry",
-        "description": "MCP Registry Server，提供 MCP 服务发现与注册能力",
-        "transport": "sse",
-        "url": "https://registry.run.mcp.com.ai/mcp",
+        "transport": "streamable_http",
         "headers": {},
         "author_id": "GUGA",
         "is_public": 1,
@@ -112,5 +67,33 @@ def seed_mcp_servers(db: Session) -> int:
     if affected:
         db.commit()
         logger.info("Seed MCP Servers committed (%d server(s) affected)", affected)
+
+    return affected
+
+
+def seed_orchestrator_mcp_links(db: Session) -> int:
+    """幂等地把所有预置 MCP Server 关联到 orchestrator agent。
+
+    策略：
+      - 关联不存在 → INSERT
+      - 关联存在    → SKIP
+    """
+    affected = 0
+    for spec in PRESET_MCP_SERVERS:
+        existing = (
+            db.query(AgentMCPServer)
+            .filter_by(agent_id="orchestrator", mcp_server_id=spec["id"])
+            .first()
+        )
+        if existing is None:
+            db.add(AgentMCPServer(agent_id="orchestrator", mcp_server_id=spec["id"]))
+            logger.info("Seeded orchestrator MCP link: %s", spec["id"])
+            affected += 1
+        else:
+            logger.debug("orchestrator MCP link already exists: %s (skip)", spec["id"])
+
+    if affected:
+        db.commit()
+        logger.info("Seed orchestrator MCP links committed (%d link(s) affected)", affected)
 
     return affected
