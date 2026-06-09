@@ -28,7 +28,7 @@ class MCPServerResponse(BaseModel):
     id: str
     name: str = Field(description="名称")
     description: Optional[str] = None
-    transport: Literal["stdio", "sse"]
+    transport: Literal["stdio", "sse", "streamable_http"]
     command: Optional[str] = None
     args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
@@ -65,7 +65,7 @@ class MCPServerResponse(BaseModel):
 class MCPServerCreate(BaseModel):
     name: str = Field(description="名称", min_length=1, max_length=100)
     description: Optional[str] = None
-    transport: Literal["stdio", "sse"]
+    transport: Literal["stdio", "sse", "streamable_http"]
     command: Optional[str] = None
     args: list[str] = Field(default_factory=list)
     env: dict[str, str] = Field(default_factory=dict)
@@ -77,7 +77,7 @@ class MCPServerCreate(BaseModel):
 class MCPServerUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    transport: Optional[Literal["stdio", "sse"]] = None
+    transport: Optional[Literal["stdio", "sse", "streamable_http"]] = None
     command: Optional[str] = None
     args: Optional[list[str]] = None
     env: Optional[dict[str, str]] = None
