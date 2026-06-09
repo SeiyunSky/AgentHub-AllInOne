@@ -20,6 +20,7 @@ import mcp.types as mcp_types
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.client.sse import sse_client
+from mcp.client.streamable_http import streamable_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,7 @@ class MCPClient:
         args: list[str],
         env: dict[str, str] | None = None,
         cwd: str | None = None,
+        timeout: float = 15.0,
     ) -> "MCPClient":
         """Create and connect an MCP client via stdio (subprocess) transport."""
         instance = cls(server_id)
@@ -85,7 +87,13 @@ class MCPClient:
                 instance._ready_event.set()  # Unblock waiters even on failure
 
         instance._background_task = asyncio.create_task(_run())
-        await instance._ready_event.wait()
+        try:
+            await asyncio.wait_for(instance._ready_event.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            instance._background_task.cancel()
+            raise RuntimeError(
+                f"MCP stdio connection to '{server_id}' timed out after {timeout}s."
+            )
 
         if instance._session is None:
             raise RuntimeError(
@@ -101,6 +109,7 @@ class MCPClient:
         server_id: str,
         url: str,
         headers: dict[str, str] | None = None,
+        timeout: float = 30.0,
     ) -> "MCPClient":
         """Create and connect an MCP client via SSE/HTTP transport."""
         instance = cls(server_id)
@@ -119,13 +128,61 @@ class MCPClient:
                 instance._ready_event.set()
 
         instance._background_task = asyncio.create_task(_run())
-        await instance._ready_event.wait()
+        try:
+            await asyncio.wait_for(instance._ready_event.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            instance._background_task.cancel()
+            raise RuntimeError(
+                f"MCP SSE connection to '{server_id}' at {url} timed out after {timeout}s."
+            )
 
         if instance._session is None:
             raise RuntimeError(
                 f"MCP SSE connection to '{server_id}' at {url} failed."
             )
         logger.info("MCP SSE client connected: %s → %s", server_id, url)
+        return instance
+
+    @classmethod
+    async def connect_streamable_http(
+        cls,
+        server_id: str,
+        url: str,
+        headers: dict[str, str] | None = None,
+        timeout: float = 30.0,
+    ) -> "MCPClient":
+        """Create and connect an MCP client via Streamable HTTP transport (MCP spec 2025-03-26+)."""
+        instance = cls(server_id)
+
+        async def _run() -> None:
+            try:
+                instance._stop_event = anyio.Event()
+                import httpx
+                http_client = httpx.AsyncClient(headers=headers or {})
+                async with streamable_http_client(url, http_client=http_client) as (read_stream, write_stream, _):
+                    async with ClientSession(read_stream, write_stream) as session:
+                        await session.initialize()
+                        instance._session = session
+                        instance._ready_event.set()
+                        await instance._stop_event.wait()
+            except Exception as exc:
+                logger.error("MCP streamable-http client %s crashed: %s", server_id, exc)
+                instance._ready_event.set()
+
+        instance._background_task = asyncio.create_task(_run())
+        try:
+            await asyncio.wait_for(instance._ready_event.wait(), timeout=timeout)
+        except asyncio.TimeoutError:
+            instance._background_task.cancel()
+            raise RuntimeError(
+                f"MCP streamable-http connection to '{server_id}' at {url} timed out after {timeout}s."
+            )
+
+        if instance._session is None:
+            raise RuntimeError(
+                f"MCP streamable-http connection to '{server_id}' at {url} failed."
+            )
+        logger.info("MCP streamable-http client connected: %s → %s", server_id, url)
         return instance
 
     # ------------------------------------------------------------------
@@ -151,6 +208,7 @@ class MCPClient:
             )
             for t in result.tools
         ]
+        logger.info("MCP '%s': collected %d tool(s): %s", self.server_id, len(self._tools_cache), [t.name for t in self._tools_cache])
         return self._tools_cache
 
     async def call_tool(
@@ -220,6 +278,20 @@ class MCPRegistry:
         async with cls._lock:
             if server_id not in cls._connections:
                 cls._connections[server_id] = await MCPClient.connect_sse(
+                    server_id, url, headers=headers
+                )
+            return cls._connections[server_id]
+
+    @classmethod
+    async def get_or_connect_streamable_http(
+        cls,
+        server_id: str,
+        url: str,
+        headers: dict[str, str] | None = None,
+    ) -> MCPClient:
+        async with cls._lock:
+            if server_id not in cls._connections:
+                cls._connections[server_id] = await MCPClient.connect_streamable_http(
                     server_id, url, headers=headers
                 )
             return cls._connections[server_id]

@@ -78,7 +78,9 @@
             class="h-1"
             :class="server.transport === 'stdio'
               ? 'bg-gradient-to-r from-emerald-300 to-emerald-500'
-              : 'bg-gradient-to-r from-blue-300 to-blue-500'"
+              : server.transport === 'streamable_http'
+                ? 'bg-gradient-to-r from-violet-300 to-violet-500'
+                : 'bg-gradient-to-r from-blue-300 to-blue-500'"
           ></div>
 
           <div class="p-5">
@@ -87,7 +89,9 @@
                 class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border"
                 :class="server.transport === 'stdio'
                   ? 'bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200/60 text-emerald-600'
-                  : 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200/60 text-blue-600'"
+                  : server.transport === 'streamable_http'
+                    ? 'bg-gradient-to-br from-violet-50 to-violet-100 border-violet-200/60 text-violet-600'
+                    : 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200/60 text-blue-600'"
               >
                 <el-icon :size="18"><Monitor v-if="server.transport === 'stdio'" /><Connection v-else /></el-icon>
               </div>
@@ -107,7 +111,9 @@
                 class="px-2 py-0.5 rounded-full text-[10px] font-medium"
                 :class="server.transport === 'stdio'
                   ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-blue-50 text-blue-700'"
+                  : server.transport === 'streamable_http'
+                    ? 'bg-violet-50 text-violet-700'
+                    : 'bg-blue-50 text-blue-700'"
               >
                 {{ server.transport }}
               </span>
@@ -141,6 +147,7 @@ const filterOptions = computed(() => [
   { label: t('mcpServersPanel.filterActive'), value: 'active' },
   { label: 'stdio', value: 'stdio' },
   { label: 'SSE', value: 'sse' },
+  { label: 'Streamable HTTP', value: 'streamable_http' },
 ])
 
 const filteredServers = computed(() => {
@@ -148,6 +155,7 @@ const filteredServers = computed(() => {
   if (activeFilter.value === 'active') return servers.filter(s => s.isActive)
   if (activeFilter.value === 'stdio') return servers.filter(s => s.transport === 'stdio')
   if (activeFilter.value === 'sse') return servers.filter(s => s.transport === 'sse')
+  if (activeFilter.value === 'streamable_http') return servers.filter(s => s.transport === 'streamable_http')
   return servers
 })
 

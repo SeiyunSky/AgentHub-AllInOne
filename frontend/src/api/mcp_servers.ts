@@ -5,7 +5,7 @@ export interface MCPServerResponse {
   id: string
   name: string
   description?: string
-  transport: 'stdio' | 'sse'
+  transport: 'stdio' | 'sse' | 'streamable_http'
   command?: string
   args: string[]
   env: Record<string, string>

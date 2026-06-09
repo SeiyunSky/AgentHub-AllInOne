@@ -1,4 +1,4 @@
-export type MCPTransport = 'stdio' | 'sse'
+export type MCPTransport = 'stdio' | 'sse' | 'streamable_http'
 
 export interface MCPServer {
   id: string

@@ -48,7 +48,8 @@
       </h3>
       <el-radio-group v-model="draft.transport" :disabled="readonly">
         <el-radio-button value="stdio">stdio</el-radio-button>
-        <el-radio-button value="sse">SSE / HTTP</el-radio-button>
+        <el-radio-button value="sse">SSE</el-radio-button>
+        <el-radio-button value="streamable_http">Streamable HTTP</el-radio-button>
       </el-radio-group>
     </section>
 
@@ -136,8 +137,8 @@
       </section>
     </template>
 
-    <!-- SSE fields -->
-    <template v-if="draft.transport === 'sse'">
+    <!-- SSE / Streamable HTTP fields -->
+    <template v-if="draft.transport === 'sse' || draft.transport === 'streamable_http'">
       <section>
         <h3 class="section-heading">
           <el-icon :size="14"><Link /></el-icon>

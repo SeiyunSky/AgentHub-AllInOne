@@ -27,7 +27,7 @@ class MCPServerConfig(BaseModel):
     """
 
     server_id: str = Field(description="对应 mcp_servers.id，注册到 MCPRegistry 的唯一 key")
-    transport: Literal["stdio", "sse"] = Field(description="连接方式")
+    transport: Literal["stdio", "sse", "streamable_http"] = Field(description="连接方式")
 
     # stdio 字段
     command: str | None = Field(default=None, description="stdio 模式：可执行文件，如 'uvx'")
