@@ -15,7 +15,8 @@ const LS_ACCESS = 'auth.access_token'
 const LS_REFRESH = 'auth.refresh_token'
 
 // /auth/login /auth/refresh /auth/register 不需要 token,也不应触发 refresh 流程
-const SKIP_AUTH_PATHS = ['/auth/login', '/auth/refresh', '/auth/register']
+// /auth/oauth/ 下的所有路径同理(OAuth 回调由后端直接重定向,不走 Axios)
+const SKIP_AUTH_PATHS = ['/auth/login', '/auth/refresh', '/auth/register', '/auth/oauth/']
 
 function isSkipAuthUrl(url?: string): boolean {
   if (!url) return false

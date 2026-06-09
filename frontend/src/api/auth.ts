@@ -55,4 +55,10 @@ export const authApi = {
   register(payload: RegisterPayload): Promise<UserPublic> {
     return http.post('/auth/register', payload) as unknown as Promise<UserPublic>
   },
+
+  /** GET /api/v1/auth/oauth/microsoft -> { url: string } */
+  getMicrosoftOAuthUrl(): Promise<{ url: string }> {
+    return http.get('/auth/oauth/microsoft') as unknown as Promise<{ url: string }>
+  },
 }
+
