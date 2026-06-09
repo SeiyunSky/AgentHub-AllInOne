@@ -36,6 +36,7 @@ PRESET_MCP_SERVERS: list[dict] = [
         "name": "DeepWiki",
         "description": "DeepWiki MCP Server，提供 Wikipedia 知识库查询能力",
         "transport": "streamable_http",
+        "url": "https://mcp.deepwiki.com/mcp",
         "headers": {},
         "author_id": "GUGA",
         "is_public": 1,
