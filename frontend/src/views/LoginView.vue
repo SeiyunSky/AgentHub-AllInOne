@@ -282,21 +282,21 @@
                   </defs>
                   <!-- C = 2π×44 = 276.46 -->
                   <circle cx="60" cy="60" r="44" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="16"/>
-                  <!-- adam 50%=138.23, offset=C/4=69.115 -->
+                  <!-- adam 52%=143.76, offset=C/4=69.115 -->
                   <circle cx="60" cy="60" r="44" fill="none" stroke="url(#sg-adam)" stroke-width="16"
-                    stroke-dasharray="136.23 140.23" stroke-dashoffset="69.115" transform="rotate(-90 60 60)"/>
-                  <!-- wang 28%=77.41, offset=69.115-138.23=-69.115 -->
-                  <circle cx="60" cy="60" r="44" fill="none" stroke="url(#sg-wang)" stroke-width="16"
-                    stroke-dasharray="75.41 201.05" stroke-dashoffset="-69.115" transform="rotate(-90 60 60)"/>
-                  <!-- musuyin 20%=55.29, offset=-69.115-77.41=-146.525 -->
+                    stroke-dasharray="141.76 134.70" stroke-dashoffset="69.115" transform="rotate(-90 60 60)"/>
+                  <!-- musuyin 26%=71.88, offset=69.115-143.76=-74.645 -->
                   <circle cx="60" cy="60" r="44" fill="none" stroke="url(#sg-musuyin)" stroke-width="16"
+                    stroke-dasharray="69.88 206.58" stroke-dashoffset="-74.645" transform="rotate(-90 60 60)"/>
+                  <!-- wang 20%=55.29, offset=-74.645-71.88=-146.525 -->
+                  <circle cx="60" cy="60" r="44" fill="none" stroke="url(#sg-wang)" stroke-width="16"
                     stroke-dasharray="53.29 223.17" stroke-dashoffset="-146.525" transform="rotate(-90 60 60)"/>
                   <!-- others 2% -->
                   <circle cx="60" cy="60" r="44" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="16"
-                    stroke-dasharray="3.52 272.94" stroke-dashoffset="-199.825" transform="rotate(-90 60 60)"/>
+                    stroke-dasharray="3.52 272.94" stroke-dashoffset="-201.815" transform="rotate(-90 60 60)"/>
                 </svg>
                 <div class="support-donut-center">
-                  <div style="font-size:16px;font-weight:800;color:#818cf8;font-family:monospace;line-height:1">50%</div>
+                  <div style="font-size:16px;font-weight:800;color:#818cf8;font-family:monospace;line-height:1">52%</div>
                   <div style="font-size:8px;color:rgba(255,255,255,0.3);margin-top:2px;letter-spacing:.05em">adam</div>
                 </div>
               </div>
@@ -426,9 +426,9 @@ const providers = [
   { src: opencodeIcon,   name: 'OpenCode' },
 ]
 const contributors = [
-  { name: '沫路',  alias: 'Adam Zhang',         role: 'Core Architect', avatar: '/contributors/adam.png',    pct: 50, color: '#818cf8' },
-  { name: '玛叔叔', alias: 'Wang / Uzemiu',       role: 'Frontend Lead',  avatar: '/contributors/uzemiu.png',  pct: 28, color: '#67e8f9' },
-  { name: '令姐姐', alias: 'Wu Lvsheng / Musuyin', role: 'Adapter Layer',  avatar: '/contributors/musuyin.png', pct: 20, color: '#6ee7b7' },
+  { name: '沫路',  alias: 'Adam Zhang',         role: 'Core Architect', avatar: '/contributors/adam.png',    pct: 52, color: '#818cf8' },
+  { name: '令姐姐', alias: 'Wu Lvsheng / Musuyin', role: 'Backend Lead',   avatar: '/contributors/musuyin.png', pct: 26, color: '#6ee7b7' },
+  { name: '玛叔叔', alias: 'Wang / Uzemiu',       role: 'Frontend',       avatar: '/contributors/uzemiu.png',  pct: 20, color: '#67e8f9' },
 ]
 const features = [
   { label: 'Parallel Agents',         desc: 'Multiple AI models run simultaneously',    svg: `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>` },

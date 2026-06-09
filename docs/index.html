@@ -1793,20 +1793,20 @@ code {
             dasharray = "arcLen gap"  gap = C - arcLen
             dashoffset controls start: C/4=109.956 shifts start to 12-o'clock
             Each seg offset = C/4 - sum_of_prior_arcs
-            adam    50%=219.91  offset= 109.956
-            musuyin 28%=123.15  offset= 109.956-219.91=-109.954
-            wang    20%= 87.96  offset=-109.954-123.15=-233.104
+            adam    52%=228.71  offset= 109.956
+            musuyin 26%=114.35  offset= 109.956-228.71=-118.754
+            wang    20%= 87.96  offset=-118.754-114.35=-233.104
             others   2%=  8.80  offset=-233.104-87.96 =-321.064
           -->
           <circle class="donut-seg" cx="90" cy="90" r="70" fill="none"
             stroke="url(#g-adam)" stroke-width="26"
-            stroke-dasharray="217.91 221.91"
+            stroke-dasharray="226.71 213.11"
             stroke-dashoffset="109.956"
             transform="rotate(-90 90 90)"/>
           <circle class="donut-seg" cx="90" cy="90" r="70" fill="none"
             stroke="url(#g-musuyin)" stroke-width="26"
-            stroke-dasharray="121.15 318.67"
-            stroke-dashoffset="-109.954"
+            stroke-dasharray="112.35 327.47"
+            stroke-dashoffset="-118.754"
             transform="rotate(-90 90 90)"/>
           <circle class="donut-seg" cx="90" cy="90" r="70" fill="none"
             stroke="url(#g-wang)" stroke-width="26"
@@ -1820,7 +1820,7 @@ code {
             transform="rotate(-90 90 90)"/>
         </svg>
         <div class="donut-center">
-          <div style="font-size:22px;font-weight:800;color:#60a5fa;font-family:monospace;line-height:1">50%</div>
+          <div style="font-size:22px;font-weight:800;color:#60a5fa;font-family:monospace;line-height:1">52%</div>
           <div style="font-size:9px;color:var(--muted2);margin-top:3px;letter-spacing:.06em">adam</div>
         </div>
       </div>
@@ -1830,9 +1830,9 @@ code {
           <div>
             <div style="display:flex;align-items:baseline;gap:8px">
               <span class="donut-leg-name adam">adam</span>
-              <span class="donut-leg-pct adam">50%</span>
+              <span class="donut-leg-pct adam">52%</span>
             </div>
-            <div class="donut-leg-meta">95 commits · ~28k 行 · 全栈核心设计 · 架构实现 · 核心 Agent Loop · 前端 UI 设计</div>
+            <div class="donut-leg-meta">86 commits · ~34k 行 · 整体架构设计 · 核心功能全栈实现 · 核心Agent Loop · Orchestrator完整实现 · Prompt工程 · 前端设计优化</div>
           </div>
         </div>
         <div class="donut-leg-item">
@@ -1840,9 +1840,9 @@ code {
           <div>
             <div style="display:flex;align-items:baseline;gap:8px">
               <span class="donut-leg-name musuyin">Musuyin</span>
-              <span class="donut-leg-pct musuyin">28%</span>
+              <span class="donut-leg-pct musuyin">26%</span>
             </div>
-            <div class="donut-leg-meta">45 commits · ~5k 行 · Workflow · Agent CRUD · DiffApply · Claude Adapter</div>
+            <div class="donut-leg-meta">48 commits · ~9k 行 · Adapter全链路打通 · Workflow · Agent CRUD · DiffApply</div>
           </div>
         </div>
         <div class="donut-leg-item">
@@ -1850,9 +1850,9 @@ code {
           <div>
             <div style="display:flex;align-items:baseline;gap:8px">
               <span class="donut-leg-name wang">Wang / Uzemiu</span>
-              <span class="donut-leg-pct wang">20%</span>
+              <span class="donut-leg-pct wang">22%</span>
             </div>
-            <div class="donut-leg-meta">89 commits · ~11k 行 · 前端基础框架实现 · 消息会话列表实现</div>
+            <div class="donut-leg-meta">55 commits · ~12k 行 · 前端基础框架搭建 · 消息会话列表实现</div>
           </div>
         </div>
         <div class="donut-leg-item">
@@ -1872,12 +1872,12 @@ code {
       <div class="contrib-card adam">
         <div class="contrib-header">
           <div><div class="contrib-name">adam</div></div>
-          <div class="contrib-pct" data-target="50">0</div>%
+          <div class="contrib-pct" data-target="52">0</div>%
         </div>
-        <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:0" data-width="50%"></div></div>
+        <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:0" data-width="52%"></div></div>
         <div class="contrib-stats">
-          <div class="contrib-stat"><div class="v">95</div><div class="l">commits</div></div>
-          <div class="contrib-stat"><div class="v">~28k</div><div class="l">净增行</div></div>
+          <div class="contrib-stat"><div class="v">86</div><div class="l">commits</div></div>
+          <div class="contrib-stat"><div class="v">~34k</div><div class="l">净增行</div></div>
           <div class="contrib-stat"><div class="v">47/33</div><div class="l">Feat/Fix</div></div>
         </div>
         <div class="contrib-domains">
@@ -1887,12 +1887,12 @@ code {
       <div class="contrib-card musuyin">
         <div class="contrib-header">
           <div><div class="contrib-name">Musuyin</div></div>
-          <div class="contrib-pct" data-target="28">0</div>%
+          <div class="contrib-pct" data-target="26">0</div>%
         </div>
-        <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:0" data-width="28%"></div></div>
+        <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:0" data-width="26%"></div></div>
         <div class="contrib-stats">
-          <div class="contrib-stat"><div class="v">45</div><div class="l">commits</div></div>
-          <div class="contrib-stat"><div class="v">~5k</div><div class="l">净增行</div></div>
+          <div class="contrib-stat"><div class="v">48</div><div class="l">commits</div></div>
+          <div class="contrib-stat"><div class="v">~9k</div><div class="l">净增行</div></div>
           <div class="contrib-stat"><div class="v">16/17</div><div class="l">Feat/Fix</div></div>
         </div>
         <div class="contrib-domains">
@@ -1902,12 +1902,12 @@ code {
       <div class="contrib-card wang">
         <div class="contrib-header">
           <div><div class="contrib-name">Wang / Uzemiu</div></div>
-          <div class="contrib-pct" data-target="20">0</div>%
+          <div class="contrib-pct" data-target="22">0</div>%
         </div>
-        <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:0" data-width="20%"></div></div>
+        <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:0" data-width="22%"></div></div>
         <div class="contrib-stats">
-          <div class="contrib-stat"><div class="v">89</div><div class="l">commits</div></div>
-          <div class="contrib-stat"><div class="v">~11k</div><div class="l">净增行</div></div>
+          <div class="contrib-stat"><div class="v">55</div><div class="l">commits</div></div>
+          <div class="contrib-stat"><div class="v">~12k</div><div class="l">净增行</div></div>
           <div class="contrib-stat"><div class="v">45/23</div><div class="l">Feat/Fix</div></div>
         </div>
         <div class="contrib-domains">

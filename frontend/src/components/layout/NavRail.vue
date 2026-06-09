@@ -343,11 +343,11 @@ const contributors = [
     avatarGradient: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
     glowColor: 'rgba(59,130,246,0.6)',
     detailBg: 'linear-gradient(160deg, #0c1a3a 0%, #0e3a5c 100%)',
-    role: '前端 90% 工作量',
+    role: '前端框架搭建',
     tagBg: 'rgba(6,182,212,0.2)',
     tagColor: '#67e8f9',
     dotColor: '#06b6d4',
-    tagline: 'IM 主界面 + 一整套消息块 UI 都是他写的',
+    tagline: '前端脚手架 + 消息块 UI + 会话列表',
     email: 'chenhui.wang@sap.com',
     work: {
       frontend: [
@@ -392,7 +392,6 @@ const contributors = [
         'Skill 子系统全栈：CRUD API + Skill 注入主 Agent + 修改不写本地文件',
         'Agent 头像功能：后端静态服务 + 消息携带头像快照',
         'Diff 模块后端基础（未完全实现）',
-        'D7-blocker 修复：seed_from_db 改同步 Session、_run_thread 自起独立 SessionLocal',
         'API 优化：移除硬编码 user_id 改 X-User-Id 注入、limit/offset 分页、消息列表游标校验防跨会话泄露、N+1 查询消除',
         '稳定性：CancelledError 分支漏 rollback 导致锁等待超时',
       ],
