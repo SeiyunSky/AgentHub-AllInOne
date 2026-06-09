@@ -240,6 +240,32 @@
 
         </form>
 
+        <!-- 分割线 -->
+        <div class="divider-row">
+          <div class="divider-line"></div>
+          <span class="divider-text">or</span>
+          <div class="divider-line"></div>
+        </div>
+
+        <!-- 微软账号登录 -->
+        <button
+          type="button"
+          class="btn-microsoft"
+          :disabled="msLoading"
+          @click="handleMicrosoftLogin"
+        >
+          <img
+            src="https://learn.microsoft.com/en-us/entra/identity-platform/media/howto-add-branding-in-apps/ms-symbollockup_mssymbol_19.svg"
+            alt="Microsoft"
+            class="ms-icon"
+            @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+          />
+          <span v-if="!msLoading">Sign in with Microsoft</span>
+          <span v-else class="dots"><i/><i/><i/></span>
+        </button>
+
+        <div v-if="msError" class="alert-err">{{ msError }}</div>
+
         <p class="register-line">
           Don't have an account?
           <router-link :to="{ name: 'register', query: route.query }">Sign up</router-link>
@@ -370,6 +396,9 @@ const route      = useRoute()
 const auth       = useAuthStore()
 const themeStore = useThemeStore()
 
+const msLoading = ref(false)
+const msError   = ref('')
+
 // ── Theme ─────────────────────────────────
 const isDark = ref(document.documentElement.classList.contains('dark'))
 function toggleDark() {
@@ -417,6 +446,19 @@ async function handleSubmit() {
     globalErr.value = e instanceof Error ? e.message : 'Login failed. Please try again.'
     shake()
   } finally { loading.value = false }
+}
+
+// ── Microsoft OAuth ───────────────────────
+async function handleMicrosoftLogin() {
+  msLoading.value = true
+  msError.value = ''
+  try {
+    const { url } = await authApi.getMicrosoftOAuthUrl()
+    window.location.href = url
+  } catch (err) {
+    msLoading.value = false
+    msError.value = err instanceof Error ? err.message : '微软登录初始化失败，请稍后重试'
+  }
 }
 
 // ── Static data ───────────────────────────
@@ -1188,4 +1230,23 @@ const features = [
 @media (max-width: 480px) {
   .glass-card { padding: 28px 20px; }
 }
+
+/* ── Microsoft button ── */
+.divider-row {
+  display: flex; align-items: center; gap: 10px; margin: 12px 0 8px;
+}
+.divider-line { flex: 1; height: 1px; background: var(--inp-border); }
+.divider-text { font-size: 11px; color: var(--text-muted); }
+.btn-microsoft {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; height: 42px; border-radius: 10px;
+  border: 1px solid var(--inp-border); background: var(--inp-bg);
+  color: var(--text-primary); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: background .2s, border-color .2s;
+}
+.btn-microsoft:hover:not(:disabled) {
+  background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.2);
+}
+.btn-microsoft:disabled { opacity: .6; cursor: not-allowed; }
+.ms-icon { width: 16px; height: 16px; }
 </style>

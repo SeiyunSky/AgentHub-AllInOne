@@ -15,6 +15,12 @@ const router = createRouter({
       component: () => import('@/views/RegisterView.vue'),
     },
     {
+      // 微软 OAuth2 回调页：接收后端重定向的 JWT 参数，写 store 后跳转
+      path: '/auth/microsoft/callback',
+      name: 'microsoft-callback',
+      component: () => import('@/views/MicrosoftCallbackView.vue'),
+    },
+    {
       path: '/',
       component: () => import('@/components/layout/AppLayout.vue'),
       meta: { requiresAuth: true },

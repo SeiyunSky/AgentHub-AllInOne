@@ -55,6 +55,14 @@ class UserRepository(BaseRepository[User]):
     # 业务写
     # --------------------------------------------------------
 
+    def get_by_oauth(self, provider: str, subject: str) -> Optional[User]:
+        """按 OAuth 提供方 + 用户唯一 ID 查已绑定账号。"""
+        return (
+            self.session.query(User)
+            .filter(User.oauth_provider == provider, User.oauth_subject == subject)
+            .one_or_none()
+        )
+
     def create_user(
         self,
         *,
@@ -63,12 +71,33 @@ class UserRepository(BaseRepository[User]):
         email: Optional[str] = None,
         display_name: Optional[str] = None,
     ) -> User:
-        """创建用户。display_name 缺省时回退到 username。"""
+        """创建本地密码用户。display_name 缺省时回退到 username。"""
         return self.create(
             username=username,
             password_hash=password_hash,
             email=email,
             display_name=display_name or username,
+        )
+
+    def create_oauth_user(
+        self,
+        *,
+        username: str,
+        email: Optional[str] = None,
+        display_name: Optional[str] = None,
+        oauth_provider: str,
+        oauth_subject: str,
+        oauth_tenant_id: Optional[str] = None,
+    ) -> User:
+        """创建 OAuth 用户（无本地密码）。"""
+        return self.create(
+            username=username,
+            password_hash=None,
+            email=email,
+            display_name=display_name or username,
+            oauth_provider=oauth_provider,
+            oauth_subject=oauth_subject,
+            oauth_tenant_id=oauth_tenant_id,
         )
 
     def touch_last_login(self, user_id: str) -> Optional[User]:
@@ -80,3 +109,4 @@ class UserRepository(BaseRepository[User]):
 
 
 __all__ = ["UserRepository"]
+
