@@ -271,6 +271,17 @@ async def test_mcp_server(
                 ),
                 timeout=10,
             )
+        elif server.transport == "streamable_http":
+            if not server.url:
+                return MCPTestResult(server_id=mcp_server_id, ok=False, error="streamable_http 配置缺少 url")
+            client = await asyncio.wait_for(
+                MCPClient.connect_streamable_http(
+                    f"_test_{mcp_server_id}",
+                    server.url,
+                    headers=dict(server.headers) if server.headers else None,
+                ),
+                timeout=10,
+            )
         else:
             if not server.url:
                 return MCPTestResult(server_id=mcp_server_id, ok=False, error="sse 配置缺少 url")

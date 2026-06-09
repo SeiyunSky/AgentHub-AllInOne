@@ -14,15 +14,6 @@
       <span class="logo-text text-white text-[15px] leading-none">AgentHub</span>
     </div>
 
-    <!-- Search Button -->
-    <button
-      class="mx-3 flex items-center gap-2.5 py-2 px-3 rounded-lg text-white/50 hover:text-white/80 hover:bg-white/5 cursor-pointer transition-all duration-200"
-      @click="showSearchDialog"
-    >
-      <el-icon :size="18"><Search /></el-icon>
-      <span class="text-[13px] font-medium">{{ t('navExtra.search') }}</span>
-    </button>
-
     <!-- Divider -->
     <div class="mx-4 h-px bg-white/10 my-3"></div>
 
