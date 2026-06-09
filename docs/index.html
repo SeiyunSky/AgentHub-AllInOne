@@ -1048,13 +1048,47 @@ code {
 }
 .demo-feature-name { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
 .demo-feature-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+/* ── Demo sub-page cards ── */
+.dp-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color .15s, transform .15s;
+}
+.dp-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.dp-card.dp-active { border-color: rgba(96,165,250,.5); background: rgba(96,165,250,.04); }
+.dp-thumb {
+  aspect-ratio: 16/9;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+}
+.dp-num { font-size: 40px; font-weight: 800; font-family: monospace; color: var(--border2); }
+.dp-card.dp-active .dp-num { color: var(--accent); opacity: .4; }
+.dp-body { padding: 12px 14px; }
+.dp-name { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.dp-tag { font-size: 10.5px; padding: 1px 7px; border-radius: 4px; background: var(--surface2); color: var(--muted2); border: 1px solid var(--border); }
+.dp-card.dp-active .dp-tag { background: rgba(96,165,250,.1); color: var(--accent); border-color: rgba(96,165,250,.25); }
+/* ── Demo sidebar items ── */
+.dp-sb-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: 6px; cursor: pointer;
+  font-size: 12.5px; color: var(--muted);
+  transition: background .12s, color .12s;
+  margin-bottom: 2px;
+}
+.dp-sb-item:hover { background: var(--surface2); color: var(--text); }
+.dp-sb-item.dp-sb-active { background: rgba(96,165,250,.1); color: var(--accent); }
+.dp-sb-num { font-size: 10px; font-weight: 700; font-family: monospace; color: var(--muted2); min-width: 16px; }
+.dp-sb-item.dp-sb-active .dp-sb-num { color: var(--accent); opacity: .6; }
 </style>
 </head>
-<body onload="window.scrollTo(0,0)">
+<body>
 
 <!-- NAV -->
-<nav>
-  <span class="nav-logo">Agent<span>Hub</span></span>
+<nav class="main-page-el">Agent<span>Hub</span></span>
   <a href="#diagram">架构图</a>
   <a href="#positioning">定位</a>
   <a href="#stack">技术栈</a>
@@ -1062,110 +1096,14 @@ code {
   <a href="#modules">模块</a>
   <a href="#contributors">贡献者</a>
   <span class="nav-sep"></span>
-  <button class="demo-btn" onclick="document.getElementById('demo-modal').classList.add('open')">
+  <button class="demo-btn" onclick="showDemo()">
     ▶ 查看演示
   </button>
   <span class="nav-badge">2026-06-08</span>
 </nav>
 
-<!-- ── DEMO MODAL ── -->
-<div id="demo-modal" class="demo-modal">
-  <div class="demo-backdrop" onclick="document.getElementById('demo-modal').classList.remove('open')"></div>
-  <div class="demo-panel">
-    <div class="demo-header">
-      <div class="demo-header-left">
-        <span class="demo-title">AgentHub · 演示中心</span>
-        <span class="demo-subtitle">Multi-Agent Orchestration Platform</span>
-      </div>
-      <button class="demo-close" onclick="document.getElementById('demo-modal').classList.remove('open')">✕</button>
-    </div>
-
-    <!-- tabs -->
-    <div class="demo-tabs">
-      <button class="demo-tab active" onclick="switchTab(this,'tab-video')">📹 演示视频</button>
-      <button class="demo-tab" onclick="switchTab(this,'tab-screenshots')">🖼 功能截图</button>
-      <button class="demo-tab" onclick="switchTab(this,'tab-features')">⚡ 核心功能</button>
-    </div>
-
-    <!-- tab: video -->
-    <div id="tab-video" class="demo-tab-content active">
-      <div class="demo-video-wrap">
-        <!-- 替换 src 为实际视频路径或 YouTube/Bilibili embed -->
-        <div class="demo-video-placeholder">
-          <div class="demo-placeholder-icon">▶</div>
-          <div class="demo-placeholder-text">演示视频</div>
-          <div class="demo-placeholder-sub">将视频文件放入项目目录后替换此占位</div>
-          <div class="demo-placeholder-hint">
-            替换方式：将下方注释取消并填入路径<br>
-            <code>&lt;video src="your-demo.mp4" controls&gt;&lt;/video&gt;</code>
-          </div>
-        </div>
-        <!-- <video src="All_Things_YOU_NEED_TO_KNOW/imgshow/demo.mp4" controls style="width:100%;border-radius:10px"></video> -->
-      </div>
-    </div>
-
-    <!-- tab: screenshots -->
-    <div id="tab-screenshots" class="demo-tab-content">
-      <div class="demo-screenshots">
-        <div class="demo-shot-slot">
-          <div class="demo-shot-placeholder">截图占位 1<br><span>群聊 / Orchestrator 视图</span></div>
-          <!-- <img src="All_Things_YOU_NEED_TO_KNOW/imgshow/screenshot-chat.png"/> -->
-        </div>
-        <div class="demo-shot-slot">
-          <div class="demo-shot-placeholder">截图占位 2<br><span>Workflow 工作流视图</span></div>
-          <!-- <img src="All_Things_YOU_NEED_TO_KNOW/imgshow/screenshot-workflow.png"/> -->
-        </div>
-        <div class="demo-shot-slot">
-          <div class="demo-shot-placeholder">截图占位 3<br><span>审批 / 沙箱预览</span></div>
-          <!-- <img src="All_Things_YOU_NEED_TO_KNOW/imgshow/screenshot-approval.png"/> -->
-        </div>
-        <div class="demo-shot-slot">
-          <div class="demo-shot-placeholder">截图占位 4<br><span>Agent 管理页</span></div>
-          <!-- <img src="All_Things_YOU_NEED_TO_KNOW/imgshow/screenshot-agents.png"/> -->
-        </div>
-      </div>
-    </div>
-
-    <!-- tab: features -->
-    <div id="tab-features" class="demo-tab-content">
-      <div class="demo-features">
-        <div class="demo-feature-card">
-          <div class="demo-feature-icon" style="background:rgba(96,165,250,.12);color:#60a5fa">🧠</div>
-          <div class="demo-feature-name">Orchestrator Agent Loop</div>
-          <div class="demo-feature-desc">八步循环驱动主 Agent 完成任务拆解、工具调用、错误恢复，支持 wake_event 子线程唤醒与上下文压缩。</div>
-        </div>
-        <div class="demo-feature-card">
-          <div class="demo-feature-icon" style="background:rgba(192,132,252,.12);color:#c084fc">💬</div>
-          <div class="demo-feature-name">五种对话模式</div>
-          <div class="demo-feature-desc">单聊、群聊、@个体、broadcast（70% 概率自决）、local_edit，覆盖从个人助手到多 Agent 协同的全部场景。</div>
-        </div>
-        <div class="demo-feature-card">
-          <div class="demo-feature-icon" style="background:rgba(52,211,153,.12);color:#34d399">🐳</div>
-          <div class="demo-feature-name">Docker 沙箱 + 审批闭环</div>
-          <div class="demo-feature-desc">代码执行与应用部署运行在会话级隔离容器中，高风险操作通过 ApprovalHook 实时阻塞等待用户授权。</div>
-        </div>
-        <div class="demo-feature-card">
-          <div class="demo-feature-icon" style="background:rgba(251,191,36,.12);color:#fbbf24">⚡</div>
-          <div class="demo-feature-name">多 Agent 并行 Streaming</div>
-          <div class="demo-feature-desc">三级嵌套 streamingMap 支持群聊多气泡并发流式输出，Teams 风格实时显示每个 Agent 的回复进度。</div>
-        </div>
-        <div class="demo-feature-card">
-          <div class="demo-feature-icon" style="background:rgba(248,113,113,.12);color:#f87171">🔧</div>
-          <div class="demo-feature-name">核心工具集 · 22 个</div>
-          <div class="demo-feature-desc">任务调度、任务链、用户交互、上下文管理、文件沙箱、部署与网络七组工具，覆盖 Agent 所需全部能力。</div>
-        </div>
-        <div class="demo-feature-card">
-          <div class="demo-feature-icon" style="background:rgba(129,140,248,.12);color:#818cf8">🔄</div>
-          <div class="demo-feature-name">Workflow 视图 + 历史回看</div>
-          <div class="demo-feature-desc">每轮快照落库，前端 WorkflowView 实时展示工具调用详情，支持历史轮次任意回看。</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- HERO -->
-<section id="hero">
+<section id="hero" class="main-page-el">
   <div class="container">
     <div class="hero-tag">Project Report</div>
     <h1 class="hero-title">AgentHub</h1>
@@ -1192,7 +1130,7 @@ code {
 </section>
 
 <!-- 架构总图 -->
-<section id="diagram">
+<section id="diagram" class="main-page-el">
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">00 · System Architecture</div>
@@ -1334,7 +1272,7 @@ code {
 </section>
 
 <!-- 一、项目定位 -->
-<section id="positioning">
+<section id="positioning" class="main-page-el">
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">01 · Positioning</div>
@@ -1376,7 +1314,7 @@ code {
 </section>
 
 <!-- 二、技术栈 -->
-<section id="stack">
+<section id="stack" class="main-page-el">
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">02 · Tech Stack</div>
@@ -1529,7 +1467,7 @@ code {
 </section>
 
 <!-- 三、架构 -->
-<section id="arch">
+<section id="arch" class="main-page-el">
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">03 · Architecture</div>
@@ -1702,7 +1640,7 @@ code {
 </section>
 
 <!-- 四、模块 -->
-<section id="modules">
+<section id="modules" class="main-page-el">
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">04 · Modules</div>
@@ -1761,7 +1699,7 @@ code {
 </section>
 
 <!-- 五、贡献者 -->
-<section id="contributors">
+<section id="contributors" class="main-page-el">
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">05 · Contributors</div>
@@ -2200,9 +2138,205 @@ code {
   </div>
 </section>
 
-<footer style="padding:40px 0;border-top:1px solid var(--border);text-align:center;color:var(--muted2);font-size:12px;position:relative;z-index:1">
+<footer class="main-page-el" style="padding:40px 0;border-top:1px solid var(--border);text-align:center;color:var(--muted2);font-size:12px;position:relative;z-index:1">
   AgentHub Architecture Report · 2026-06-08 · 基于完整代码阅读 + git 历史分析
 </footer>
+
+
+<!-- ══════════════════════════════════════════
+     演示子页 — 与主页完全独立，默认隐藏
+════════════════════════════════════════════ -->
+<div id="page-demo" style="display:none">
+
+  <!-- 演示页 nav：只有返回按钮 -->
+  <nav>
+    <span class="nav-logo">Agent<span>Hub</span></span>
+    <span class="nav-sep"></span>
+    <button class="demo-btn" onclick="showMain()" style="background:var(--surface2);box-shadow:none;color:var(--muted)">← 返回主页</button>
+    <span class="nav-badge">演示中心</span>
+  </nav>
+
+  <!-- 演示页主体 -->
+  <div style="max-width:1100px;margin:0 auto;padding:36px 40px 80px">
+
+    <!-- 顶部说明 -->
+    <div style="margin-bottom:32px;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;gap:32px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">🎬</span>
+        <div><div style="font-size:12px;font-weight:700;color:var(--accent)">功能演示视频</div><div style="font-size:11.5px;color:var(--muted)">8 段分类视频，覆盖全部核心功能</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">🖼</span>
+        <div><div style="font-size:12px;font-weight:700;color:var(--accent)">功能截图</div><div style="font-size:11.5px;color:var(--muted)">群聊、工作流、管理页等界面截图</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">⚡</span>
+        <div><div style="font-size:12px;font-weight:700;color:var(--accent)">核心功能介绍</div><div style="font-size:11.5px;color:var(--muted)">六大核心能力详解</div></div>
+      </div>
+    </div>
+
+    <!-- ── 一、功能演示视频 ── -->
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border)">🎬 功能演示视频</div>
+
+    <!-- 大播放器 -->
+    <div style="margin-bottom:32px">
+      <div id="dp-player" style="width:100%;aspect-ratio:16/9;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;position:relative;margin-bottom:14px">
+        <video id="dp-video" src="" controls style="width:100%;height:100%;display:none;border-radius:14px;background:#000"></video>
+        <div id="dp-placeholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+          <div style="width:64px;height:64px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--accent)">▶</div>
+          <div id="dp-ph-title" style="font-size:17px;font-weight:700;color:var(--muted)">选择下方视频开始播放</div>
+          <div style="font-size:11.5px;color:var(--muted2);text-align:center;line-height:1.8">点击下方任意视频卡片即可播放</div>
+        </div>
+      </div>
+      <div id="dp-info-title" style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:5px">AgentHub · 功能演示</div>
+      <div id="dp-info-desc" style="font-size:13px;color:var(--muted);line-height:1.75">选择下方视频了解各小队工作流、平台管理功能与整体架构。</div>
+    </div>
+
+    <!-- 架构总览 -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 12px">架构总览</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:28px">
+      <div class="dp-card" onclick="dpSelect(this)" data-title="项目架构整体介绍" data-desc="从顶层视角讲解 AgentHub 的五层后端架构与前端 SSE 状态机，以及它们如何协作完成一次完整的 Agent 请求。" data-src="../All_Things_YOU_NEED_TO_KNOW/demovideo/架构介绍.mp4">
+        <div class="dp-thumb" style="position:relative;overflow:hidden">
+          <video src="../All_Things_YOU_NEED_TO_KNOW/demovideo/架构介绍.mp4" preload="metadata" muted style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" tabindex="-1"></video>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.25)"><span style="font-size:22px;color:#fff;opacity:.85">▶</span></div>
+        </div>
+        <div class="dp-body"><div class="dp-name">架构整体介绍</div><span class="dp-tag">总览</span></div>
+      </div>
+      <div class="dp-card" onclick="dpSelect(this)" data-title="前端可用性整体介绍" data-desc="全面展示前端界面：群聊视图、Workflow 工具调用回放、Agent 管理页、MCP/Skill 配置页、审批弹窗、多消息气泡 Streaming 效果。" data-src="">
+        <div class="dp-thumb"><span class="dp-num">08</span></div>
+        <div class="dp-body"><div class="dp-name">前端可用性介绍</div><span class="dp-tag">总览</span></div>
+      </div>
+      <div class="dp-card" onclick="dpSelect(this)" data-title="AI 协作讲解" data-desc="通过 AI 协作视角完整讲解 AgentHub 的设计理念与多 Agent 协同模式，直观展示人机协作的完整流程。" data-src="../All_Things_YOU_NEED_TO_KNOW/demovideo/ai协作展示.mp4">
+        <div class="dp-thumb" style="position:relative;overflow:hidden">
+          <video src="../All_Things_YOU_NEED_TO_KNOW/demovideo/ai协作展示.mp4" preload="metadata" muted style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" tabindex="-1"></video>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.25)"><span style="font-size:22px;color:#fff;opacity:.85">▶</span></div>
+        </div>
+        <div class="dp-body"><div class="dp-name">AI 协作讲解</div><span class="dp-tag">总览</span></div>
+      </div>
+    </div>
+
+    <!-- Agent 工作流 -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 12px">Agent 工作流</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:28px">
+      <div class="dp-card" onclick="dpSelect(this)" data-title="代码开发小队" data-desc="代码小队全流程：需求拆解 → 代码生成 → Docker 沙箱执行 → 审批闭环，展示多 Agent 协同完成一次完整的开发任务。" data-src="../All_Things_YOU_NEED_TO_KNOW/demovideo/代码小队展示.mp4">
+        <div class="dp-thumb" style="position:relative;overflow:hidden">
+          <video src="../All_Things_YOU_NEED_TO_KNOW/demovideo/代码小队展示.mp4" preload="metadata" muted style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" tabindex="-1"></video>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.25)"><span style="font-size:22px;color:#fff;opacity:.85">▶</span></div>
+        </div>
+        <div class="dp-body"><div class="dp-name">代码开发小队</div><span class="dp-tag">工作流</span></div>
+      </div>
+      <div class="dp-card" onclick="dpSelect(this)" data-title="数据分析小队" data-desc="数据小队全流程：CSV/数据库接入 → Pandas/SQL 分析 → 图表生成 → 结果沙箱展示。" data-src="">
+        <div class="dp-thumb"><span class="dp-num">02</span></div>
+        <div class="dp-body"><div class="dp-name">数据分析小队</div><span class="dp-tag">工作流</span></div>
+      </div>
+      <div class="dp-card" onclick="dpSelect(this)" data-title="闲聊小队" data-desc="闲聊模式下的 broadcast 自决机制演示：多 Agent 依概率抢答、群聊气泡并发流式输出、岁家角色人设体现。" data-src="../All_Things_YOU_NEED_TO_KNOW/demovideo/闲聊小队展示.mp4">
+        <div class="dp-thumb" style="position:relative;overflow:hidden">
+          <video src="../All_Things_YOU_NEED_TO_KNOW/demovideo/闲聊小队展示.mp4" preload="metadata" muted style="width:100%;height:100%;object-fit:cover;position:absolute;inset:0" tabindex="-1"></video>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.25)"><span style="font-size:22px;color:#fff;opacity:.85">▶</span></div>
+        </div>
+        <div class="dp-body"><div class="dp-name">闲聊小队</div><span class="dp-tag">工作流</span></div>
+      </div>
+    </div>
+
+    <!-- 平台管理 -->
+    <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 12px">平台管理</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:48px">
+      <div class="dp-card" onclick="dpSelect(this)" data-title="MCP 管理：新建 / 启用 / 编辑" data-desc="演示 MCP Server 的完整生命周期：在前端新建 MCP 配置 → 一键启用 → 编辑工具参数，所有操作实时生效无需重启。" data-src="">
+        <div class="dp-thumb"><span class="dp-num">04</span></div>
+        <div class="dp-body"><div class="dp-name">MCP 管理</div><span class="dp-tag">管理功能</span></div>
+      </div>
+      <div class="dp-card" onclick="dpSelect(this)" data-title="Skill 管理：新建 / 启用 / 编辑" data-desc="演示 Skill（提示词模板）的完整管理：新建自定义 Skill → 挂载到 Agent → 对话中触发。" data-src="">
+        <div class="dp-thumb"><span class="dp-num">05</span></div>
+        <div class="dp-body"><div class="dp-name">Skill 管理</div><span class="dp-tag">管理功能</span></div>
+      </div>
+      <div class="dp-card" onclick="dpSelect(this)" data-title="Agent 管理：新建 / 启用 / 编辑" data-desc="演示 Agent 的完整管理：从创建 Agent（配置角色、绑定工具、设定人格）到启用上线，以及运行时的参数热更新。" data-src="">
+        <div class="dp-thumb"><span class="dp-num">06</span></div>
+        <div class="dp-body"><div class="dp-name">Agent 管理</div><span class="dp-tag">管理功能</span></div>
+      </div>
+    </div>
+
+    <!-- ── 二、功能截图 ── -->
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border)">🖼 功能截图</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:48px">
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/基于workflow的完整trace.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/基于workflow的完整trace.png" alt="Workflow Trace" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">基于 Workflow 的完整 Trace</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/群聊模式下会话管理与Token计数.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/群聊模式下会话管理与Token计数.png" alt="群聊模式" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">群聊模式下会话管理与 Token 计数</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/代码diff和权限审批.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/代码diff和权限审批.png" alt="审批" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">代码 Diff 与权限审批</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/agents管理页面.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/agents管理页面.png" alt="Agent管理" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">Agent 管理页面</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/agents新建页面.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/agents新建页面.png" alt="Agent新建" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">Agent 新建页面</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/Skill管理页面.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/Skill管理页面.png" alt="Skill管理" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">Skill 管理页面</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/会话级沙盒文件系统.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/会话级沙盒文件系统.png" alt="沙盒文件系统" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">会话级沙箱文件系统</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/成功部署前后端小应用且于容器中正常允许.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/成功部署前后端小应用且于容器中正常允许.png" alt="部署" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">成功部署前后端应用并在容器中运行</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/多文件格式的预览与手动编辑的支持.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/多文件格式的预览与手动编辑的支持.png" alt="文件预览" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">多文件格式预览与手动编辑支持</div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+        <a href="../All_Things_YOU_NEED_TO_KNOW/imgshow/会话创建与模板群聊可选择页面.png" target="_blank"><img src="../All_Things_YOU_NEED_TO_KNOW/imgshow/会话创建与模板群聊可选择页面.png" alt="会话创建" style="width:100%;display:block;cursor:zoom-in"/></a>
+        <div style="padding:8px 12px;background:var(--surface);font-size:11.5px;color:var(--muted)">会话创建与模板群聊选择页面</div>
+      </div>
+    </div>
+
+    <!-- ── 三、核心功能介绍 ── -->
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border)">⚡ 核心功能介绍</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(96,165,250,.12);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px">🧠</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Orchestrator Agent Loop</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">八步循环驱动主 Agent 完成任务拆解、工具调用、错误恢复，支持 wake_event 子线程唤醒与上下文压缩。</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(192,132,252,.12);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px">💬</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">五种对话模式</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">单聊、群聊、@个体、broadcast（70% 概率自决）、local_edit，覆盖从个人助手到多 Agent 协同的全部场景。</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(52,211,153,.12);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px">🐳</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Docker 沙箱 + 审批闭环</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">代码执行与应用部署运行在会话级隔离容器中，高风险操作通过 ApprovalHook 实时阻塞等待用户授权。</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(251,191,36,.12);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px">⚡</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">多 Agent 并行 Streaming</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">三级嵌套 streamingMap 支持群聊多气泡并发流式输出，Teams 风格实时显示每个 Agent 的回复进度。</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(248,113,113,.12);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px">🔧</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">核心工具集 · 22 个</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">任务调度、任务链、用户交互、上下文管理、文件沙箱、部署与网络七组工具，覆盖 Agent 所需全部能力。</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(129,140,248,.12);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:10px">🔄</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Workflow 视图 + 历史回看</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">每轮快照落库，前端 WorkflowView 实时展示工具调用详情，支持历史轮次任意回看。</div>
+      </div>
+    </div>
+
+  </div><!-- /主体 -->
+</div><!-- /#page-demo -->
 
 <script>
 // Fade-up on scroll
@@ -2272,6 +2406,40 @@ function switchTab(btn, tabId) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.getElementById('demo-modal').classList.remove('open')
 })
+
+// Sub-page switching
+function showDemo() {
+  document.querySelectorAll('.main-page-el').forEach(el => el.style.display = 'none')
+  document.getElementById('page-demo').style.display = 'block'
+  window.scrollTo(0, 0)
+}
+function showMain() {
+  document.getElementById('page-demo').style.display = 'none'
+  document.querySelectorAll('.main-page-el').forEach(el => el.style.display = '')
+  window.scrollTo(0, 0)
+}
+
+// Demo video card selection
+function dpSelect(card) {
+  document.querySelectorAll('.dp-card').forEach(c => c.classList.remove('dp-active'))
+  card.classList.add('dp-active')
+  document.getElementById('dp-info-title').textContent = card.dataset.title
+  document.getElementById('dp-info-desc').textContent  = card.dataset.desc
+  document.getElementById('dp-ph-title').textContent   = card.dataset.title
+  const video = document.getElementById('dp-video')
+  const ph    = document.getElementById('dp-placeholder')
+  if (card.dataset.src) {
+    video.src = card.dataset.src
+    video.style.display = 'block'
+    ph.style.display = 'none'
+    video.play()
+  } else {
+    video.pause()
+    video.style.display = 'none'
+    ph.style.display = 'flex'
+  }
+  document.getElementById('dp-player').scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 </script>
 </body>
 </html>

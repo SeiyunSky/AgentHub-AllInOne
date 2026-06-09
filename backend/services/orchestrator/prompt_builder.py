@@ -4,7 +4,7 @@ SystemPromptBuilder —— 主 Agent System Prompt 六层管道
 1. 核心指令      (静态)  —— prompts/orchestrator.md
 2. 工具列表      (静态)  —— anthropic SDK 通过 tools= 参数传,prompt 不重复
 3. Skill 元数据  (静态,progressive disclosure)
-4. CLAUDE.md 链  (静态)
+4. CAGENTHUB.md 链  (静态)
    --- DYNAMIC_BOUNDARY ---
 5. 长期记忆      (动态,按相关性筛选 top-K)
 6. 动态上下文    (动态,会话历史 / 可用 Agent / 任务图)
