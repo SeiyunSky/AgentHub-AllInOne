@@ -235,7 +235,7 @@ async function handleSave() {
     ElMessage.warning(t('mcpServerFormPanel.commandRequired'))
     return
   }
-  if (localDraft.value.transport === 'sse' && !localDraft.value.url?.trim()) {
+  if ((localDraft.value.transport === 'sse' || localDraft.value.transport === 'streamable_http') && !localDraft.value.url?.trim()) {
     ElMessage.warning(t('mcpServerFormPanel.urlRequired'))
     return
   }
