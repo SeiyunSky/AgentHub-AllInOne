@@ -13,7 +13,7 @@ POST   /agents/build/confirm    用户确认草稿后落库（返回创建的 Ag
 
 队伍：咕嘎一辈子队
 修改者：Musuyin
-修改日期：2026-05-28
+修改日期：2026-06-08
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 from backend.api.deps import get_current_user, get_db
 from backend.repositories.agent_repo import AgentRepository
+from backend.repositories.mcp_server_repo import MCPServerRepository
 from backend.repositories.skill_repo import SkillRepository
 from backend.schemas.agent import (
     AgentBuildConfirm,
@@ -42,9 +43,10 @@ from backend.services.agent_builder_service import AgentBuilderService
 router = APIRouter()
 
 
-def _to_response(agent, skill_repo: SkillRepository) -> AgentResponse:
+def _to_response(agent, skill_repo: SkillRepository, mcp_repo: MCPServerRepository) -> AgentResponse:
     resp = AgentResponse.model_validate(agent)
     resp.skill_ids = skill_repo.list_skill_ids_for_agent(agent.id)
+    resp.mcp_server_ids = mcp_repo.list_server_ids_for_agent(agent.id)
     return resp
 
 
@@ -70,8 +72,9 @@ def list_agents(
 ):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
+    mcp_repo = MCPServerRepository(db)
     agents = repo.list_visible_for_user(user_id, limit=limit, offset=offset)
-    return [_to_response(a, skill_repo) for a in agents]
+    return [_to_response(a, skill_repo, mcp_repo) for a in agents]
 
 
 @router.post("/agents", response_model=AgentResponse, status_code=status.HTTP_201_CREATED)
@@ -82,8 +85,9 @@ def create_agent(
 ):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
+    mcp_repo = MCPServerRepository(db)
 
-    fields = data.model_dump(exclude={"skill_ids"})
+    fields = data.model_dump(exclude={"skill_ids", "mcp_server_ids"})
     fields["user_id"] = user_id
     fields["is_public"] = 1 if fields.pop("is_public") else 0
     if "capabilities" in fields and fields["capabilities"] is not None:
@@ -95,9 +99,11 @@ def create_agent(
     agent = repo.create(**fields)
     if data.skill_ids:
         skill_repo.sync_agent_skills(agent.id, data.skill_ids)
+    if data.mcp_server_ids:
+        mcp_repo.sync_agent_servers(agent.id, data.mcp_server_ids)
     db.commit()
     db.refresh(agent)
-    return _to_response(agent, skill_repo)
+    return _to_response(agent, skill_repo, mcp_repo)
 
 
 @router.get("/agents/{agent_id}", response_model=AgentResponse)
@@ -108,14 +114,15 @@ def get_agent(
 ):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
+    mcp_repo = MCPServerRepository(db)
     agent = repo.get(agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
-    return _to_response(agent, skill_repo)
+    return _to_response(agent, skill_repo, mcp_repo)
 
 
 @router.patch("/agents/{agent_id}", response_model=AgentResponse)
-def update_agent(
+async def update_agent(
     agent_id: str,
     data: AgentUpdate,
     db: Session = Depends(get_db),
@@ -123,12 +130,13 @@ def update_agent(
 ):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
+    mcp_repo = MCPServerRepository(db)
     agent = repo.get(agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     _assert_writable(agent, user_id)
 
-    fields = data.model_dump(exclude_unset=True, exclude={"skill_ids"})
+    fields = data.model_dump(exclude_unset=True, exclude={"skill_ids", "mcp_server_ids"})
     if "is_public" in fields:
         fields["is_public"] = 1 if fields["is_public"] else 0
     if "is_active" in fields:
@@ -136,7 +144,6 @@ def update_agent(
     if "capabilities" in fields and fields["capabilities"] is not None:
         fields["capabilities"] = fields["capabilities"].model_dump() if hasattr(fields["capabilities"], "model_dump") else fields["capabilities"]
     if "type" in fields and fields["type"] is not None:
-        # AgentType 枚举转成字符串值写 DB
         fields["type"] = fields["type"].value if hasattr(fields["type"], "value") else fields["type"]
 
     for key, val in fields.items():
@@ -145,20 +152,21 @@ def update_agent(
 
     if data.skill_ids is not None:
         skill_repo.sync_agent_skills(agent_id, data.skill_ids)
+    if data.mcp_server_ids is not None:
+        mcp_repo.sync_agent_servers(agent_id, data.mcp_server_ids)
 
     db.commit()
     db.refresh(agent)
 
-    # type 变更后重建 registry 里的 Adapter，使新类型立即生效
+    # type 变更后重建 registry 里的 Adapter，使新配置立即生效
     if "type" in fields:
-        from backend.adapters.registry import registry
-        from backend.adapters.registry import _build_adapter
+        from backend.adapters.registry import registry, _build_adapter
         try:
-            registry.register(agent_id, _build_adapter(agent))
+            registry.register(agent_id, await _build_adapter(agent, db))
         except Exception:
             logger.warning("update_agent: rebuild adapter failed for agent %s", agent_id)
 
-    return _to_response(agent, skill_repo)
+    return _to_response(agent, skill_repo, mcp_repo)
 
 
 @router.delete("/agents/{agent_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -184,13 +192,14 @@ def activate_agent(
 ):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
+    mcp_repo = MCPServerRepository(db)
     agent = repo.get(agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     _assert_writable(agent, user_id)
     agent = repo.set_active(agent_id, True)
     db.commit()
-    return _to_response(agent, skill_repo)
+    return _to_response(agent, skill_repo, mcp_repo)
 
 
 @router.post("/agents/{agent_id}/deactivate", response_model=AgentResponse)
@@ -201,13 +210,14 @@ def deactivate_agent(
 ):
     repo = AgentRepository(db)
     skill_repo = SkillRepository(db)
+    mcp_repo = MCPServerRepository(db)
     agent = repo.get(agent_id)
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     _assert_writable(agent, user_id)
     agent = repo.set_active(agent_id, False)
     db.commit()
-    return _to_response(agent, skill_repo)
+    return _to_response(agent, skill_repo, mcp_repo)
 
 
 # ---------------------------------------------------------------------------
@@ -253,10 +263,11 @@ def confirm_agent_build(
     """
     svc = AgentBuilderService(db)
     skill_repo = SkillRepository(db)
+    mcp_repo = MCPServerRepository(db)
     try:
         agent = svc.confirm(user_id, data.session_id, data.edited_draft)
     except LookupError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     db.commit()
     db.refresh(agent)
-    return _to_response(agent, skill_repo)
+    return _to_response(agent, skill_repo, mcp_repo)

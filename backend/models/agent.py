@@ -15,6 +15,7 @@ agents — Agent 配置表
 """
 
 from sqlalchemy import Column, String, Text, Enum, JSON, SmallInteger, Index
+# mcp_servers JSON column removed — use agent_mcp_servers relation table instead
 from typing import Optional
 
 from backend.models.base import Base, TimestampMixin

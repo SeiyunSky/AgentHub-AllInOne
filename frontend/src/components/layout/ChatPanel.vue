@@ -70,10 +70,10 @@ defineProps<{
 const convId = computed(() => conversationsStore.currentId)
 const showSettings = ref(false)
 
-const title = computed(() => conversationsStore.currentConversation?.title ?? 'Chat')
+const title = computed(() => conversationsStore.currentConversation?.title ?? t('chatPanel.defaultTitle'))
 
 const statusText = computed(() => {
-  if (!convId.value) return 'Ready'
+  if (!convId.value) return t('chatPanel.readyStatus')
   // streaming 中:统计有几个 Agent 同时活跃
   const streamingCount = chatStore.getStreamingAgents(convId.value).length
   if (streamingCount > 0) {
@@ -83,7 +83,7 @@ const statusText = computed(() => {
   }
   const agents = conversationsStore.currentConversation?.agents
   const count = agents?.length ?? 0
-  return count > 0 ? `${count} ${t('chatStatus.multiAgentIdle')}` : 'Ready'
+  return count > 0 ? `${count} ${t('chatStatus.multiAgentIdle')}` : t('chatPanel.readyStatus')
 })
 
 const currentMessages = computed(() => {

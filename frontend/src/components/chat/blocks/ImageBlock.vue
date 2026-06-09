@@ -1,6 +1,6 @@
 <template>
   <CollapsibleBlock
-    :label="caption || 'Image'"
+    :label="caption || t('imageBlock.defaultLabel')"
     :icon="Picture"
     variant="image"
     :default-expanded="defaultExpanded"
@@ -9,7 +9,7 @@
       <div class="rounded-lg overflow-hidden bg-slate-50">
         <img
           :src="src"
-          :alt="alt || caption || 'Image'"
+          :alt="alt || caption || t('imageBlock.defaultAlt')"
           class="w-full max-h-64 object-cover"
         />
       </div>
@@ -19,8 +19,11 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Picture } from '@element-plus/icons-vue'
 import CollapsibleBlock from './CollapsibleBlock.vue'
+
+const { t } = useI18n()
 
 withDefaults(defineProps<{
   src: string

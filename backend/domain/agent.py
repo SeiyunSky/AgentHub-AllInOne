@@ -13,8 +13,30 @@ Agent 领域实体
 """
 
 from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+class MCPServerConfig(BaseModel):
+    """单个 MCP 服务器的连接配置。由 registry._to_mcp_configs() 从 mcp_servers 表行转换而来，
+    传给 ClaudeAdapter / OpencodeAdapter 用于写临时配置文件。
+
+    transport="stdio": 启动本地子进程 MCP server（如 uvx mcp-server-time）。
+    transport="sse":   连接远端 SSE/HTTP MCP server。
+    """
+
+    server_id: str = Field(description="对应 mcp_servers.id，注册到 MCPRegistry 的唯一 key")
+    transport: Literal["stdio", "sse"] = Field(description="连接方式")
+
+    # stdio 字段
+    command: str | None = Field(default=None, description="stdio 模式：可执行文件，如 'uvx'")
+    args: list[str] = Field(default_factory=list, description="stdio 模式：命令参数，如 ['mcp-server-time']")
+    env: dict[str, str] = Field(default_factory=dict, description="stdio 模式：额外环境变量")
+
+    # sse 字段
+    url: str | None = Field(default=None, description="sse 模式：MCP server URL")
+    headers: dict[str, str] = Field(default_factory=dict, description="sse 模式：请求头，如 Authorization")
 
 
 class AgentType(str, Enum):

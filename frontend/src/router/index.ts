@@ -63,6 +63,21 @@ const router = createRouter({
           name: 'skill-edit',
           component: () => import('@/views/SkillFormView.vue'),
         },
+        {
+          path: 'mcp-servers',
+          name: 'mcp-servers',
+          component: () => import('@/views/MCPServersView.vue'),
+        },
+        {
+          path: 'mcp-servers/new',
+          name: 'mcp-server-create',
+          component: () => import('@/views/MCPServerFormView.vue'),
+        },
+        {
+          path: 'mcp-servers/:mcpServerId',
+          name: 'mcp-server-edit',
+          component: () => import('@/views/MCPServerFormView.vue'),
+        },
       ],
     },
     {

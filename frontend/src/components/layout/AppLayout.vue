@@ -8,7 +8,7 @@
       v-if="uiStore.navRailCollapsed"
       class="fixed left-0 top-1/2 -translate-y-1/2 z-[100] w-5 h-14 flex items-center justify-center bg-white border border-l-0 border-outline-variant shadow-card hover:bg-surface-container hover:border-brand hover:text-brand rounded-r-xl text-on-surface-variant transition-all duration-200"
       @click="uiStore.toggleNavRail"
-      title="Expand sidebar"
+      :title="t('appLayout.expandSidebar')"
     >
       <el-icon :size="12"><ArrowRight /></el-icon>
     </button>
@@ -28,9 +28,11 @@
 
 <script setup lang="ts">
 import { RouterView } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useUIStore } from '@/stores/ui'
 import { ArrowRight } from '@element-plus/icons-vue'
 import LeftPanel from './LeftPanel.vue'
 
 const uiStore = useUIStore()
+const { t } = useI18n()
 </script>

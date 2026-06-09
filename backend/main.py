@@ -169,7 +169,20 @@ async def lifespan(app: FastAPI):
         n_agents = seed_agents(db)
         logger.info("seed_agents: %d rows affected", n_agents)
 
-        adapter_registry.seed_from_db(db)
+        await adapter_registry.seed_from_db(db)
+
+        # 加载 orchestrator 自己的 MCP 客户端，重建单例以注入
+        try:
+            from backend.adapters.registry import connect_mcp_clients_for_agent
+            from backend.services.orchestrator.service import orchestrator_service as _orch_svc
+            orch_mcp_clients = await connect_mcp_clients_for_agent("orchestrator", db)
+            _orch_svc._mcp_clients = orch_mcp_clients
+            logger.info(
+                "orchestrator MCP clients loaded: %d server(s)",
+                len(orch_mcp_clients),
+            )
+        except Exception:
+            logger.exception("orchestrator MCP client init failed (non-fatal)")
     except Exception:
         logger.exception("seed / skill scan / adapter seed failed (non-fatal)")
     finally:
@@ -309,6 +322,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     from backend.api.v1 import messages as messages_router
     from backend.api.v1 import ws as ws_router
     from backend.api.v1 import agents as agents_router
+    from backend.api.v1 import mcp_servers as mcp_servers_router
     from backend.api.v1 import skills as skills_router
     from backend.api.v1 import files as files_router
     from backend.api.v1 import artifacts as artifacts_router
@@ -326,6 +340,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app.include_router(messages_router.router, prefix="/api/v1", tags=["messages"])
     app.include_router(ws_router.router, prefix="/api/v1", tags=["ws"])
     app.include_router(agents_router.router, prefix="/api/v1", tags=["agents"])
+    app.include_router(mcp_servers_router.router, prefix="/api/v1", tags=["mcp-servers"])
     app.include_router(skills_router.router, prefix="/api/v1", tags=["skills"])
     app.include_router(files_router.router, prefix="/api/v1", tags=["files"])
     app.include_router(artifacts_router.router, prefix="/api/v1", tags=["artifacts"])

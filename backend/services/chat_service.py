@@ -244,10 +244,20 @@ class ChatService:
         elif (
             self._conversation_mode(conversation) == "group"
             and len(request.mention_ids) == 1
+            and request.mention_ids[0] == ORCHESTRATOR_AGENT_ID
         ):
+            # @ orchestrator 本身：直通，不再嵌套一层调度
             await self._individual_mention_flow(
                 request, user_msg, conversation, request.mention_ids[0]
             )
+        elif (
+            self._conversation_mode(conversation) == "group"
+            and len(request.mention_ids) == 1
+        ):
+            # @ 非 orchestrator 的子 Agent：走 orchestrator 隐式调度，
+            # orchestrator 读取 mention hint 后 dispatch 给目标 Agent，
+            # 并负责后续 create_file / 审批等操作
+            await self._group_orchestrate_flow(request, user_msg, conversation, user_id)
         else:
             await self._group_orchestrate_flow(request, user_msg, conversation, user_id)
 
@@ -414,19 +424,43 @@ class ChatService:
     ) -> None:
         """
         群聊全员:创建主 Agent Thread,由 orchestrator 自己决定派活。
+
+        当用户 @ 了某个非 orchestrator 子 Agent 时，把 mention 信息注入
+        dispatch_prompt 前缀，orchestrator 读到后直接 dispatch 给被 @ 的 Agent，
+        不自行回复用户。
         """
         if orchestrator_service is None:
             raise NotImplementedError("[TODO/F] orchestrator_service 未实装")
+
+        # @ 非 orchestrator 的单个子 Agent 时，注入隐式调度提示
+        mention_hint = ""
+        if (
+            request.mention_ids
+            and len(request.mention_ids) == 1
+            and request.mention_ids[0] != ORCHESTRATOR_AGENT_ID
+        ):
+            mention_hint = (
+                f"[用户在群聊中直接 @ 了子 Agent: {request.mention_ids[0]}，"
+                "你需要将任务 dispatch 给这个 Agent，不要自己回复用户，"
+                "等子 Agent 完成后再执行文件写入等后续操作，最后告知用户结果]\n\n"
+            )
 
         # 主 Agent Thread,agent_id 用约定常量
         orchestrator_thread = self.thread_service.create_thread(
             conversation_id=request.conversation_id,
             message_id=self._msg_id(user_msg),
             agent_id=ORCHESTRATOR_AGENT_ID,
+            dispatch_prompt=mention_hint or None,
         )
         # 必须 commit,否则 start_loop 起的独立 session 查不到这条 thread,
         # mark_running / mark_done 全部 no-op,thread 永远停在 init 状态
         self.session.commit()
+        # @ 非 orchestrator 子 Agent 时：orchestrator 做隐式调度，不显示自己的气泡
+        is_mention_dispatch = bool(
+            request.mention_ids
+            and len(request.mention_ids) == 1
+            and request.mention_ids[0] != ORCHESTRATOR_AGENT_ID
+        )
         # start_loop 改为后台 Task:让锁立即释放,stop 时可以 cancel
         task = asyncio.create_task(
             orchestrator_service.start_loop(  # type: ignore[union-attr]
@@ -434,6 +468,7 @@ class ChatService:
                 conversation_id=request.conversation_id,
                 user_message_id=self._msg_id(user_msg),
                 user_id=user_id,
+                silent=is_mention_dispatch,
             )
         )
         _orchestrator_tasks[request.conversation_id] = task

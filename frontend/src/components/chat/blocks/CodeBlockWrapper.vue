@@ -1,6 +1,6 @@
 <template>
   <CollapsibleBlock
-    :label="filename || 'Code'"
+    :label="filename || t('codeBlockExtra.defaultLabel')"
     :icon="Document"
     variant="code"
     :badge="language"

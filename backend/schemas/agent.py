@@ -71,6 +71,10 @@ class AgentCreate(BaseModel):
         default_factory=list,
         description="挂载的 Skill ID 列表,service 层落 agent_skills 关联表",
     )
+    mcp_server_ids: list[str] = Field(
+        default_factory=list,
+        description="挂载的 MCP 服务器 ID 列表,service 层落 agent_mcp_servers 关联表",
+    )
 
 
 class AgentUpdate(BaseModel):
@@ -89,6 +93,7 @@ class AgentUpdate(BaseModel):
     is_public: Optional[bool] = None
     is_active: Optional[bool] = None
     skill_ids: Optional[list[str]] = None
+    mcp_server_ids: Optional[list[str]] = None
 
 
 class AgentResponse(BaseModel):
@@ -119,6 +124,10 @@ class AgentResponse(BaseModel):
     skill_ids: list[str] = Field(
         default_factory=list,
         description="从 agent_skills 关联表查出的 Skill ID 列表(service 层手动注入)",
+    )
+    mcp_server_ids: list[str] = Field(
+        default_factory=list,
+        description="从 agent_mcp_servers 关联表查出的 MCP 服务器 ID 列表(service 层手动注入)",
     )
     created_at: datetime
     updated_at: datetime

@@ -30,7 +30,6 @@
       <el-input
         v-model="draft.displayName"
         :placeholder="t('skillForm.displayNamePlaceholder')"
-        input-style="padding: 10px 16px; font-size: 13px;"
         :disabled="readonly"
       />
     </section>
@@ -47,7 +46,7 @@
         :rows="2"
         :placeholder="t('skillForm.descriptionPlaceholder')"
         resize="none"
-        input-style="padding: 12px 16px; font-size: 13px; resize: none; line-height: 1.5;"
+        input-style="height: 96px; font-size: 13px; resize: none; line-height: 1.5;"
         :disabled="readonly"
       />
     </section>
@@ -88,7 +87,7 @@
           :rows="14"
           resize="none"
           :placeholder="t('skillForm.contentPlaceholder')"
-          input-style="padding: 16px; font-size: 13px; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; line-height: 1.7; resize: none; border: none; box-shadow: none; background: transparent;"
+          input-style="font-size: 13px; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; line-height: 1.7; resize: none; border: none; box-shadow: none; background: transparent;"
           :disabled="readonly"
         />
       </div>

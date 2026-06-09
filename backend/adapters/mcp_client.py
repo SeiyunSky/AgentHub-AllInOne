@@ -47,7 +47,9 @@ class MCPClient:
         self.server_id = server_id
         self._session: ClientSession | None = None
         self._tools_cache: list[MCPTool] | None = None
-        self._stop_event = anyio.Event()
+        # anyio.Event must be created inside an anyio task context (i.e. inside _run),
+        # not here — creating it outside causes backend mismatch under uvicorn/anyio.run().
+        self._stop_event: anyio.Event | None = None
         self._ready_event = asyncio.Event()
         self._background_task: asyncio.Task | None = None
 
@@ -70,6 +72,7 @@ class MCPClient:
 
         async def _run() -> None:
             try:
+                instance._stop_event = anyio.Event()
                 async with stdio_client(params) as (read_stream, write_stream):
                     async with ClientSession(read_stream, write_stream) as session:
                         await session.initialize()
@@ -78,7 +81,7 @@ class MCPClient:
                         # Hold connection open until stop() is called
                         await instance._stop_event.wait()
             except Exception as exc:
-                logger.error("MCP stdio client %s crashed: %s", server_id, exc)
+                logger.error("MCP stdio client %s crashed: %s", server_id, exc, exc_info=True)
                 instance._ready_event.set()  # Unblock waiters even on failure
 
         instance._background_task = asyncio.create_task(_run())
@@ -104,6 +107,7 @@ class MCPClient:
 
         async def _run() -> None:
             try:
+                instance._stop_event = anyio.Event()
                 async with sse_client(url, headers=headers or {}) as (read_stream, write_stream):
                     async with ClientSession(read_stream, write_stream) as session:
                         await session.initialize()
@@ -165,7 +169,8 @@ class MCPClient:
 
     async def stop(self) -> None:
         """Disconnect from the MCP server and clean up resources."""
-        self._stop_event.set()
+        if self._stop_event is not None:
+            self._stop_event.set()
         if self._background_task is not None:
             try:
                 await asyncio.wait_for(self._background_task, timeout=5.0)

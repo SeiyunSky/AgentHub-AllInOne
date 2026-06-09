@@ -108,7 +108,7 @@
             <button
               v-if="canRemove(member)"
               class="w-7 h-7 rounded-md flex items-center justify-center text-on-surface-variant hover:bg-error-light hover:text-error transition shrink-0"
-              :title="`从会话移除 ${member.name}`"
+              :title="t('convSettingsExtra.removeMember', { name: member.name })"
               @click="onRemove(member.id)"
             >
               <el-icon :size="13"><Delete /></el-icon>
@@ -122,7 +122,7 @@
         <h4 class="text-[11px] font-semibold text-on-surface-variant uppercase tracking-widest mb-3">{{ t('conversationSettings.tokenUsage') }}</h4>
 
         <div v-if="loadingTokens" class="text-[12px] text-on-surface-variant text-center py-6">
-          加载中...
+          {{ t('common.loading') }}
         </div>
 
         <template v-else>

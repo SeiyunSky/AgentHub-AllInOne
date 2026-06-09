@@ -24,7 +24,7 @@
           :title="t('deployments.copyUrl')"
           @click="copyUrl(active.url)"
         >
-          {{ copied ? '✓ Copied' : t('deployments.copyUrl') }}
+          {{ copied ? t('deploymentsExtra.copied') : t('deployments.copyUrl') }}
         </button>
         <a
           :href="active.url"
@@ -67,7 +67,7 @@
             <span :class="statusDotClass(d)" class="w-1.5 h-1.5 rounded-full shrink-0"></span>
             <code class="text-[10px] font-mono text-on-surface-variant truncate flex-1">{{ d.entryPoint }}</code>
             <span class="text-[10px] text-on-surface-variant/60 shrink-0 font-mono">{{ formatTime(d.startedAt) }}</span>
-            <span v-if="d.active" class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold shrink-0">ACTIVE</span>
+            <span v-if="d.active" class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold shrink-0">{{ t('deploymentsExtra.activeStatus') }}</span>
           </div>
         </div>
       </div>
@@ -111,7 +111,8 @@ const copied = ref(false)
 const iframeKey = ref(0)
 
 function fullUrl(rel: string): string {
-  // rel 是 /preview/{conv_id}/,显示带 host 让用户知道完整 URL
+  // 已经是绝对 URL（http://localhost:xxxx/）直接返回，否则拼 origin
+  if (rel.startsWith('http://') || rel.startsWith('https://')) return rel
   return `${window.location.origin}${rel}`
 }
 

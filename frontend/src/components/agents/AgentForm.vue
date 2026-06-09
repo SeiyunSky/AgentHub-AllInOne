@@ -32,7 +32,7 @@
           :rows="2"
           :placeholder="t('agentForm.descriptionPlaceholder')"
           resize="none"
-          input-style="padding: 12px 16px; font-size: 13px; resize: none; line-height: 1.5;"
+          input-style="height: 96px; font-size: 13px; resize: none; line-height: 1.5;"
           :disabled="readonly"
         />
       </section>
@@ -187,6 +187,80 @@
         </el-popover>
       </section>
 
+      <!-- MCP Servers -->
+      <section>
+        <h3 class="section-heading">
+          <el-icon :size="14"><Connection /></el-icon>
+          {{ t('agentForm.mcpServersLabel') }}
+        </h3>
+
+        <div v-if="selectedMcpServers.length > 0" class="flex flex-wrap gap-1.5 mb-2">
+          <div
+            v-for="server in selectedMcpServers"
+            :key="server.id"
+            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium border"
+            :class="server.transport === 'stdio' ? 'bg-emerald-50 text-emerald-700 border-emerald-200/60' : 'bg-blue-50 text-blue-700 border-blue-200/60'"
+          >
+            <el-icon :size="12"><Monitor v-if="server.transport === 'stdio'" /><Connection v-else /></el-icon>
+            {{ server.name }}
+            <button
+              class="w-4 h-4 rounded-md flex items-center justify-center hover:bg-black/10 transition-colors disabled:cursor-not-allowed"
+              :disabled="readonly"
+              @click="removeMcpServer(server.id)"
+            >
+              <el-icon :size="8"><Close /></el-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Picker popover -->
+        <el-popover
+          trigger="click"
+          placement="bottom-start"
+          :width="300"
+          :show-arrow="false"
+          :offset="4"
+          popper-class="skill-picker-popper"
+        >
+          <template #reference>
+            <button
+              class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-medium border border-outline-variant bg-white hover:border-brand hover:bg-brand-light/20 transition-all cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="readonly"
+            >
+              <el-icon :size="14"><Plus /></el-icon>
+              {{ draft.mcpServerIds.length > 0 ? t('agentForm.addMoreMcpServers') : t('agentForm.selectMcpServers') }}
+            </button>
+          </template>
+          <div class="py-1.5 max-h-[320px] overflow-y-auto custom-scrollbar">
+            <div v-if="mcpServersStore.isLoading" class="px-3 py-2 text-[13px] text-on-surface-variant">{{ t('agentForm.loadingMcpServers') }}</div>
+            <div v-else-if="mcpServersStore.servers.length === 0" class="px-3 py-2 text-[13px] text-on-surface-variant">{{ t('agentForm.noMcpServersAvailable') }}</div>
+            <div
+              v-else
+              v-for="server in mcpServersStore.servers"
+              :key="server.id"
+              class="flex items-center gap-3 px-3 py-2.5 text-[13px] cursor-pointer hover:bg-brand-light/30 rounded-lg mx-1 transition-colors"
+              @click="toggleMcpServer(server.id)"
+            >
+              <div
+                class="w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0"
+                :class="draft.mcpServerIds.includes(server.id)
+                  ? 'bg-brand text-white'
+                  : 'bg-surface-container text-on-surface-variant'"
+              >
+                <el-icon :size="12"><Select v-if="draft.mcpServerIds.includes(server.id)" /><Connection v-else /></el-icon>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-medium truncate" :class="draft.mcpServerIds.includes(server.id) ? 'text-brand' : 'text-on-surface'">
+                  {{ server.name }}
+                </p>
+                <p v-if="server.description" class="text-[11px] text-on-surface-variant truncate">{{ server.description }}</p>
+                <p v-else class="text-[11px] text-on-surface-variant truncate">{{ server.transport }} · {{ server.transport === 'stdio' ? server.command : server.url }}</p>
+              </div>
+            </div>
+          </div>
+        </el-popover>
+      </section>
+
       <!-- System Prompt: Code container -->
       <section class="form-section !p-0 overflow-hidden">
         <div class="code-container-header">
@@ -201,7 +275,7 @@
             :rows="12"
             resize="none"
             :placeholder="t('agentForm.systemPromptPlaceholder')"
-            input-style="padding: 16px; font-size: 13px; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; line-height: 1.7; resize: none; border: none; box-shadow: none; background: transparent;"
+            input-style="font-size: 13px; font-family: 'Consolas', 'SF Mono', ui-monospace, monospace; line-height: 1.7; resize: none; border: none; box-shadow: none; background: transparent;"
             :disabled="readonly"
           />
         </div>
@@ -279,9 +353,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AgentDraft, AgentCapabilities, AgentType } from '@/types/agent'
 import type { Component } from 'vue'
-import { Close, Document, SetUp, Picture, Cpu, Select, PriceTag, View, Plus, CircleCheck, Promotion } from '@element-plus/icons-vue'
+import { Close, Document, SetUp, Picture, Cpu, Select, PriceTag, View, Plus, CircleCheck, Promotion, Connection, Monitor } from '@element-plus/icons-vue'
 import { getAgentTypeIcon } from '@/utils/agentIcons'
 import { useSkillsStore } from '@/stores/skills'
+import { useMCPServersStore } from '@/stores/mcp_servers'
 
 const { t } = useI18n()
 
@@ -292,9 +367,11 @@ const props = defineProps<{
 }>()
 
 const skillsStore = useSkillsStore()
+const mcpServersStore = useMCPServersStore()
 
 onMounted(() => {
   skillsStore.loadSkills()
+  mcpServersStore.loadServers()
 })
 
 const tagInput = ref('')
@@ -377,6 +454,25 @@ function toggleApiSkill(id: string) {
 function removeApiSkill(id: string) {
   const idx = props.draft.skillIds.indexOf(id)
   if (idx >= 0) props.draft.skillIds.splice(idx, 1)
+}
+
+// MCP Server picker
+const selectedMcpServers = computed(() =>
+  mcpServersStore.servers.filter(s => props.draft.mcpServerIds.includes(s.id)),
+)
+
+function toggleMcpServer(id: string) {
+  const idx = props.draft.mcpServerIds.indexOf(id)
+  if (idx >= 0) {
+    props.draft.mcpServerIds.splice(idx, 1)
+  } else {
+    props.draft.mcpServerIds.push(id)
+  }
+}
+
+function removeMcpServer(id: string) {
+  const idx = props.draft.mcpServerIds.indexOf(id)
+  if (idx >= 0) props.draft.mcpServerIds.splice(idx, 1)
 }
 </script>
 

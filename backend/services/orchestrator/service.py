@@ -74,6 +74,7 @@ from backend.services.orchestrator.tool_registry import (
     is_terminal_stop_reason,
     wrap_tool_result,
 )
+from backend.adapters.mcp_client import MCPClient
 from backend.services.thread_service import ThreadService
 
 
@@ -94,8 +95,13 @@ class OrchestratorService:
     (避免与 chat_service 调用方共享 session 引发并发问题)。
     """
 
-    def __init__(self, session: Optional[Session] = None) -> None:
+    def __init__(
+        self,
+        session: Optional[Session] = None,
+        mcp_clients: Optional[list[MCPClient]] = None,
+    ) -> None:
         self.session = session
+        self._mcp_clients: list[MCPClient] = mcp_clients or []
 
     # --------------------------------------------------------
     # 公开入口
@@ -108,6 +114,7 @@ class OrchestratorService:
         conversation_id: str,
         user_message_id: str,
         user_id: str,
+        silent: bool = False,
     ) -> None:
         """
         启动主 Agent loop。被 chat_service._group_orchestrate_flow 调。
@@ -185,19 +192,20 @@ class OrchestratorService:
                     orchestrator_avatar = _row.avatar if _row else None
             except Exception:
                 pass
-            try:
-                await stream_service.push_event(
-                    conversation_id,
-                    AgentStartEvent(
-                        agent_id="orchestrator",
-                        thread_id=thread_id,
-                        message_id=thread_id,  # 占位,respond_to_user 会推真的 message_id
-                        agent_name="Orchestrator",
-                        agent_avatar=orchestrator_avatar,
-                    ),
-                )
-            except Exception:
-                logger.exception("failed to push orchestrator agent_start (non-fatal)")
+            if not silent:
+                try:
+                    await stream_service.push_event(
+                        conversation_id,
+                        AgentStartEvent(
+                            agent_id="orchestrator",
+                            thread_id=thread_id,
+                            message_id=thread_id,  # 占位,respond_to_user 会推真的 message_id
+                            agent_name="Orchestrator",
+                            agent_avatar=orchestrator_avatar,
+                        ),
+                    )
+                except Exception:
+                    logger.exception("failed to push orchestrator agent_start (non-fatal)")
 
             total_tokens_in, total_tokens_out = await self._agent_loop(
                 thread_id=thread_id,
@@ -329,7 +337,19 @@ class OrchestratorService:
             ]
             _user_text = "\n\n".join(_user_text_parts).strip()
             if _user_text:
-                messages.append({"role": "user", "content": _user_text})
+                # 如果 orchestrator thread 有 dispatch_prompt（如 @ 隐式调度时注入的 mention hint），
+                # 把它前置到用户消息文本，让 orchestrator 一开始就知道该 dispatch 给谁
+                _dispatch_hint = ""
+                try:
+                    from backend.core.database import db_session as _dbs
+                    from backend.repositories.thread_repo import ThreadRepository as _TR
+                    with _dbs() as _s:
+                        _t = _TR(_s).get(thread_id)
+                        _dispatch_hint = (_t.dispatch_prompt or "") if _t else ""
+                except Exception:
+                    pass
+                _full_text = (_dispatch_hint + _user_text) if _dispatch_hint else _user_text
+                messages.append({"role": "user", "content": _full_text})
 
         # 三路恢复 attempt 计数器(每路独立维护,某路重试成功后**不**重置:
         # 同一 loop 内累计触发次数,达到上限 → give up)
@@ -351,8 +371,18 @@ class OrchestratorService:
         # 一次构建缓存到局部变量,避免每轮重复 IO
         static_prompt = await prompt_builder.build_static(prompt_ctx)
 
-        # tools schema 也在 loop 期间不变(19 个工具注册时即定型),一次构建缓存
-        tools = build_tools_payload()
+        # tools schema 在 loop 期间不变，一次构建缓存
+        # MCP 工具与内置工具合并后一起传给 LLM
+        builtin_tools = build_tools_payload()
+        mcp_tools_payload, mcp_tool_client_map = await self._collect_mcp_tools()
+        tools = builtin_tools + mcp_tools_payload
+        logger.debug(
+            "orchestrator tools loaded: %d builtin + %d mcp = %d total | mcp=%s",
+            len(builtin_tools),
+            len(mcp_tools_payload),
+            len(tools),
+            [t["name"] for t in mcp_tools_payload],
+        )
 
         tool_ctx = ToolContext(
             thread_id=thread_id,
@@ -676,7 +706,45 @@ class OrchestratorService:
                         "orchestrator %s executing tool=%s call_id=%s",
                         thread_id, effective_call.name, effective_call.id,
                     )
-                    tool_result = await dispatch_tool_call(effective_call, ctx=tool_ctx)
+
+                    # MCP 工具路由：名称在 mcp_tool_client_map 里的走 MCP 调用，
+                    # 否则走内置工具派发
+                    if effective_call.name in mcp_tool_client_map:
+                        mcp_client = mcp_tool_client_map[effective_call.name]
+                        try:
+                            import json as _json_mcp
+                            from backend.services.orchestrator.tool_registry import ToolResult as _ToolResult
+                            mcp_result = await mcp_client.call_tool(
+                                effective_call.name, effective_call.input or {}
+                            )
+                            # CallToolResult.content 是 list[TextContent | ImageContent | ...]
+                            content_parts = []
+                            for part in (mcp_result.content or []):
+                                if hasattr(part, "text"):
+                                    content_parts.append(part.text)
+                                else:
+                                    content_parts.append(str(part))
+                            output_str = "\n".join(content_parts) if content_parts else ""
+                            tool_result = _ToolResult(
+                                tool_use_id=effective_call.id,
+                                name=effective_call.name,
+                                output={"result": output_str},
+                                is_error=bool(mcp_result.isError),
+                            )
+                        except Exception as _mcp_exc:
+                            logger.exception(
+                                "orchestrator %s MCP tool %s failed",
+                                thread_id, effective_call.name,
+                            )
+                            from backend.services.orchestrator.tool_registry import ToolResult as _ToolResult
+                            tool_result = _ToolResult(
+                                tool_use_id=effective_call.id,
+                                name=effective_call.name,
+                                output={"error": str(_mcp_exc)},
+                                is_error=True,
+                            )
+                    else:
+                        tool_result = await dispatch_tool_call(effective_call, ctx=tool_ctx)
 
                     # 推 BlockStop:把 status / output 落到前端 workflow,转圈停下来
                     final_status = "error" if tool_result.is_error else "completed"
@@ -830,6 +898,35 @@ class OrchestratorService:
             AgentDoneEvent(**base, tokens_input=tokens_input, tokens_output=tokens_output),
         )
 
+    async def _collect_mcp_tools(
+        self,
+    ) -> tuple[list[dict[str, Any]], dict[str, "MCPClient"]]:
+        """从所有挂载的 MCP 客户端收集工具 schema 和名称映射。
+
+        返回:
+            (tools_payload, tool_client_map)
+            tools_payload  — Anthropic tools list 格式，直接拼进 LLM 调用
+            tool_client_map — tool_name → MCPClient，派发时查路由用
+        """
+        payload: list[dict[str, Any]] = []
+        client_map: dict[str, "MCPClient"] = {}
+        for client in self._mcp_clients:
+            try:
+                tools = await client.list_tools()
+                for t in tools:
+                    payload.append({
+                        "name": t.name,
+                        "description": t.description or "",
+                        "input_schema": t.input_schema or {"type": "object", "properties": {}},
+                    })
+                    client_map[t.name] = client
+            except Exception as exc:
+                logger.warning(
+                    "orchestrator: failed to list tools from MCP server %s: %s",
+                    client.server_id, exc,
+                )
+        return payload, client_map
+
     def _has_unfinished_children(
         self,
         conversation_id: str,
@@ -859,4 +956,20 @@ class OrchestratorService:
             return False
 
 
-orchestrator_service = OrchestratorService()
+orchestrator_service: OrchestratorService = OrchestratorService()
+
+
+async def reload_orchestrator_mcp_clients(db: Session) -> None:
+    """热重载 orchestrator 的 MCP 客户端，无需重启进程。
+
+    在 attach / detach MCP 服务器到 orchestrator 时调用，
+    下一轮 _agent_loop 启动时会自动拿到最新的工具列表。
+    """
+    from backend.adapters.registry import connect_mcp_clients_for_agent
+    import backend.services.orchestrator.service as _mod
+    clients = await connect_mcp_clients_for_agent("orchestrator", db)
+    _mod.orchestrator_service._mcp_clients = clients
+    logger.info(
+        "orchestrator MCP clients reloaded: %d server(s)",
+        len(clients),
+    )

@@ -1,7 +1,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-export type SidebarTab = 'chat' | 'agents' | 'skills'
+export type SidebarTab = 'chat' | 'agents' | 'skills' | 'mcp-servers'
 
 /**
  * Derives the active sidebar tab from the current route name.
@@ -15,6 +15,7 @@ export function useSidebarTab() {
     if (name === 'chat' || name === 'chat-detail') return 'chat'
     if (name === 'agents' || name === 'agent-create' || name === 'agent-edit') return 'agents'
     if (name === 'skills' || name === 'skill-create' || name === 'skill-edit') return 'skills'
+    if (name === 'mcp-servers' || name === 'mcp-server-create' || name === 'mcp-server-edit') return 'mcp-servers'
     return 'chat'
   })
 
