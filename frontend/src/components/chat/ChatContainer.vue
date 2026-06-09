@@ -18,6 +18,9 @@
       @react="onReact"
     />
 
+    <!-- Typing bar：输入框上方"正在思考"指示条（Teams 风格） -->
+    <AgentTypingBar :streaming-agents="streamingAgents" />
+
     <!-- Archived notice (replaces input for archived conversations) -->
     <div
       v-if="isArchived"
@@ -55,6 +58,7 @@ import { useAgentsStore } from '@/stores/agents'
 import ChatHeader from '@/components/layout/ChatHeader.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInput from '@/components/chat/ChatInput.vue'
+import AgentTypingBar from '@/components/chat/AgentTypingBar.vue'
 import { ChatLineRound, FolderOpened } from '@element-plus/icons-vue'
 
 const props = defineProps<{
@@ -86,6 +90,7 @@ const convId = computed(() => conversationsStore.currentId)
 const isArchived = computed(() => conversationsStore.currentConversation?.is_archived ?? false)
 const isStreaming = computed(() => !!convId.value && chatStore.isStreamingFor(convId.value))
 const streamingMessageId = computed(() => convId.value ? chatStore.getStreamingMessage(convId.value)?.id : undefined)
+const streamingAgents = computed(() => convId.value ? chatStore.getStreamingAgents(convId.value) : [])
 
 const inputText = computed(() => convId.value ? chatStore.getInputDraft(convId.value) : '')
 const inputHtml = computed(() => convId.value ? chatStore.getInputHtmlDraft(convId.value) : '')

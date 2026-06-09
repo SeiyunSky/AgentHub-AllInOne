@@ -1,5 +1,8 @@
 <template>
-  <div class="flex gap-3 message-enter group mb-5">
+  <div
+    v-if="!(streaming && (!message.blocks || message.blocks.length === 0))"
+    class="flex gap-3 message-enter group mb-5"
+  >
     <div
       class="w-9 h-9 rounded-[20%] flex items-center justify-center shrink-0 overflow-hidden"
     >
@@ -115,13 +118,6 @@
               :reject-reason="(block as any).rejectReason"
             />
           </div>
-        </div>
-
-        <!-- Streaming: blocks empty, show typing indicator -->
-        <div v-else-if="streaming" class="p-4 bg-white border border-outline-variant rounded-2xl rounded-tl-md shadow-soft inline-flex items-center gap-1.5">
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
-          <span class="typing-dot"></span>
         </div>
 
         <!-- Legacy mode: single content + optional codeBlock -->
