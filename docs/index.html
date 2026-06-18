@@ -1048,6 +1048,52 @@ code {
 }
 .demo-feature-name { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
 .demo-feature-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+/* ── Language toggle ── */
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border2);
+  flex-shrink: 0;
+}
+.lang-opt {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 11px;
+  cursor: pointer;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  transition: color .15s, background .15s;
+  letter-spacing: .03em;
+}
+.lang-opt.active {
+  color: var(--accent);
+  background: rgba(96,165,250,.12);
+}
+.lang-opt:hover:not(.active) { color: var(--text); background: var(--surface2); }
+
+/* ── GitHub link ── */
+.github-link {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 4px 11px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  transition: color .15s, border-color .15s, background .15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.github-link:hover { color: var(--text); border-color: var(--accent2); background: var(--surface2); }
+.github-link svg { flex-shrink: 0; }
+
 /* ── Demo sub-page cards ── */
 .dp-card {
   background: var(--surface);
@@ -1089,16 +1135,24 @@ code {
 
 <!-- NAV -->
 <nav class="main-page-el">Agent<span>Hub</span></span>
-  <a href="#diagram">架构图</a>
-  <a href="#positioning">定位</a>
-  <a href="#stack">技术栈</a>
-  <a href="#arch">架构</a>
-  <a href="#modules">模块</a>
-  <a href="#contributors">贡献者</a>
+  <a href="#diagram" data-zh="架构图" data-en="Diagram">架构图</a>
+  <a href="#positioning" data-zh="定位" data-en="Positioning">定位</a>
+  <a href="#stack" data-zh="技术栈" data-en="Stack">技术栈</a>
+  <a href="#arch" data-zh="架构" data-en="Arch">架构</a>
+  <a href="#modules" data-zh="模块" data-en="Modules">模块</a>
+  <a href="#contributors" data-zh="贡献者" data-en="Contributors">贡献者</a>
   <span class="nav-sep"></span>
+  <a class="github-link" href="https://github.com/SeiyunSky/AgentHub-AllInOne" target="_blank" rel="noopener">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+    GitHub
+  </a>
   <button class="demo-btn" onclick="showDemo()">
-    ▶ 查看演示
+    <span data-zh="▶ 查看演示" data-en="▶ Live Demo">▶ 查看演示</span>
   </button>
+  <div class="lang-btn">
+    <button class="lang-opt active" onclick="setLang('zh')">中</button>
+    <button class="lang-opt" onclick="setLang('en')">EN</button>
+  </div>
   <span class="nav-badge">2026-06-08</span>
 </nav>
 
@@ -1107,23 +1161,23 @@ code {
   <div class="container">
     <div class="hero-tag">Project Report</div>
     <h1 class="hero-title">AgentHub</h1>
-    <p class="hero-sub">Multi-Agent IM Platform — 让用户像发消息一样驱动 AI Agent 完成复杂任务</p>
+    <p class="hero-sub" data-i18n="hero_sub">Multi-Agent IM Platform — 让用户像发消息一样驱动 AI Agent 完成复杂任务</p>
     <div class="hero-stats">
       <div class="hero-stat fade-up">
         <div class="num" data-target="4">0</div>
-        <div class="label">Adapter 类型</div>
+        <div class="label" data-i18n="stat_adapter">Adapter 类型</div>
       </div>
       <div class="hero-stat fade-up" style="transition-delay:.1s">
         <div class="num" data-target="22">0</div>
-        <div class="label">Orchestrator 工具</div>
+        <div class="label" data-i18n="stat_tools">Orchestrator 工具</div>
       </div>
       <div class="hero-stat fade-up" style="transition-delay:.2s">
         <div class="num" data-target="48">0</div>
-        <div class="label">已完成模块</div>
+        <div class="label" data-i18n="stat_modules">已完成模块</div>
       </div>
       <div class="hero-stat fade-up" style="transition-delay:.3s">
         <div class="num" data-target="13">0</div>
-        <div class="label">测试文件</div>
+        <div class="label" data-i18n="stat_tests">测试文件</div>
       </div>
     </div>
   </div>
@@ -1134,8 +1188,8 @@ code {
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">00 · System Architecture</div>
-      <div class="section-title">系统架构总图</div>
-      <div class="section-desc">从浏览器到 Docker 沙箱的完整请求路径，以及 Orchestrator Agent Loop 在其中的位置。</div>
+      <div class="section-title" data-i18n="diagram_title">系统架构总图</div>
+      <div class="section-desc" data-i18n="diagram_desc">从浏览器到 Docker 沙箱的完整请求路径，以及 Orchestrator Agent Loop 在其中的位置。</div>
     </div>
     <div class="arch-diagram-wrap fade-up">
       <svg viewBox="0 0 920 340" width="100%" style="max-width:920px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
@@ -1262,7 +1316,7 @@ code {
 
     <div class="manifesto fade-up">
       <div class="manifesto-label">Design Philosophy</div>
-      <div class="manifesto-quote">
+      <div class="manifesto-quote" data-i18n="manifesto">
         AgentHub is designed to make multi-agent orchestration <em>boringly reliable</em> —
         每一条通信路径都有明确的协议；每一个 Agent 都有隔离的上下文；每一次工具调用都经过 Hook 审计。
         复杂性被封装在 Orchestrator 内部，用户看到的只是消息。
@@ -1276,38 +1330,38 @@ code {
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">01 · Positioning</div>
-      <div class="section-title">项目定位</div>
-      <div class="section-desc">不同于单 Agent 对话产品，AgentHub 的核心模型是一个分层 Agent 网络，以 IM 为交互界面驱动多 Agent 协同完成复杂任务。</div>
+      <div class="section-title" data-i18n="pos_title">项目定位</div>
+      <div class="section-desc" data-i18n="pos_desc">不同于单 Agent 对话产品，AgentHub 的核心模型是一个分层 Agent 网络，以 IM 为交互界面驱动多 Agent 协同完成复杂任务。</div>
     </div>
 
-    <div class="stack-grid fade-up">
+    <div class="stack-grid fade-up" id="i18n-positioning-cards">
       <div class="stack-card">
         <div class="stack-card-header">
           <div class="stack-icon llm">🧠</div>
-          <div class="stack-name">Orchestrator 主 Agent</div>
+          <div class="stack-name" data-i18n="pos_c1_name">Orchestrator 主 Agent</div>
         </div>
-        <div style="font-size:12.5px;color:var(--muted);line-height:1.6">接收用户意图，负责任务理解、拆解与调度。不直接执行任务，而是通过 22 个内置工具驱动下层 Agent 并行运作，管理 blocked_by 依赖图、等待结果、汇总回复。</div>
+        <div style="font-size:12.5px;color:var(--muted);line-height:1.6" data-i18n="pos_c1_desc">接收用户意图，负责任务理解、拆解与调度。不直接执行任务，而是通过 22 个内置工具驱动下层 Agent 并行运作，管理 blocked_by 依赖图、等待结果、汇总回复。</div>
       </div>
       <div class="stack-card">
         <div class="stack-card-header">
           <div class="stack-icon fe">⚡</div>
-          <div class="stack-name">专属子 Agent</div>
+          <div class="stack-name" data-i18n="pos_c2_name">专属子 Agent</div>
         </div>
-        <div style="font-size:12.5px;color:var(--muted);line-height:1.6">执行具体任务（写代码、查资料、审查代码等）。每个 Agent 有独立的 Thread、独立的 Adapter（Claude CLI / Codex / OpenAI 兼容接口），互相隔离，结果通过 wake_event 通知主 Agent。</div>
+        <div style="font-size:12.5px;color:var(--muted);line-height:1.6" data-i18n="pos_c2_desc">执行具体任务（写代码、查资料、审查代码等）。每个 Agent 有独立的 Thread、独立的 Adapter（Claude CLI / Codex / OpenAI 兼容接口），互相隔离，结果通过 wake_event 通知主 Agent。</div>
       </div>
       <div class="stack-card">
         <div class="stack-card-header">
           <div class="stack-icon be">💬</div>
-          <div class="stack-name">五种对话模式</div>
+          <div class="stack-name" data-i18n="pos_c3_name">五种对话模式</div>
         </div>
-        <div style="font-size:12.5px;color:var(--muted);line-height:1.6">单聊（直连子 Agent）、群聊（Orchestrator 主导）、broadcast（多 Agent 概率自决是否回复）、@个体（复用历史 Thread）、local_edit（代码文件编辑），覆盖不同协作场景。</div>
+        <div style="font-size:12.5px;color:var(--muted);line-height:1.6" data-i18n="pos_c3_desc">单聊（直连子 Agent）、群聊（Orchestrator 主导）、broadcast（多 Agent 概率自决是否回复）、@个体（复用历史 Thread）、local_edit（代码文件编辑），覆盖不同协作场景。</div>
       </div>
       <div class="stack-card">
         <div class="stack-card-header">
           <div class="stack-icon infra">🐳</div>
-          <div class="stack-name">沙箱 + 审批闭环</div>
+          <div class="stack-name" data-i18n="pos_c4_name">沙箱 + 审批闭环</div>
         </div>
-        <div style="font-size:12.5px;color:var(--muted);line-height:1.6">代码执行和应用部署运行在会话级 Docker 容器沙箱内，每个会话隔离。高风险操作走 ApprovalHook 审批闭环，asyncio 层面阻塞等待用户授权，结果可通过反向代理在前端 iframe 预览。</div>
+        <div style="font-size:12.5px;color:var(--muted);line-height:1.6" data-i18n="pos_c4_desc">代码执行和应用部署运行在会话级 Docker 容器沙箱内，每个会话隔离。高风险操作走 ApprovalHook 审批闭环，asyncio 层面阻塞等待用户授权，结果可通过反向代理在前端 iframe 预览。</div>
       </div>
     </div>
   </div>
@@ -1318,7 +1372,7 @@ code {
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">02 · Tech Stack</div>
-      <div class="section-title">技术栈</div>
+      <div class="section-title" data-i18n="stack_title">技术栈</div>
     </div>
     <div class="tech-grid fade-up">
 
@@ -1471,142 +1525,142 @@ code {
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">03 · Architecture</div>
-      <div class="section-title">整体架构</div>
+      <div class="section-title" data-i18n="arch_title">整体架构</div>
     </div>
 
     <!-- 3.1 通信通道 -->
-    <div style="margin-bottom:40px" class="fade-up">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">3.1 · 三条通信通道</div>
+    <div style="margin-bottom:40px" class="fade-up" id="i18n-arch-31">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px" data-i18n="arch_31_title">3.1 · 三条通信通道</div>
       <div class="arch-row">
-        <span class="arch-row-label">浏览器</span>
+        <span class="arch-row-label" data-i18n="arch_browser">浏览器</span>
         <div class="arch-cards">
           <div class="arch-card primary">
             <div class="arch-card-name">GET /chat/stream</div>
-            <div class="arch-card-desc">SSE · 先建连再发消息<br>接收所有 Agent 事件流</div>
+            <div class="arch-card-desc" data-i18n="arch_sse_desc">SSE · 先建连再发消息<br>接收所有 Agent 事件流</div>
           </div>
           <div class="arch-card primary">
             <div class="arch-card-name">POST /chat</div>
-            <div class="arch-card-desc">HTTP · 发送用户消息<br>SSE 必须先于此建立</div>
+            <div class="arch-card-desc" data-i18n="arch_post_desc">HTTP · 发送用户消息<br>SSE 必须先于此建立</div>
           </div>
           <div class="arch-card primary">
             <div class="arch-card-name">WS /ws</div>
-            <div class="arch-card-desc">WebSocket · 审批决策<br>实时信令通道</div>
+            <div class="arch-card-desc" data-i18n="arch_ws_desc">WebSocket · 审批决策<br>实时信令通道</div>
           </div>
         </div>
       </div>
-      <div class="arch-connector">ChatService 路由分发</div>
+      <div class="arch-connector" data-i18n="arch_route">ChatService 路由分发</div>
       <div class="arch-row">
-        <span class="arch-row-label">五路分流</span>
+        <span class="arch-row-label" data-i18n="arch_5route">五路分流</span>
         <div class="arch-cards">
           <div class="arch-card">
             <div class="arch-card-name">local_edit</div>
-            <div class="arch-card-desc">直接修改沙箱文件<br>不经 LLM</div>
+            <div class="arch-card-desc" data-i18n="arch_local_edit">直接修改沙箱文件<br>不经 LLM</div>
           </div>
           <div class="arch-card">
-            <div class="arch-card-name">单聊</div>
+            <div class="arch-card-name" data-i18n="arch_single">单聊</div>
             <div class="arch-card-desc">ThreadService<br>→ AdapterRegistry</div>
           </div>
           <div class="arch-card">
-            <div class="arch-card-name">@个体</div>
-            <div class="arch-card-desc">resume_or_create<br>复用历史 Thread</div>
+            <div class="arch-card-name">@<span data-i18n="arch_mention">个体</span></div>
+            <div class="arch-card-desc" data-i18n="arch_mention_desc">resume_or_create<br>复用历史 Thread</div>
           </div>
           <div class="arch-card">
             <div class="arch-card-name">broadcast</div>
-            <div class="arch-card-desc">多 Agent 并行<br>70% 概率自决回复</div>
+            <div class="arch-card-desc" data-i18n="arch_broadcast_desc">多 Agent 并行<br>70% 概率自决回复</div>
           </div>
           <div class="arch-card primary">
-            <div class="arch-card-name">群聊</div>
-            <div class="arch-card-desc">OrchestratorService<br>八步 Agent Loop</div>
+            <div class="arch-card-name" data-i18n="arch_group">群聊</div>
+            <div class="arch-card-desc" data-i18n="arch_group_desc">OrchestratorService<br>八步 Agent Loop</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- 3.2 八步 Loop -->
-    <div style="margin-bottom:40px" class="fade-up">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">3.2 · Orchestrator 八步 Agent Loop</div>
+    <div style="margin-bottom:40px" class="fade-up" id="i18n-arch-32">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px" data-i18n="arch_32_title">3.2 · Orchestrator 八步 Agent Loop</div>
       <div class="timeline-wrap">
         <div class="timeline-track">
           <div class="tl-step">
             <div class="tl-dot">①</div>
-            <div class="tl-label">abort<br>检查</div>
-            <div class="tl-desc">检测 stop 信号，立即退出循环</div>
+            <div class="tl-label" data-i18n="tl1_label">abort<br>检查</div>
+            <div class="tl-desc" data-i18n="tl1_desc">检测 stop 信号，立即退出循环</div>
           </div>
           <div class="tl-step">
             <div class="tl-dot">②</div>
-            <div class="tl-label">pending_events<br>消费</div>
-            <div class="tl-desc">处理子 Thread 完成通知（wake_event）</div>
+            <div class="tl-label" data-i18n="tl2_label">pending_events<br>消费</div>
+            <div class="tl-desc" data-i18n="tl2_desc">处理子 Thread 完成通知（wake_event）</div>
           </div>
           <div class="tl-step">
             <div class="tl-dot">③</div>
-            <div class="tl-label">六层 Prompt<br>构建</div>
-            <div class="tl-desc">静态系统 prompt + 动态上下文（会话历史 / 可用 Agent / 任务状态）</div>
+            <div class="tl-label" data-i18n="tl3_label">六层 Prompt<br>构建</div>
+            <div class="tl-desc" data-i18n="tl3_desc">静态系统 prompt + 动态上下文（会话历史 / 可用 Agent / 任务状态）</div>
           </div>
           <div class="tl-step">
             <div class="tl-dot">④</div>
-            <div class="tl-label">Anthropic API<br>调用</div>
-            <div class="tl-desc">携带 22 个工具 schema，流式接收 ContentBlock</div>
+            <div class="tl-label" data-i18n="tl4_label">Anthropic API<br>调用</div>
+            <div class="tl-desc" data-i18n="tl4_desc">携带 22 个工具 schema，流式接收 ContentBlock</div>
           </div>
           <div class="tl-step">
             <div class="tl-dot">⑤</div>
-            <div class="tl-label">错误<br>恢复</div>
-            <div class="tl-desc">max_tokens → 续写；prompt_too_long → summarize；api_error → 指数退避</div>
+            <div class="tl-label" data-i18n="tl5_label">错误<br>恢复</div>
+            <div class="tl-desc" data-i18n="tl5_desc">max_tokens → 续写；prompt_too_long → summarize；api_error → 指数退避</div>
           </div>
           <div class="tl-step">
             <div class="tl-dot">⑥</div>
-            <div class="tl-label">end_turn<br>判断</div>
-            <div class="tl-desc">无工具调用则输出最终回复，退出循环</div>
+            <div class="tl-label" data-i18n="tl6_label">end_turn<br>判断</div>
+            <div class="tl-desc" data-i18n="tl6_desc">无工具调用则输出最终回复，退出循环</div>
           </div>
           <div class="tl-step">
             <div class="tl-dot">⑦</div>
-            <div class="tl-label">工具<br>派发</div>
-            <div class="tl-desc">PRE_TOOL_USE hooks → 执行 → POST_TOOL_USE hooks</div>
+            <div class="tl-label" data-i18n="tl7_label">工具<br>派发</div>
+            <div class="tl-desc" data-i18n="tl7_desc">PRE_TOOL_USE hooks → 执行 → POST_TOOL_USE hooks</div>
           </div>
           <div class="tl-step">
             <div class="tl-dot">⑧</div>
-            <div class="tl-label">上下文<br>压缩</div>
-            <div class="tl-desc">token 超阈值时 maybe_compact，防窗口溢出</div>
+            <div class="tl-label" data-i18n="tl8_label">上下文<br>压缩</div>
+            <div class="tl-desc" data-i18n="tl8_desc">token 超阈值时 maybe_compact，防窗口溢出</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- 3.3 22 工具 -->
-    <div style="margin-bottom:40px" class="fade-up">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">3.3 · 22 个 Orchestrator 工具</div>
+    <div style="margin-bottom:40px" class="fade-up" id="i18n-arch-33">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px" data-i18n="arch_33_title">3.3 · 22 个 Orchestrator 工具</div>
       <div class="tool-groups">
         <div class="tool-group">
-          <div class="tool-group-header"><div class="tool-group-letter">A</div><div class="tool-group-name">任务调度（4）</div></div>
+          <div class="tool-group-header"><div class="tool-group-letter">A</div><div class="tool-group-name" data-i18n="tg_a">任务调度（4）</div></div>
           <div class="tool-names">
             <span class="tool-chip">dispatch_to_agent</span><span class="tool-chip">read_thread_status</span><span class="tool-chip">get_thread_result</span><span class="tool-chip">cancel_thread</span>
           </div>
         </div>
         <div class="tool-group">
-          <div class="tool-group-header"><div class="tool-group-letter">B</div><div class="tool-group-name">任务链（5）</div></div>
+          <div class="tool-group-header"><div class="tool-group-letter">B</div><div class="tool-group-name" data-i18n="tg_b">任务链（5）</div></div>
           <div class="tool-names">
             <span class="tool-chip">create_task_plan</span><span class="tool-chip">add_task</span><span class="tool-chip">update_task</span><span class="tool-chip">get_task_plan</span><span class="tool-chip">present_task_plan_for_review</span>
           </div>
         </div>
         <div class="tool-group">
-          <div class="tool-group-header"><div class="tool-group-letter">C</div><div class="tool-group-name">用户交互（3）</div></div>
+          <div class="tool-group-header"><div class="tool-group-letter">C</div><div class="tool-group-name" data-i18n="tg_c">用户交互（3）</div></div>
           <div class="tool-names">
             <span class="tool-chip">respond_to_user</span><span class="tool-chip">request_approval</span><span class="tool-chip">ask_user</span>
           </div>
         </div>
         <div class="tool-group">
-          <div class="tool-group-header"><div class="tool-group-letter">D</div><div class="tool-group-name">上下文（3）</div></div>
+          <div class="tool-group-header"><div class="tool-group-letter">D</div><div class="tool-group-name" data-i18n="tg_d">上下文（3）</div></div>
           <div class="tool-names">
             <span class="tool-chip">read_conversation_history</span><span class="tool-chip">list_available_agents</span><span class="tool-chip">get_conversation_context</span>
           </div>
         </div>
         <div class="tool-group">
-          <div class="tool-group-header"><div class="tool-group-letter">E</div><div class="tool-group-name">文件沙箱（4）</div></div>
+          <div class="tool-group-header"><div class="tool-group-letter">E</div><div class="tool-group-name" data-i18n="tg_e">文件沙箱（4）</div></div>
           <div class="tool-names">
             <span class="tool-chip">create_file</span><span class="tool-chip">edit_file</span><span class="tool-chip">read_file</span><span class="tool-chip">list_directory</span>
           </div>
         </div>
         <div class="tool-group">
-          <div class="tool-group-header"><div class="tool-group-letter">F</div><div class="tool-group-name">部署（3）+ 网络（1）</div></div>
+          <div class="tool-group-header"><div class="tool-group-letter">F</div><div class="tool-group-name" data-i18n="tg_f">部署（3）+ 网络（1）</div></div>
           <div class="tool-names">
             <span class="tool-chip">deploy_app</span><span class="tool-chip">stop_app</span><span class="tool-chip">read_app_logs</span><span class="tool-chip">fetch_url</span>
           </div>
@@ -1615,24 +1669,24 @@ code {
     </div>
 
     <!-- 3.4 SSE 事件协议 -->
-    <div class="fade-up">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">3.4 · SSE 事件协议（10 种事件驱动双状态机）</div>
+    <div class="fade-up" id="i18n-arch-34">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px" data-i18n="arch_34_title">3.4 · SSE 事件协议（10 种事件驱动双状态机）</div>
       <div class="tool-groups">
         <div class="tool-group" style="grid-column:span 2">
-          <div class="tool-group-header"><div class="tool-group-letter" style="background:rgba(52,211,153,.15);color:var(--green)">→</div><div class="tool-group-name">chat store（消息气泡）</div></div>
+          <div class="tool-group-header"><div class="tool-group-letter" style="background:rgba(52,211,153,.15);color:var(--green)">→</div><div class="tool-group-name" data-i18n="sse_chat_store">chat store（消息气泡）</div></div>
           <div class="tool-names">
             <span class="tool-chip">agent_start</span><span class="tool-chip">block_start</span><span class="tool-chip">block_delta</span><span class="tool-chip">block_stop</span><span class="tool-chip">agent_done</span><span class="tool-chip">agent_error</span><span class="tool-chip">round_done</span><span class="tool-chip">message_appended</span><span class="tool-chip">read_receipt</span><span class="tool-chip">queue_drained</span>
           </div>
-          <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+          <div style="margin-top:10px;font-size:12px;color:var(--muted)" data-i18n="sse_chat_note">
             <code>streamingMap&lt;convId, Map&lt;agentId, AgentStreamingState&gt;&gt;</code> — 三级嵌套索引，支持多 Agent 并发 streaming 气泡（Teams 风格）
           </div>
         </div>
         <div class="tool-group">
-          <div class="tool-group-header"><div class="tool-group-letter" style="background:rgba(251,191,36,.15);color:var(--yellow)">→</div><div class="tool-group-name">workflow store（工作流视图）</div></div>
+          <div class="tool-group-header"><div class="tool-group-letter" style="background:rgba(251,191,36,.15);color:var(--yellow)">→</div><div class="tool-group-name" data-i18n="sse_workflow_store">workflow store（工作流视图）</div></div>
           <div class="tool-names">
             <span class="tool-chip">onAgentStart</span><span class="tool-chip">onBlockStart/Delta/Stop</span><span class="tool-chip">onAgentDone</span><span class="tool-chip">onAgentError</span>
           </div>
-          <div style="margin-top:10px;font-size:12px;color:var(--muted)">round_done → persistCurrent 快照落库</div>
+          <div style="margin-top:10px;font-size:12px;color:var(--muted)" data-i18n="sse_workflow_note">round_done → persistCurrent 快照落库</div>
         </div>
       </div>
     </div>
@@ -1644,56 +1698,56 @@ code {
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">04 · Modules</div>
-      <div class="section-title">核心已完成模块</div>
+      <div class="section-title" data-i18n="modules_title">核心已完成模块</div>
     </div>
 
-    <div class="mod-section-title fade-up">⚙️ 后端</div>
-    <div class="modules-grid fade-up">
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">FastAPI 应用入口 & 生命周期</div><span class="mod-status status-done">✓</span></div><div class="mod-path">backend/main.py</div><div class="mod-desc">自动建库/迁移、seed、hook 注册、Docker 初始化、stale thread 收尸</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ChatService 路由分发</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/chat_service.py</div><div class="mod-desc">五路分流；conversation 锁 + pending 队列；handle_stop 中止</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">OrchestratorService 主 Agent Loop</div><span class="mod-status status-done">✓</span></div><div class="mod-path">orchestrator/service.py</div><div class="mod-desc">八步循环；wake_event 唤醒；三路错误恢复；stop 中止检查</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">Orchestrator 22 个工具</div><span class="mod-status status-done">✓</span></div><div class="mod-path">orchestrator_tools.py</div><div class="mod-desc">七组工具全实装；Pydantic→JSON Schema；$ref inline 展开；16KB 截断</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">Hook 体系</div><span class="mod-status status-done">✓</span></div><div class="mod-path">backend/hooks/</div><div class="mod-desc">HookManager；PreExecutionHook；ApprovalHook（10min 超时）；PostExecutionHook</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">Adapter 抽象层 + Registry</div><span class="mod-status status-done">✓</span></div><div class="mod-path">adapters/base.py · registry.py</div><div class="mod-desc">StreamInput 统一入参；AgentAdapter ABC；四种 Adapter 实现</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">DockerRuntimeService</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/docker_runtime.py</div><div class="mod-desc">会话级容器；host 端口映射（Windows/Linux）；30 min 闲置回收</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ThreadService + 调度器</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/thread_service.py</div><div class="mod-desc">blocked_by 依赖图；mark_running/done/error/cancelled；broadcast 错峰</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">SSE StreamService</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/stream_service.py</div><div class="mod-desc">内存事件队列；abort 标志；push_round_done/push_queue_drained</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">broadcast 广播群聊</div><span class="mod-status status-done">✓</span></div><div class="mod-path">chat_service.py</div><div class="mod-desc">70%/30% 概率自决；__READ_RECEIPT__ sentinel；互聊 depth ≤ 1；表情包</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ContextCompactor</div><span class="mod-status status-done">✓</span></div><div class="mod-path">orchestrator/context_compactor.py</div><div class="mod-desc">maybe_compact（token 阈值）；global_summarize（prompt_too_long 路径）</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">PreviewService + 反向代理</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/preview_service.py</div><div class="mod-desc">/preview/{conv_id}/ → 容器 host_port 转发；touch 刷新闲置计时</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">WorkflowService</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/workflow_service.py</div><div class="mod-desc">每轮快照落库；历史回看查询</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">Agent Builder Service</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/agent_builder_service.py</div><div class="mod-desc">对话式构建；LLM 生成 prompt/description/tags</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">Auth 模块（JWT）</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/auth_service.py</div><div class="mod-desc">注册/登录/JWT；bcrypt；Redis 可选</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">DB 模型 + Alembic 迁移</div><span class="mod-status status-done">✓</span></div><div class="mod-path">backend/models/</div><div class="mod-desc">11 张表；5 次迁移版本</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">DiffApply Service</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/diff_apply_service.py</div><div class="mod-desc">沙箱路径校验 + 文件 diff 应用</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">Seed 系统</div><span class="mod-status status-done">✓</span></div><div class="mod-path">backend/seeds/</div><div class="mod-desc">Orchestrator + 模板 Agent + 岁年/岁晚/岁熙/岁汪四角色；dev/data squad</div></div>
+    <div class="mod-section-title fade-up" id="i18n-mod-be-title" data-i18n="mod_be_title">⚙️ 后端</div>
+    <div class="modules-grid fade-up" id="i18n-mod-be">
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb1n">FastAPI 应用入口 & 生命周期</div><span class="mod-status status-done">✓</span></div><div class="mod-path">backend/main.py</div><div class="mod-desc" data-i18n="mb1d">自动建库/迁移、seed、hook 注册、Docker 初始化、stale thread 收尸</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb2n">ChatService 路由分发</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/chat_service.py</div><div class="mod-desc" data-i18n="mb2d">五路分流；conversation 锁 + pending 队列；handle_stop 中止</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb3n">OrchestratorService 主 Agent Loop</div><span class="mod-status status-done">✓</span></div><div class="mod-path">orchestrator/service.py</div><div class="mod-desc" data-i18n="mb3d">八步循环；wake_event 唤醒；三路错误恢复；stop 中止检查</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb4n">Orchestrator 22 个工具</div><span class="mod-status status-done">✓</span></div><div class="mod-path">orchestrator_tools.py</div><div class="mod-desc" data-i18n="mb4d">七组工具全实装；Pydantic→JSON Schema；$ref inline 展开；16KB 截断</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb5n">Hook 体系</div><span class="mod-status status-done">✓</span></div><div class="mod-path">backend/hooks/</div><div class="mod-desc" data-i18n="mb5d">HookManager；PreExecutionHook；ApprovalHook（10min 超时）；PostExecutionHook</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb6n">Adapter 抽象层 + Registry</div><span class="mod-status status-done">✓</span></div><div class="mod-path">adapters/base.py · registry.py</div><div class="mod-desc" data-i18n="mb6d">StreamInput 统一入参；AgentAdapter ABC；四种 Adapter 实现</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">DockerRuntimeService</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/docker_runtime.py</div><div class="mod-desc" data-i18n="mb7d">会话级容器；host 端口映射（Windows/Linux）；30 min 闲置回收</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb8n">ThreadService + 调度器</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/thread_service.py</div><div class="mod-desc" data-i18n="mb8d">blocked_by 依赖图；mark_running/done/error/cancelled；broadcast 错峰</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">SSE StreamService</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/stream_service.py</div><div class="mod-desc" data-i18n="mb9d">内存事件队列；abort 标志；push_round_done/push_queue_drained</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb10n">broadcast 广播群聊</div><span class="mod-status status-done">✓</span></div><div class="mod-path">chat_service.py</div><div class="mod-desc" data-i18n="mb10d">70%/30% 概率自决；__READ_RECEIPT__ sentinel；互聊 depth ≤ 1；表情包</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ContextCompactor</div><span class="mod-status status-done">✓</span></div><div class="mod-path">orchestrator/context_compactor.py</div><div class="mod-desc" data-i18n="mb11d">maybe_compact（token 阈值）；global_summarize（prompt_too_long 路径）</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb12n">PreviewService + 反向代理</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/preview_service.py</div><div class="mod-desc" data-i18n="mb12d">/preview/{conv_id}/ → 容器 host_port 转发；touch 刷新闲置计时</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">WorkflowService</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/workflow_service.py</div><div class="mod-desc" data-i18n="mb13d">每轮快照落库；历史回看查询</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">Agent Builder Service</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/agent_builder_service.py</div><div class="mod-desc" data-i18n="mb14d">对话式构建；LLM 生成 prompt/description/tags</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb15n">Auth 模块（JWT）</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/auth_service.py</div><div class="mod-desc" data-i18n="mb15d">注册/登录/JWT；bcrypt；Redis 可选</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb16n">DB 模型 + Alembic 迁移</div><span class="mod-status status-done">✓</span></div><div class="mod-path">backend/models/</div><div class="mod-desc" data-i18n="mb16d">11 张表；5 次迁移版本</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">DiffApply Service</div><span class="mod-status status-done">✓</span></div><div class="mod-path">services/diff_apply_service.py</div><div class="mod-desc" data-i18n="mb17d">沙箱路径校验 + 文件 diff 应用</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mb18n">Seed 系统</div><span class="mod-status status-done">✓</span></div><div class="mod-path">backend/seeds/</div><div class="mod-desc" data-i18n="mb18d">Orchestrator + 模板 Agent + 岁年/岁晚/岁熙/岁汪四角色；dev/data squad</div></div>
     </div>
 
-    <div class="mod-section-title fade-up">🖥 前端</div>
-    <div class="modules-grid fade-up">
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">useChatStore（多 Agent 并行流式）</div><span class="mod-status status-done">✓</span></div><div class="mod-path">stores/chat.ts</div><div class="mod-desc">agentId 索引 AgentStreamingState；ThreadActivity 虚拟调度卡片；审批状态；broadcast 已读回执</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">useSSE（SSE 事件路由）</div><span class="mod-status status-done">✓</span></div><div class="mod-path">composables/useSSE.ts</div><div class="mod-desc">10 种 SSE 事件全覆盖，驱动 chat store 和 workflow store 两个状态机</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">WorkflowStore + 历史回看</div><span class="mod-status status-done">✓</span></div><div class="mod-path">stores/workflow.ts</div><div class="mod-desc">SSE 事件驱动状态机；persistCurrent；historyMap；skipNextPersist</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">useChat composable</div><span class="mod-status status-done">✓</span></div><div class="mod-path">composables/useChat.ts</div><div class="mod-desc">先 SSE 再 POST 顺序保证；stopGeneration 乐观 UI</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ChatContainer / MessageList / AgentBubble</div><span class="mod-status status-done">✓</span></div><div class="mod-path">components/chat/</div><div class="mod-desc">多 Agent 气泡并发显示（Teams 风格）；streaming cursor；超高内容折叠</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ApprovalOverlay / ApprovalBlock</div><span class="mod-status status-done">✓</span></div><div class="mod-path">ApprovalOverlay.vue</div><div class="mod-desc">结构化展示 tool_input；Approve/Reject；结果持久化回显</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">DiffCard + Monaco Diff 编辑器</div><span class="mod-status status-done">✓</span></div><div class="mod-path">artifacts/DiffCard.vue</div><div class="mod-desc">Monaco Diff 编辑器；Apply 按钮调后端沙箱；Artifact Edit 模式</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">WorkflowView</div><span class="mod-status status-done">✓</span></div><div class="mod-path">layout/WorkflowView.vue</div><div class="mod-desc">Agent thread 卡片；工具调用详情；历史轮次回看</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">DeployCard / PreviewCard</div><span class="mod-status status-done">✓</span></div><div class="mod-path">artifacts/</div><div class="mod-desc">deploy_app 结果展示；iframe 预览已部署应用</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">MarkdownRenderer + CodeBlock</div><span class="mod-status status-done">✓</span></div><div class="mod-path">common/MarkdownRenderer.vue</div><div class="mod-desc">markdown-it + Shiki 语法高亮；复制；最大高度折叠</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ChatInput</div><span class="mod-status status-done">✓</span></div><div class="mod-path">chat/ChatInput.vue</div><div class="mod-desc">@mention；文件上传；code range 选择（local_edit）；draft 保存</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">主题系统 + 布局系统</div><span class="mod-status status-done">✓</span></div><div class="mod-path">stores/theme.ts · components/layout/</div><div class="mod-desc">多 Accent 配色；深色/浅色；可拖拽三栏布局；NavRail 导航</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">AgentForm + AgentBuilderDialog</div><span class="mod-status status-partial">△ 部分</span></div><div class="mod-path">components/agents/</div><div class="mod-desc">创建/编辑；只读 UI；Builder 对话式构建（mock 未对接 API）</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">SandboxFilesView</div><span class="mod-status status-done">✓</span></div><div class="mod-path">layout/SandboxFilesView.vue</div><div class="mod-desc">沙箱文件浏览；block_start code 触发 debounce 刷新</div></div>
+    <div class="mod-section-title fade-up" id="i18n-mod-fe-title" data-i18n="mod_fe_title">🖥 前端</div>
+    <div class="modules-grid fade-up" id="i18n-mod-fe">
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mf1n">useChatStore（多 Agent 并行流式）</div><span class="mod-status status-done">✓</span></div><div class="mod-path">stores/chat.ts</div><div class="mod-desc" data-i18n="mf1d">agentId 索引 AgentStreamingState；ThreadActivity 虚拟调度卡片；审批状态；broadcast 已读回执</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mf2n">useSSE（SSE 事件路由）</div><span class="mod-status status-done">✓</span></div><div class="mod-path">composables/useSSE.ts</div><div class="mod-desc" data-i18n="mf2d">10 种 SSE 事件全覆盖，驱动 chat store 和 workflow store 两个状态机</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mf3n">WorkflowStore + 历史回看</div><span class="mod-status status-done">✓</span></div><div class="mod-path">stores/workflow.ts</div><div class="mod-desc" data-i18n="mf3d">SSE 事件驱动状态机；persistCurrent；historyMap；skipNextPersist</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">useChat composable</div><span class="mod-status status-done">✓</span></div><div class="mod-path">composables/useChat.ts</div><div class="mod-desc" data-i18n="mf4d">先 SSE 再 POST 顺序保证；stopGeneration 乐观 UI</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ChatContainer / MessageList / AgentBubble</div><span class="mod-status status-done">✓</span></div><div class="mod-path">components/chat/</div><div class="mod-desc" data-i18n="mf5d">多 Agent 气泡并发显示（Teams 风格）；streaming cursor；超高内容折叠</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ApprovalOverlay / ApprovalBlock</div><span class="mod-status status-done">✓</span></div><div class="mod-path">ApprovalOverlay.vue</div><div class="mod-desc" data-i18n="mf6d">结构化展示 tool_input；Approve/Reject；结果持久化回显</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mf7n">DiffCard + Monaco Diff 编辑器</div><span class="mod-status status-done">✓</span></div><div class="mod-path">artifacts/DiffCard.vue</div><div class="mod-desc" data-i18n="mf7d">Monaco Diff 编辑器；Apply 按钮调后端沙箱；Artifact Edit 模式</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">WorkflowView</div><span class="mod-status status-done">✓</span></div><div class="mod-path">layout/WorkflowView.vue</div><div class="mod-desc" data-i18n="mf8d">Agent thread 卡片；工具调用详情；历史轮次回看</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">DeployCard / PreviewCard</div><span class="mod-status status-done">✓</span></div><div class="mod-path">artifacts/</div><div class="mod-desc" data-i18n="mf9d">deploy_app 结果展示；iframe 预览已部署应用</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">MarkdownRenderer + CodeBlock</div><span class="mod-status status-done">✓</span></div><div class="mod-path">common/MarkdownRenderer.vue</div><div class="mod-desc" data-i18n="mf10d">markdown-it + Shiki 语法高亮；复制；最大高度折叠</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">ChatInput</div><span class="mod-status status-done">✓</span></div><div class="mod-path">chat/ChatInput.vue</div><div class="mod-desc" data-i18n="mf11d">@mention；文件上传；code range 选择（local_edit）；draft 保存</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mf12n">主题系统 + 布局系统</div><span class="mod-status status-done">✓</span></div><div class="mod-path">stores/theme.ts · components/layout/</div><div class="mod-desc" data-i18n="mf12d">多 Accent 配色；深色/浅色；可拖拽三栏布局；NavRail 导航</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">AgentForm + AgentBuilderDialog</div><span class="mod-status status-partial">△ 部分</span></div><div class="mod-path">components/agents/</div><div class="mod-desc" data-i18n="mf13d">创建/编辑；只读 UI；Builder 对话式构建（mock 未对接 API）</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">SandboxFilesView</div><span class="mod-status status-done">✓</span></div><div class="mod-path">layout/SandboxFilesView.vue</div><div class="mod-desc" data-i18n="mf14d">沙箱文件浏览；block_start code 触发 debounce 刷新</div></div>
     </div>
 
-    <div class="mod-section-title fade-up">🧪 测试</div>
-    <div class="modules-grid fade-up">
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">Orchestrator Loop 集成测试</div><span class="mod-status status-done">✓</span></div><div class="mod-path">test_orchestrator_loop.py</div><div class="mod-desc">10 个场景：end_turn / tool_use / PRE_TOOL_USE / max_tokens / summarize / api_error / wake_event / 多 tool_call</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">群聊 / Mention / 单聊集成测试</div><span class="mod-status status-done">✓</span></div><div class="mod-path">test_group_chat.py · test_single_chat.py</div><div class="mod-desc">群聊路由、@个体路由、单聊全链路</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">Adapter 单元测试</div><span class="mod-status status-done">✓</span></div><div class="mod-path">tests/unit/</div><div class="mod-desc">Claude / Codex / Custom / OpenCode；事件序列；cancel_event；token 上报</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">WS Approval + Diff Apply</div><span class="mod-status status-done">✓</span></div><div class="mod-path">test_ws_approval.py · test_diff_apply.py</div><div class="mod-desc">审批 WS 完整流程；沙箱路径校验</div></div>
-      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">API 集成测试（Auth / Agents / Skills / Workflows）</div><span class="mod-status status-done">✓</span></div><div class="mod-path">test_auth_api.py 等</div><div class="mod-desc">注册/登录/token；CRUD 全流程；快照持久化</div></div>
+    <div class="mod-section-title fade-up" id="i18n-mod-test-title" data-i18n="mod_test_title">🧪 测试</div>
+    <div class="modules-grid fade-up" id="i18n-mod-test">
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mt1n">Orchestrator Loop 集成测试</div><span class="mod-status status-done">✓</span></div><div class="mod-path">test_orchestrator_loop.py</div><div class="mod-desc" data-i18n="mt1d">10 个场景：end_turn / tool_use / PRE_TOOL_USE / max_tokens / summarize / api_error / wake_event / 多 tool_call</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mt2n">群聊 / Mention / 单聊集成测试</div><span class="mod-status status-done">✓</span></div><div class="mod-path">test_group_chat.py · test_single_chat.py</div><div class="mod-desc" data-i18n="mt2d">群聊路由、@个体路由、单聊全链路</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mt3n">Adapter 单元测试</div><span class="mod-status status-done">✓</span></div><div class="mod-path">tests/unit/</div><div class="mod-desc" data-i18n="mt3d">Claude / Codex / Custom / OpenCode；事件序列；cancel_event；token 上报</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name">WS Approval + Diff Apply</div><span class="mod-status status-done">✓</span></div><div class="mod-path">test_ws_approval.py · test_diff_apply.py</div><div class="mod-desc" data-i18n="mt4d">审批 WS 完整流程；沙箱路径校验</div></div>
+      <div class="mod-card"><div class="mod-card-header"><div class="mod-card-name" data-i18n="mt5n">API 集成测试（Auth / Agents / Skills / Workflows）</div><span class="mod-status status-done">✓</span></div><div class="mod-path">test_auth_api.py 等</div><div class="mod-desc" data-i18n="mt5d">注册/登录/token；CRUD 全流程；快照持久化</div></div>
     </div>
   </div>
 </section>
@@ -1703,8 +1757,8 @@ code {
   <div class="container">
     <div class="section-header fade-up">
       <div class="section-label">05 · Contributors</div>
-      <div class="section-title">贡献者分析</div>
-      <div class="section-desc">综合代码量、模块复杂度与核心度加权估算；净增行数仅作参考，不作为唯一依据。</div>
+      <div class="section-title" data-i18n="contrib_title">贡献者分析</div>
+      <div class="section-desc" data-i18n="contrib_desc">综合代码量、模块复杂度与核心度加权估算；净增行数仅作参考，不作为唯一依据。</div>
     </div>
 
     <div class="contrib-donut-wrap fade-up">
@@ -1762,7 +1816,7 @@ code {
           <div style="font-size:9px;color:var(--muted2);margin-top:3px;letter-spacing:.06em">adam</div>
         </div>
       </div>
-      <div class="donut-legend">
+      <div class="donut-legend" id="i18n-donut-legend">
         <div class="donut-leg-item">
           <div class="donut-leg-dot adam"></div>
           <div>
@@ -1770,7 +1824,7 @@ code {
               <span class="donut-leg-name adam">adam</span>
               <span class="donut-leg-pct adam">52%</span>
             </div>
-            <div class="donut-leg-meta">86 commits · ~34k 行 · 整体架构设计 · 核心功能全栈实现 · 核心Agent Loop · Orchestrator完整实现 · Prompt工程 · 前端设计优化</div>
+            <div class="donut-leg-meta" data-i18n="leg_adam">86 commits · ~34k 行 · 整体架构设计 · 核心功能全栈实现 · 核心Agent Loop · Orchestrator完整实现 · Prompt工程 · 前端设计优化</div>
           </div>
         </div>
         <div class="donut-leg-item">
@@ -1780,7 +1834,7 @@ code {
               <span class="donut-leg-name musuyin">Musuyin</span>
               <span class="donut-leg-pct musuyin">26%</span>
             </div>
-            <div class="donut-leg-meta">48 commits · ~9k 行 · Adapter全链路打通 · Workflow · Agent CRUD · DiffApply</div>
+            <div class="donut-leg-meta" data-i18n="leg_musuyin">48 commits · ~9k 行 · Adapter全链路打通 · Workflow · Agent CRUD · DiffApply</div>
           </div>
         </div>
         <div class="donut-leg-item">
@@ -1790,23 +1844,23 @@ code {
               <span class="donut-leg-name wang">Wang / Uzemiu</span>
               <span class="donut-leg-pct wang">22%</span>
             </div>
-            <div class="donut-leg-meta">55 commits · ~12k 行 · 前端基础框架搭建 · 消息会话列表实现</div>
+            <div class="donut-leg-meta" data-i18n="leg_wang">55 commits · ~12k 行 · 前端基础框架搭建 · 消息会话列表实现</div>
           </div>
         </div>
         <div class="donut-leg-item">
           <div class="donut-leg-dot others"></div>
           <div>
             <div style="display:flex;align-items:baseline;gap:8px">
-              <span class="donut-leg-name others">其他</span>
+              <span class="donut-leg-name others" data-i18n="leg_others_name">其他</span>
               <span class="donut-leg-pct others">2%</span>
             </div>
-            <div class="donut-leg-meta">小型修补 · 文档 · 配置</div>
+            <div class="donut-leg-meta" data-i18n="leg_others">小型修补 · 文档 · 配置</div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="contrib-grid fade-up">
+    <div class="contrib-grid fade-up" id="i18n-contrib-grid">
       <div class="contrib-card adam">
         <div class="contrib-header">
           <div><div class="contrib-name">adam</div></div>
@@ -1815,11 +1869,11 @@ code {
         <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:0" data-width="52%"></div></div>
         <div class="contrib-stats">
           <div class="contrib-stat"><div class="v">86</div><div class="l">commits</div></div>
-          <div class="contrib-stat"><div class="v">~34k</div><div class="l">净增行</div></div>
+          <div class="contrib-stat"><div class="v">~34k</div><div class="l" data-i18n="net_lines">净增行</div></div>
           <div class="contrib-stat"><div class="v">47/33</div><div class="l">Feat/Fix</div></div>
         </div>
         <div class="contrib-domains">
-          <span class="domain-tag">项目架构师</span><span class="domain-tag">Orchestrator Loop</span><span class="domain-tag">核心工具集-22个</span><span class="domain-tag">Hook 体系</span><span class="domain-tag">Docker 部署</span><span class="domain-tag">broadcast 模式</span><span class="domain-tag">前端状态层</span><span class="domain-tag">Prompt 工程</span>
+          <span class="domain-tag" data-i18n="adam_t1">项目架构师</span><span class="domain-tag">Orchestrator Loop</span><span class="domain-tag" data-i18n="adam_t2">核心工具集-22个</span><span class="domain-tag">Hook 体系</span><span class="domain-tag">Docker 部署</span><span class="domain-tag">broadcast 模式</span><span class="domain-tag" data-i18n="adam_t3">前端状态层</span><span class="domain-tag">Prompt 工程</span>
         </div>
       </div>
       <div class="contrib-card musuyin">
@@ -1830,11 +1884,11 @@ code {
         <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:0" data-width="26%"></div></div>
         <div class="contrib-stats">
           <div class="contrib-stat"><div class="v">48</div><div class="l">commits</div></div>
-          <div class="contrib-stat"><div class="v">~9k</div><div class="l">净增行</div></div>
+          <div class="contrib-stat"><div class="v">~9k</div><div class="l" data-i18n="net_lines">净增行</div></div>
           <div class="contrib-stat"><div class="v">16/17</div><div class="l">Feat/Fix</div></div>
         </div>
         <div class="contrib-domains">
-          <span class="domain-tag">Workflow 持久化</span><span class="domain-tag">Agent/Skill 后端全栈</span><span class="domain-tag">头像全链路</span><span class="domain-tag">Artifact Apply</span><span class="domain-tag">D7-blocker</span><span class="domain-tag">安全修补</span>
+          <span class="domain-tag" data-i18n="musuyin_t1">Workflow 持久化</span><span class="domain-tag" data-i18n="musuyin_t2">Agent/Skill 后端全栈</span><span class="domain-tag" data-i18n="musuyin_t3">头像全链路</span><span class="domain-tag">Artifact Apply</span><span class="domain-tag">D7-blocker</span><span class="domain-tag" data-i18n="musuyin_t4">安全修补</span>
         </div>
       </div>
       <div class="contrib-card wang">
@@ -1845,23 +1899,23 @@ code {
         <div class="contrib-bar-wrap"><div class="contrib-bar" style="width:0" data-width="22%"></div></div>
         <div class="contrib-stats">
           <div class="contrib-stat"><div class="v">55</div><div class="l">commits</div></div>
-          <div class="contrib-stat"><div class="v">~12k</div><div class="l">净增行</div></div>
+          <div class="contrib-stat"><div class="v">~12k</div><div class="l" data-i18n="net_lines">净增行</div></div>
           <div class="contrib-stat"><div class="v">45/23</div><div class="l">Feat/Fix</div></div>
         </div>
         <div class="contrib-domains">
-          <span class="domain-tag">前端 UI</span><span class="domain-tag">消息列表滚动</span><span class="domain-tag">主题系统</span><span class="domain-tag">Shiki 高亮</span><span class="domain-tag">Artifact Edit</span><span class="domain-tag">登录/注册页</span>
+          <span class="domain-tag" data-i18n="wang_t1">前端 UI</span><span class="domain-tag" data-i18n="wang_t2">消息列表滚动</span><span class="domain-tag" data-i18n="wang_t3">主题系统</span><span class="domain-tag">Shiki 高亮</span><span class="domain-tag">Artifact Edit</span><span class="domain-tag" data-i18n="wang_t4">登录/注册页</span>
         </div>
       </div>
     </div>
 
     <!-- 模块贡献详情 -->
-    <div style="margin-top:16px" class="fade-up">
-      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">按功能模块展开</div>
+    <div style="margin-top:16px" class="fade-up" id="i18n-contrib-detail">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px" data-i18n="contrib_expand">按功能模块展开</div>
       <div class="module-contrib-list">
 
         <div class="mc-item open">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">项目立项 & 架构设计</span>
+            <span class="mc-title" data-i18n="mc1">项目立项 & 架构设计</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span><span class="chip chip-wang">Wang/Uzemiu</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -1880,7 +1934,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">OrchestratorService 八步 Loop</span>
+            <span class="mc-title" data-i18n="mc2">OrchestratorService 八步 Loop</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -1896,7 +1950,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">22 个 Orchestrator 工具</span>
+            <span class="mc-title" data-i18n="mc3">22 个 Orchestrator 工具</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span><span class="chip chip-musuyin">Musuyin</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -1914,7 +1968,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">Hook 体系（PRE/POST_TOOL_USE）</span>
+            <span class="mc-title" data-i18n="mc4">Hook 体系（PRE/POST_TOOL_USE）</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -1930,7 +1984,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">审批闭环</span>
+            <span class="mc-title" data-i18n="mc5">审批闭环</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span><span class="chip chip-musuyin">Musuyin</span><span class="chip chip-wang">Wang/Uzemiu</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -1953,7 +2007,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">Adapter 层</span>
+            <span class="mc-title" data-i18n="mc6">Adapter 层</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span><span class="chip chip-musuyin">Musuyin</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -1973,7 +2027,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">Docker 一键部署</span>
+            <span class="mc-title" data-i18n="mc7">Docker 一键部署</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -1989,7 +2043,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">沙箱文件系统</span>
+            <span class="mc-title" data-i18n="mc8">沙箱文件系统</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span><span class="chip chip-musuyin">Musuyin</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -2006,7 +2060,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">群聊 / ChatService 路由分发</span>
+            <span class="mc-title" data-i18n="mc9">群聊 / ChatService 路由分发</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -2022,7 +2076,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">前端多 Agent 并行 Streaming</span>
+            <span class="mc-title" data-i18n="mc10">前端多 Agent 并行 Streaming</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span><span class="chip chip-wang">Wang/Uzemiu</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -2042,7 +2096,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">Workflow 视图 + 持久化</span>
+            <span class="mc-title" data-i18n="mc11">Workflow 视图 + 持久化</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span><span class="chip chip-musuyin">Musuyin</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -2060,7 +2114,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">Agent / Skill 子系统</span>
+            <span class="mc-title" data-i18n="mc12">Agent / Skill 子系统</span>
             <div class="mc-chips"><span class="chip chip-musuyin">Musuyin</span><span class="chip chip-wang">Wang/Uzemiu</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -2079,7 +2133,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">Agent 头像全链路 & Artifact Apply</span>
+            <span class="mc-title" data-i18n="mc13">Agent 头像全链路 & Artifact Apply</span>
             <div class="mc-chips"><span class="chip chip-musuyin">Musuyin</span><span class="chip chip-wang">Wang/Uzemiu</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -2097,7 +2151,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">前端 UI & 消息列表</span>
+            <span class="mc-title" data-i18n="mc14">前端 UI & 消息列表</span>
             <div class="mc-chips"><span class="chip chip-wang">Wang/Uzemiu</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -2115,7 +2169,7 @@ code {
 
         <div class="mc-item">
           <div class="mc-header" onclick="this.parentElement.classList.toggle('open')">
-            <span class="mc-title">系统基建 & 稳定性 & Prompt 工程</span>
+            <span class="mc-title" data-i18n="mc15">系统基建 & 稳定性 & Prompt 工程</span>
             <div class="mc-chips"><span class="chip chip-adam">adam</span><span class="chip chip-musuyin">Musuyin</span></div>
             <span class="mc-toggle">▾</span>
           </div>
@@ -2139,7 +2193,7 @@ code {
 </section>
 
 <footer class="main-page-el" style="padding:40px 0;border-top:1px solid var(--border);text-align:center;color:var(--muted2);font-size:12px;position:relative;z-index:1">
-  AgentHub Architecture Report · 2026-06-08 · 基于完整代码阅读 + git 历史分析
+  <span data-i18n="footer">AgentHub Architecture Report · 2026-06-08 · 基于完整代码阅读 + git 历史分析</span>
 </footer>
 
 
@@ -2152,15 +2206,15 @@ code {
   <nav>
     <span class="nav-logo">Agent<span>Hub</span></span>
     <span class="nav-sep"></span>
-    <button class="demo-btn" onclick="showMain()" style="background:var(--surface2);box-shadow:none;color:var(--muted)">← 返回主页</button>
-    <span class="nav-badge">演示中心</span>
+    <button class="demo-btn" onclick="showMain()" style="background:var(--surface2);box-shadow:none;color:var(--muted)"><span data-i18n="demo_back">← 返回主页</span></button>
+    <span class="nav-badge" data-i18n="demo_badge">演示中心</span>
   </nav>
 
   <!-- 演示页主体 -->
-  <div style="max-width:1100px;margin:0 auto;padding:36px 40px 80px">
+  <div style="max-width:1100px;margin:0 auto;padding:36px 40px 80px" id="i18n-demo-body">
 
     <!-- 顶部说明 -->
-    <div style="margin-bottom:32px;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;gap:32px;flex-wrap:wrap">
+    <div style="margin-bottom:32px;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:flex;gap:32px;flex-wrap:wrap" id="i18n-demo-intro">
       <div style="display:flex;align-items:center;gap:10px">
         <span style="font-size:18px">🎬</span>
         <div><div style="font-size:12px;font-weight:700;color:var(--accent)">功能演示视频</div><div style="font-size:11.5px;color:var(--muted)">8 段分类视频，覆盖全部核心功能</div></div>
@@ -2176,7 +2230,7 @@ code {
     </div>
 
     <!-- ── 一、功能演示视频 ── -->
-    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border)">🎬 功能演示视频</div>
+    <div id="i18n-dp-video-title" style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border)">🎬 功能演示视频</div>
 
     <!-- 大播放器 -->
     <div style="margin-bottom:32px">
@@ -2454,6 +2508,236 @@ function dpSelect(card) {
     ph.style.display = 'flex'
   }
   document.getElementById('dp-player').scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+// ── i18n ──
+const I18N = {
+  zh: {
+    // hero
+    hero_sub:'Multi-Agent IM Platform — 让用户像发消息一样驱动 AI Agent 完成复杂任务',
+    stat_adapter:'Adapter 类型', stat_tools:'Orchestrator 工具', stat_modules:'已完成模块', stat_tests:'测试文件',
+    // diagram
+    diagram_title:'系统架构总图',
+    diagram_desc:'从浏览器到 Docker 沙箱的完整请求路径，以及 Orchestrator Agent Loop 在其中的位置。',
+    manifesto:'AgentHub is designed to make multi-agent orchestration <em>boringly reliable</em> — 每一条通信路径都有明确的协议；每一个 Agent 都有隔离的上下文；每一次工具调用都经过 Hook 审计。复杂性被封装在 Orchestrator 内部，用户看到的只是消息。',
+    // positioning
+    pos_title:'项目定位', pos_desc:'不同于单 Agent 对话产品，AgentHub 的核心模型是一个分层 Agent 网络，以 IM 为交互界面驱动多 Agent 协同完成复杂任务。',
+    pos_c1_name:'Orchestrator 主 Agent', pos_c1_desc:'接收用户意图，负责任务理解、拆解与调度。不直接执行任务，而是通过 22 个内置工具驱动下层 Agent 并行运作，管理 blocked_by 依赖图、等待结果、汇总回复。',
+    pos_c2_name:'专属子 Agent', pos_c2_desc:'执行具体任务（写代码、查资料、审查代码等）。每个 Agent 有独立的 Thread、独立的 Adapter（Claude CLI / Codex / OpenAI 兼容接口），互相隔离，结果通过 wake_event 通知主 Agent。',
+    pos_c3_name:'五种对话模式', pos_c3_desc:'单聊（直连子 Agent）、群聊（Orchestrator 主导）、broadcast（多 Agent 概率自决是否回复）、@个体（复用历史 Thread）、local_edit（代码文件编辑），覆盖不同协作场景。',
+    pos_c4_name:'沙箱 + 审批闭环', pos_c4_desc:'代码执行和应用部署运行在会话级 Docker 容器沙箱内，每个会话隔离。高风险操作走 ApprovalHook 审批闭环，asyncio 层面阻塞等待用户授权，结果可通过反向代理在前端 iframe 预览。',
+    // stack
+    stack_title:'技术栈',
+    // arch
+    arch_title:'整体架构',
+    arch_31_title:'3.1 · 三条通信通道', arch_browser:'浏览器',
+    arch_sse_desc:'SSE · 先建连再发消息<br>接收所有 Agent 事件流',
+    arch_post_desc:'HTTP · 发送用户消息<br>SSE 必须先于此建立',
+    arch_ws_desc:'WebSocket · 审批决策<br>实时信令通道',
+    arch_route:'ChatService 路由分发', arch_5route:'五路分流',
+    arch_local_edit:'直接修改沙箱文件<br>不经 LLM',
+    arch_single:'单聊', arch_mention:'个体', arch_mention_desc:'resume_or_create<br>复用历史 Thread',
+    arch_broadcast_desc:'多 Agent 并行<br>70% 概率自决回复',
+    arch_group:'群聊', arch_group_desc:'OrchestratorService<br>八步 Agent Loop',
+    arch_32_title:'3.2 · Orchestrator 八步 Agent Loop',
+    tl1_label:'abort<br>检查', tl1_desc:'检测 stop 信号，立即退出循环',
+    tl2_label:'pending_events<br>消费', tl2_desc:'处理子 Thread 完成通知（wake_event）',
+    tl3_label:'六层 Prompt<br>构建', tl3_desc:'静态系统 prompt + 动态上下文（会话历史 / 可用 Agent / 任务状态）',
+    tl4_label:'Anthropic API<br>调用', tl4_desc:'携带 22 个工具 schema，流式接收 ContentBlock',
+    tl5_label:'错误<br>恢复', tl5_desc:'max_tokens → 续写；prompt_too_long → summarize；api_error → 指数退避',
+    tl6_label:'end_turn<br>判断', tl6_desc:'无工具调用则输出最终回复，退出循环',
+    tl7_label:'工具<br>派发', tl7_desc:'PRE_TOOL_USE hooks → 执行 → POST_TOOL_USE hooks',
+    tl8_label:'上下文<br>压缩', tl8_desc:'token 超阈值时 maybe_compact，防窗口溢出',
+    arch_33_title:'3.3 · 22 个 Orchestrator 工具',
+    tg_a:'任务调度（4）', tg_b:'任务链（5）', tg_c:'用户交互（3）', tg_d:'上下文（3）', tg_e:'文件沙箱（4）', tg_f:'部署（3）+ 网络（1）',
+    arch_34_title:'3.4 · SSE 事件协议（10 种事件驱动双状态机）',
+    sse_chat_store:'chat store（消息气泡）',
+    sse_chat_note:'<code>streamingMap&lt;convId, Map&lt;agentId, AgentStreamingState&gt;&gt;</code> — 三级嵌套索引，支持多 Agent 并发 streaming 气泡（Teams 风格）',
+    sse_workflow_store:'workflow store（工作流视图）',
+    sse_workflow_note:'round_done → persistCurrent 快照落库',
+    // modules
+    modules_title:'核心已完成模块',
+    mod_be_title:'⚙️ 后端', mod_fe_title:'🖥 前端', mod_test_title:'🧪 测试',
+    mb1n:'FastAPI 应用入口 & 生命周期', mb1d:'自动建库/迁移、seed、hook 注册、Docker 初始化、stale thread 收尸',
+    mb2n:'ChatService 路由分发', mb2d:'五路分流；conversation 锁 + pending 队列；handle_stop 中止',
+    mb3n:'OrchestratorService 主 Agent Loop', mb3d:'八步循环；wake_event 唤醒；三路错误恢复；stop 中止检查',
+    mb4n:'Orchestrator 22 个工具', mb4d:'七组工具全实装；Pydantic→JSON Schema；$ref inline 展开；16KB 截断',
+    mb5n:'Hook 体系', mb5d:'HookManager；PreExecutionHook；ApprovalHook（10min 超时）；PostExecutionHook',
+    mb6n:'Adapter 抽象层 + Registry', mb6d:'StreamInput 统一入参；AgentAdapter ABC；四种 Adapter 实现',
+    mb7d:'会话级容器；host 端口映射（Windows/Linux）；30 min 闲置回收',
+    mb8n:'ThreadService + 调度器', mb8d:'blocked_by 依赖图；mark_running/done/error/cancelled；broadcast 错峰',
+    mb9d:'内存事件队列；abort 标志；push_round_done/push_queue_drained',
+    mb10n:'broadcast 广播群聊', mb10d:'70%/30% 概率自决；__READ_RECEIPT__ sentinel；互聊 depth ≤ 1；表情包',
+    mb11d:'maybe_compact（token 阈值）；global_summarize（prompt_too_long 路径）',
+    mb12n:'PreviewService + 反向代理', mb12d:'/preview/{conv_id}/ → 容器 host_port 转发；touch 刷新闲置计时',
+    mb13d:'每轮快照落库；历史回看查询',
+    mb14d:'对话式构建；LLM 生成 prompt/description/tags',
+    mb15n:'Auth 模块（JWT）', mb15d:'注册/登录/JWT；bcrypt；Redis 可选',
+    mb16n:'DB 模型 + Alembic 迁移', mb16d:'11 张表；5 次迁移版本',
+    mb17d:'沙箱路径校验 + 文件 diff 应用',
+    mb18n:'Seed 系统', mb18d:'Orchestrator + 模板 Agent + 岁年/岁晚/岁熙/岁汪四角色；dev/data squad',
+    mf1n:'useChatStore（多 Agent 并行流式）', mf1d:'agentId 索引 AgentStreamingState；ThreadActivity 虚拟调度卡片；审批状态；broadcast 已读回执',
+    mf2n:'useSSE（SSE 事件路由）', mf2d:'10 种 SSE 事件全覆盖，驱动 chat store 和 workflow store 两个状态机',
+    mf3n:'WorkflowStore + 历史回看', mf3d:'SSE 事件驱动状态机；persistCurrent；historyMap；skipNextPersist',
+    mf4d:'先 SSE 再 POST 顺序保证；stopGeneration 乐观 UI',
+    mf5d:'多 Agent 气泡并发显示（Teams 风格）；streaming cursor；超高内容折叠',
+    mf6d:'结构化展示 tool_input；Approve/Reject；结果持久化回显',
+    mf7n:'DiffCard + Monaco Diff 编辑器', mf7d:'Monaco Diff 编辑器；Apply 按钮调后端沙箱；Artifact Edit 模式',
+    mf8d:'Agent thread 卡片；工具调用详情；历史轮次回看',
+    mf9d:'deploy_app 结果展示；iframe 预览已部署应用',
+    mf10d:'markdown-it + Shiki 语法高亮；复制；最大高度折叠',
+    mf11d:'@mention；文件上传；code range 选择（local_edit）；draft 保存',
+    mf12n:'主题系统 + 布局系统', mf12d:'多 Accent 配色；深色/浅色；可拖拽三栏布局；NavRail 导航',
+    mf13d:'创建/编辑；只读 UI；Builder 对话式构建（mock 未对接 API）',
+    mf14d:'沙箱文件浏览；block_start code 触发 debounce 刷新',
+    mt1n:'Orchestrator Loop 集成测试', mt1d:'10 个场景：end_turn / tool_use / PRE_TOOL_USE / max_tokens / summarize / api_error / wake_event / 多 tool_call',
+    mt2n:'群聊 / Mention / 单聊集成测试', mt2d:'群聊路由、@个体路由、单聊全链路',
+    mt3n:'Adapter 单元测试', mt3d:'Claude / Codex / Custom / OpenCode；事件序列；cancel_event；token 上报',
+    mt4d:'审批 WS 完整流程；沙箱路径校验',
+    mt5n:'API 集成测试（Auth / Agents / Skills / Workflows）', mt5d:'注册/登录/token；CRUD 全流程；快照持久化',
+    // contributors
+    contrib_title:'贡献者分析', contrib_desc:'综合代码量、模块复杂度与核心度加权估算；净增行数仅作参考，不作为唯一依据。',
+    leg_adam:'86 commits · ~34k 行 · 整体架构设计 · 核心功能全栈实现 · 核心Agent Loop · Orchestrator完整实现 · Prompt工程 · 前端设计优化',
+    leg_musuyin:'48 commits · ~9k 行 · Adapter全链路打通 · Workflow · Agent CRUD · DiffApply',
+    leg_wang:'55 commits · ~12k 行 · 前端基础框架搭建 · 消息会话列表实现',
+    leg_others_name:'其他', leg_others:'小型修补 · 文档 · 配置',
+    net_lines:'净增行',
+    adam_t1:'项目架构师', adam_t2:'核心工具集-22个', adam_t3:'前端状态层',
+    musuyin_t1:'Workflow 持久化', musuyin_t2:'Agent/Skill 后端全栈', musuyin_t3:'头像全链路', musuyin_t4:'安全修补',
+    wang_t1:'前端 UI', wang_t2:'消息列表滚动', wang_t3:'主题系统', wang_t4:'登录/注册页',
+    contrib_expand:'按功能模块展开',
+    mc1:'项目立项 & 架构设计', mc2:'OrchestratorService 八步 Loop', mc3:'22 个 Orchestrator 工具',
+    mc4:'Hook 体系（PRE/POST_TOOL_USE）', mc5:'审批闭环', mc6:'Adapter 层', mc7:'Docker 一键部署',
+    mc8:'沙箱文件系统', mc9:'群聊 / ChatService 路由分发', mc10:'前端多 Agent 并行 Streaming',
+    mc11:'Workflow 视图 + 持久化', mc12:'Agent / Skill 子系统', mc13:'Agent 头像全链路 & Artifact Apply',
+    mc14:'前端 UI & 消息列表', mc15:'系统基建 & 稳定性 & Prompt 工程',
+    // footer & demo
+    footer:'AgentHub Architecture Report · 2026-06-08 · 基于完整代码阅读 + git 历史分析',
+    demo_back:'← 返回主页', demo_badge:'演示中心',
+  },
+  en: {
+    // hero
+    hero_sub:'Multi-Agent IM Platform — Drive AI Agents to complete complex tasks, just like sending a message',
+    stat_adapter:'Adapter Types', stat_tools:'Orchestrator Tools', stat_modules:'Completed Modules', stat_tests:'Test Files',
+    // diagram
+    diagram_title:'System Architecture',
+    diagram_desc:'Full request path from browser to Docker sandbox, and the position of the Orchestrator Agent Loop within it.',
+    manifesto:'AgentHub is designed to make multi-agent orchestration <em>boringly reliable</em> — every communication path has a well-defined protocol; every Agent runs in an isolated context; every tool call goes through Hook auditing. Complexity is encapsulated inside the Orchestrator — users only see messages.',
+    // positioning
+    pos_title:'Positioning', pos_desc:"Unlike single-Agent chat products, AgentHub's core model is a hierarchical Agent network, using IM as the interaction interface to drive multi-Agent collaboration on complex tasks.",
+    pos_c1_name:'Orchestrator (Main Agent)', pos_c1_desc:'Receives user intent, handles task understanding, decomposition, and scheduling. Does not execute tasks directly — instead drives sub-Agents in parallel via 22 built-in tools, managing the blocked_by dependency graph, waiting for results, and aggregating replies.',
+    pos_c2_name:'Dedicated Sub-Agents', pos_c2_desc:'Execute specific tasks (writing code, research, code review, etc.). Each Agent has an isolated Thread and Adapter (Claude CLI / Codex / OpenAI-compatible interface), completely isolated from each other, notifying the main Agent via wake_event upon completion.',
+    pos_c3_name:'5 Conversation Modes', pos_c3_desc:'Single-chat (direct sub-Agent), group chat (Orchestrator-led), broadcast (multi-Agent probabilistic self-decision), @mention (reuse existing Thread), local_edit (code file editing) — covering all collaboration scenarios.',
+    pos_c4_name:'Sandbox + Approval Loop', pos_c4_desc:'Code execution and app deployment run in session-isolated Docker containers. High-risk operations go through the ApprovalHook approval loop, blocking at the asyncio level until the user authorizes. Results can be previewed in a frontend iframe via reverse proxy.',
+    // stack
+    stack_title:'Tech Stack',
+    // arch
+    arch_title:'Architecture',
+    arch_31_title:'3.1 · Three Communication Channels', arch_browser:'Browser',
+    arch_sse_desc:'SSE · Connect before sending<br>Receives all Agent event streams',
+    arch_post_desc:'HTTP · Send user messages<br>SSE must be established first',
+    arch_ws_desc:'WebSocket · Approval decisions<br>Real-time signaling channel',
+    arch_route:'ChatService Route Dispatch', arch_5route:'5-Way Routing',
+    arch_local_edit:'Direct sandbox file edit<br>Bypasses LLM',
+    arch_single:'Single Chat', arch_mention:'Individual', arch_mention_desc:'resume_or_create<br>Reuse existing Thread',
+    arch_broadcast_desc:'Multi-Agent parallel<br>70% probability self-reply',
+    arch_group:'Group Chat', arch_group_desc:'OrchestratorService<br>8-Step Agent Loop',
+    arch_32_title:'3.2 · Orchestrator 8-Step Agent Loop',
+    tl1_label:'abort<br>check', tl1_desc:'Detect stop signal, exit loop immediately',
+    tl2_label:'pending_events<br>consume', tl2_desc:'Process sub-Thread completion notifications (wake_event)',
+    tl3_label:'6-layer Prompt<br>build', tl3_desc:'Static system prompt + dynamic context (conversation history / available Agents / task state)',
+    tl4_label:'Anthropic API<br>call', tl4_desc:'Carries 22 tool schemas, receives ContentBlock stream',
+    tl5_label:'error<br>recovery', tl5_desc:'max_tokens → continue; prompt_too_long → summarize; api_error → exponential backoff',
+    tl6_label:'end_turn<br>check', tl6_desc:'No tool calls → output final reply, exit loop',
+    tl7_label:'tool<br>dispatch', tl7_desc:'PRE_TOOL_USE hooks → execute → POST_TOOL_USE hooks',
+    tl8_label:'context<br>compact', tl8_desc:'maybe_compact when token threshold exceeded, prevents window overflow',
+    arch_33_title:'3.3 · 22 Orchestrator Tools',
+    tg_a:'Task Dispatch (4)', tg_b:'Task Chain (5)', tg_c:'User Interaction (3)', tg_d:'Context (3)', tg_e:'File Sandbox (4)', tg_f:'Deploy (3) + Network (1)',
+    arch_34_title:'3.4 · SSE Event Protocol (10 events driving dual state machines)',
+    sse_chat_store:'chat store (message bubbles)',
+    sse_chat_note:'<code>streamingMap&lt;convId, Map&lt;agentId, AgentStreamingState&gt;&gt;</code> — 3-level nested index, supports concurrent multi-Agent streaming bubbles (Teams style)',
+    sse_workflow_store:'workflow store (workflow view)',
+    sse_workflow_note:'round_done → persistCurrent snapshot to DB',
+    // modules
+    modules_title:'Completed Modules',
+    mod_be_title:'⚙️ Backend', mod_fe_title:'🖥 Frontend', mod_test_title:'🧪 Tests',
+    mb1n:'FastAPI Entry & Lifecycle', mb1d:'Auto DB init/migration, seed, hook registration, Docker init, stale thread reaping',
+    mb2n:'ChatService Route Dispatch', mb2d:'5-way routing; conversation lock + pending queue; handle_stop abort',
+    mb3n:'OrchestratorService Main Agent Loop', mb3d:'8-step loop; wake_event wakeup; 3-path error recovery; stop abort check',
+    mb4n:'Orchestrator 22 Tools', mb4d:'All 7 groups implemented; Pydantic→JSON Schema; $ref inline expand; 16KB truncation',
+    mb5n:'Hook System', mb5d:'HookManager; PreExecutionHook; ApprovalHook (10min timeout); PostExecutionHook',
+    mb6n:'Adapter Abstraction + Registry', mb6d:'Unified StreamInput; AgentAdapter ABC; 4 Adapter implementations',
+    mb7d:'Session-level containers; host port mapping (Windows/Linux); 30-min idle reclaim',
+    mb8n:'ThreadService + Scheduler', mb8d:'blocked_by dependency graph; mark_running/done/error/cancelled; broadcast staggering',
+    mb9d:'In-memory event queue; abort flag; push_round_done/push_queue_drained',
+    mb10n:'Broadcast Group Chat', mb10d:'70%/30% probabilistic self-decision; __READ_RECEIPT__ sentinel; chat depth ≤ 1; emoji',
+    mb11d:'maybe_compact (token threshold); global_summarize (prompt_too_long path)',
+    mb12n:'PreviewService + Reverse Proxy', mb12d:'/preview/{conv_id}/ → container host_port forwarding; touch refreshes idle timer',
+    mb13d:'Snapshot to DB per round; historical query',
+    mb14d:'Conversational builder; LLM generates prompt/description/tags',
+    mb15n:'Auth Module (JWT)', mb15d:'Register/login/JWT; bcrypt; optional Redis',
+    mb16n:'DB Models + Alembic Migrations', mb16d:'11 tables; 5 migration versions',
+    mb17d:'Sandbox path validation + file diff apply',
+    mb18n:'Seed System', mb18d:'Orchestrator + template Agents + Suinian/Suiwan/Suixi/Suiwang characters; dev/data squad',
+    mf1n:'useChatStore (Multi-Agent Parallel Streaming)', mf1d:'agentId-indexed AgentStreamingState; virtual ThreadActivity scheduling cards; approval state; broadcast read receipts',
+    mf2n:'useSSE (SSE Event Router)', mf2d:'Full coverage of 10 SSE events, driving chat store and workflow store state machines',
+    mf3n:'WorkflowStore + History Replay', mf3d:'SSE event-driven state machine; persistCurrent; historyMap; skipNextPersist',
+    mf4d:'SSE-before-POST ordering guarantee; stopGeneration optimistic UI',
+    mf5d:'Concurrent multi-Agent bubble display (Teams style); streaming cursor; tall content collapse',
+    mf6d:'Structured tool_input display; Approve/Reject; persistent result display',
+    mf7n:'DiffCard + Monaco Diff Editor', mf7d:'Monaco Diff editor; Apply button calls backend sandbox; Artifact Edit mode',
+    mf8d:'Agent thread cards; tool call details; historical round replay',
+    mf9d:'deploy_app result display; iframe preview of deployed apps',
+    mf10d:'markdown-it + Shiki syntax highlighting; copy; max-height collapse',
+    mf11d:'@mention; file upload; code range selection (local_edit); draft save',
+    mf12n:'Theme System + Layout System', mf12d:'Multi-accent colors; dark/light; draggable 3-column layout; NavRail navigation',
+    mf13d:'Create/edit; read-only UI; Builder conversational construction (mock, API not connected)',
+    mf14d:'Sandbox file browser; block_start code triggers debounce refresh',
+    mt1n:'Orchestrator Loop Integration Tests', mt1d:'10 scenarios: end_turn / tool_use / PRE_TOOL_USE / max_tokens / summarize / api_error / wake_event / multi tool_call',
+    mt2n:'Group Chat / Mention / Single Chat Integration Tests', mt2d:'Group chat routing, @mention routing, single chat full pipeline',
+    mt3n:'Adapter Unit Tests', mt3d:'Claude / Codex / Custom / OpenCode; event sequences; cancel_event; token reporting',
+    mt4d:'Approval WS full flow; sandbox path validation',
+    mt5n:'API Integration Tests (Auth / Agents / Skills / Workflows)', mt5d:'Register/login/token; full CRUD flow; snapshot persistence',
+    // contributors
+    contrib_title:'Contributor Analysis', contrib_desc:'Weighted estimate combining code volume, module complexity, and criticality; net line additions are for reference only.',
+    leg_adam:'86 commits · ~34k lines · Overall architecture design · Core full-stack implementation · Core Agent Loop · Complete Orchestrator · Prompt engineering · Frontend design',
+    leg_musuyin:'48 commits · ~9k lines · Adapter full pipeline · Workflow · Agent CRUD · DiffApply',
+    leg_wang:'55 commits · ~12k lines · Frontend scaffolding · Message & conversation list',
+    leg_others_name:'Others', leg_others:'Minor patches · docs · config',
+    net_lines:'net lines',
+    adam_t1:'Architect', adam_t2:'Core Toolset-22', adam_t3:'Frontend State Layer',
+    musuyin_t1:'Workflow Persistence', musuyin_t2:'Agent/Skill Backend', musuyin_t3:'Avatar Pipeline', musuyin_t4:'Security Patches',
+    wang_t1:'Frontend UI', wang_t2:'Message List Scroll', wang_t3:'Theme System', wang_t4:'Login/Register Pages',
+    contrib_expand:'Expand by Module',
+    mc1:'Project Init & Architecture Design', mc2:'OrchestratorService 8-Step Loop', mc3:'22 Orchestrator Tools',
+    mc4:'Hook System (PRE/POST_TOOL_USE)', mc5:'Approval Loop', mc6:'Adapter Layer', mc7:'Docker One-Click Deploy',
+    mc8:'Sandbox Filesystem', mc9:'Group Chat / ChatService Routing', mc10:'Frontend Multi-Agent Parallel Streaming',
+    mc11:'Workflow View + Persistence', mc12:'Agent / Skill Subsystem', mc13:'Agent Avatar Pipeline & Artifact Apply',
+    mc14:'Frontend UI & Message List', mc15:'Infrastructure & Stability & Prompt Engineering',
+    // footer & demo
+    footer:'AgentHub Architecture Report · 2026-06-08 · Based on full code review + git history analysis',
+    demo_back:'← Back to Main', demo_badge:'Demo Center',
+  }
+}
+
+let currentLang = 'zh'
+
+function setLang(lang) {
+  currentLang = lang
+  // toggle button styles
+  document.querySelectorAll('.lang-opt').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.trim() === (lang === 'zh' ? '中' : 'EN'))
+  })
+  // update nav links (data-zh / data-en attributes)
+  document.querySelectorAll('[data-zh][data-en]').forEach(el => {
+    el.textContent = el.dataset[lang]
+  })
+  // update data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n
+    const val = I18N[lang][key]
+    if (val !== undefined) el.innerHTML = val
+  })
 }
 </script>
 </body>
