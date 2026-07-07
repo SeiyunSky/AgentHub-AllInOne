@@ -21,7 +21,7 @@ AVATAR_POOL = [
     "/static/avatars/sui-2.png",
     "/static/avatars/sui-3.png",
     "/static/avatars/sui-5.png",
-    "/static/avatars/sui-10.png",
+    "/static/avatars/sui-9.png",
     "/static/avatars/sui-11.png",
     "/static/avatars/sui-12.png",
 ]

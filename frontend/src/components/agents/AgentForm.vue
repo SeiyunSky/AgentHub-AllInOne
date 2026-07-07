@@ -43,30 +43,30 @@
           <el-icon :size="14"><SetUp /></el-icon>
           {{ t('agentForm.platformLabel') }}
         </h3>
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-3">
           <button
             v-for="p in platformOptions"
             :key="p.value"
-            class="relative flex flex-col items-center gap-2 p-5 rounded-xl border-2 cursor-pointer transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60"
+            class="relative flex items-center gap-3 px-4 py-3 rounded-xl border-2 cursor-pointer transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 text-left"
             :class="draft.type === p.value
               ? 'border-brand bg-brand-light/30 shadow-soft'
               : 'border-outline-variant bg-white hover:border-brand/40 hover:bg-brand-light/10'"
             :disabled="readonly"
             @click="draft.type = p.value"
           >
-            <div
-              class="w-10 h-10 rounded-xl flex items-center justify-center"
-              :class="p.bgClass"
-            >
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" :class="p.bgClass">
               <img :src="p.iconSrc" :alt="p.label" class="w-6 h-6 object-contain" />
             </div>
-            <span class="text-[12px] font-semibold" :class="draft.type === p.value ? 'text-brand' : 'text-on-surface'">
-              {{ p.label }}
-            </span>
+            <div class="flex-1 min-w-0">
+              <span class="block text-[12px] font-semibold" :class="draft.type === p.value ? 'text-brand' : 'text-on-surface'">
+                {{ p.label }}
+              </span>
+              <span v-if="p.desc" class="block text-[10px] text-on-surface-variant leading-tight mt-0.5">{{ p.desc }}</span>
+            </div>
             <!-- Check indicator -->
             <div
               v-if="draft.type === p.value"
-              class="absolute top-2 right-2 w-4 h-4 rounded-full flex items-center justify-center"
+              class="w-4 h-4 rounded-full flex items-center justify-center shrink-0 bg-brand"
             >
               <el-icon :size="10" class="text-white"><Select /></el-icon>
             </div>
@@ -413,13 +413,15 @@ function removeSkill(key: keyof AgentCapabilities) {
 interface PlatformOption {
   value: AgentType
   label: string
+  desc?: string
   iconSrc: string
   bgClass: string
   iconClass: string
 }
 
 const platformOptions: PlatformOption[] = [
-  { value: 'claude', label: 'Claude Code', iconSrc: getAgentTypeIcon('claude'), bgClass: '', iconClass: 'text-amber-600' },
+  { value: 'claude', label: t('agentForm.platformClaudeLabel'), desc: t('agentForm.platformClaudeDesc'), iconSrc: getAgentTypeIcon('claude'), bgClass: '', iconClass: 'text-amber-600' },
+  { value: 'anthropic_sdk', label: t('agentForm.platformAnthropicSdkLabel'), desc: t('agentForm.platformAnthropicSdkDesc'), iconSrc: getAgentTypeIcon('anthropic_sdk'), bgClass: '', iconClass: 'text-amber-600' },
   { value: 'codex', label: 'Codex', iconSrc: getAgentTypeIcon('codex'), bgClass: '', iconClass: 'text-teal-600' },
   { value: 'opencode', label: 'OpenCode', iconSrc: getAgentTypeIcon('opencode'), bgClass: '', iconClass: 'text-slate-600' },
 ]

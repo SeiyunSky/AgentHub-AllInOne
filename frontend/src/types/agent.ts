@@ -1,4 +1,4 @@
-export type AgentType = 'claude' | 'codex' | 'opencode' | 'custom'
+export type AgentType = 'claude' | 'codex' | 'opencode' | 'custom' | 'anthropic_sdk'
 
 export interface AgentCapabilities {
   supportsCode: boolean

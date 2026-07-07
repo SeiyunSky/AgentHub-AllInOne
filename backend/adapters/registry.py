@@ -196,6 +196,17 @@ async def _build_adapter(row, db: "Session") -> AgentAdapter:  # type: ignore[na
             mcp_configs=mcp_configs,
         )
 
+    if agent_type == "anthropic_sdk":
+        from backend.adapters.anthropic_sdk import AnthropicSDKAdapter
+        mcp_clients = await _connect_mcp_clients(row.id, mcp_servers)
+        capabilities: dict = row.capabilities or {}
+        return AnthropicSDKAdapter(
+            model=capabilities.get("model"),
+            api_key=capabilities.get("api_key"),
+            base_url=capabilities.get("base_url"),
+            mcp_clients=mcp_clients,
+        )
+
     raise ValueError(f"Unknown agent type: {agent_type!r}")
 
 

@@ -28,7 +28,7 @@ class Skill(Base, TimestampMixin):
     name = Column(String(100), nullable=False, comment="英文唯一标识")
     display_name = Column(String(100), nullable=True, comment="中文展示名")
     description = Column(
-        String(500),
+        String(2000),
         nullable=True,
         comment="frontmatter description，progressive disclosure 时塞进系统 prompt",
     )

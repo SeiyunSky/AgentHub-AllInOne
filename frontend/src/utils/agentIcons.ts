@@ -6,6 +6,7 @@ import magicIcon from '@/assets/icons/magic.svg'
 const agentTypeIconMap: Record<string, string> = {
   claude: claudecodeIcon,
   claudecode: claudecodeIcon,
+  anthropic_sdk: claudecodeIcon,
   codex: codexIcon,
   opencode: opencodeIcon,
   custom: magicIcon,

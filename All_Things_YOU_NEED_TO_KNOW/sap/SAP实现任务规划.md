@@ -200,7 +200,11 @@ category: SAP 本地化
 
 **文件**：`backend/seeds/mcp_servers.py`
 
+> URL 从 `DO_NOT_COMMIT/sap_l2a_mcp_config.md` 获取，填入下方 `url` 字段。
+
 ```python
+import os
+
 # 在 PRESET_MCP_SERVERS 列表中追加：
 
 {
@@ -208,8 +212,8 @@ category: SAP 本地化
     "name": "Globalization Taxonomy",
     "description": "SAP 本地化知识图谱 — 语义搜索国家本地化范围、S/4HANA 能力关系，SPARQL 查询",
     "transport": "streamable_http",
-    "url": "https://glo-taxonomy-kg-mcp-server.daf98e7.kyma.ondemand.com/mcp",
-    "headers": {},      # OIDC，Demo 阶段运行时手动注入 token；留空由用户配置
+    "url": "<见 DO_NOT_COMMIT/sap_l2a_mcp_config.md>",
+    "headers": {"Authorization": f"Bearer {os.environ.get('L2A_TAXONOMY_TOKEN', '')}"},
     "author_id": "GUGA",
     "is_public": 1,
     "is_active": 1,
@@ -219,8 +223,8 @@ category: SAP 本地化
     "name": "SAP GLO Repository",
     "description": "GLO 知识图谱 — 搜索 ABAP 对象、CDS 视图、DRC 报表配置、eDocument 配置",
     "transport": "streamable_http",
-    "url": "https://glo-repo-api-prod.daf98e7.kyma.ondemand.com/mcp/odata",
-    "headers": {},      # OAuth2，需配置 GLOREPO_ACCESS_TOKEN 环境变量
+    "url": "<见 DO_NOT_COMMIT/sap_l2a_mcp_config.md>",
+    "headers": {"Authorization": f"Bearer {os.environ.get('L2A_GLOREPO_TOKEN', '')}"},
     "author_id": "GUGA",
     "is_public": 1,
     "is_active": 1,
@@ -230,8 +234,8 @@ category: SAP 本地化
     "name": "Spec to Code",
     "description": "SAP GLO 综合 AI 服务 — document grounding、ABAP artifact 读取、SAP Note 查询、ServiceNow 集成",
     "transport": "streamable_http",
-    "url": "https://spec-to-code.cfapps.eu10.hana.ondemand.com/mcp",
-    "headers": {},      # OIDC，SAP IDP 认证
+    "url": "<见 DO_NOT_COMMIT/sap_l2a_mcp_config.md>",
+    "headers": {"Authorization": f"Bearer {os.environ.get('L2A_SPEC_TO_CODE_TOKEN', '')}"},
     "author_id": "GUGA",
     "is_public": 1,
     "is_active": 1,

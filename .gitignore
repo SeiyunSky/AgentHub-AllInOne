@@ -8,6 +8,9 @@ backend/.env
 **/.env
 !.env.example
 
+# 敏感配置（MCP URL、token、credentials 等）
+DO_NOT_COMMIT/
+
 # Python
 __pycache__/
 *.pyc
@@ -34,3 +37,5 @@ dist/
 .next/
 
 .claude/
+
+seeds/

@@ -65,26 +65,10 @@ backend/skills/localization_support_assistant.md
 
 ### MCP Server 是什么
 
-L2A 的 MCP server 是 HTTP 服务（OIDC 或 OAuth2 认证），配置示例：
+L2A 的 MCP server 是 HTTP 服务（OIDC 或 OAuth2 认证）。
 
-```yaml
-# mcp-servers/globalization-taxonomy.yaml
-name: globalization-taxonomy
-type: http
-url: https://glo-taxonomy-kg-mcp-server.daf98e7.kyma.ondemand.com/mcp
-auth: oidc
-```
-
-```yaml
-# mcp-servers/sap-mcp-glorepo.yaml
-name: sap-mcp-glorepo
-type: http
-url: https://glo-repo-api-prod.daf98e7.kyma.ondemand.com/mcp/odata
-auth: oauth2
-auth_env_token_url: GLOREPO_TOKEN_URL
-auth_env_client_id: GLOREPO_CLIENT_ID
-auth_env_client_secret: GLOREPO_CLIENT_SECRET
-```
+> **敏感信息已移至**：`DO_NOT_COMMIT/sap_l2a_mcp_config.md`（已加入 .gitignore，不会提交）。
+> MCP 的实际 URL、token 和 OAuth2 credentials 请查阅该文件。
 
 ### AgentHub 的 MCP 数据模型
 
@@ -111,22 +95,22 @@ class MCPServer(Base):
 
 **Step 1：在 `seeds/mcp_servers.py` 的 `PRESET_MCP_SERVERS` 中添加配置**
 
+URL 从 `DO_NOT_COMMIT/sap_l2a_mcp_config.md` 获取，token 从环境变量读取：
+
 ```python
+import os
+
 PRESET_MCP_SERVERS: list[dict] = [
-    # 现有的
-    {"id": "deepwiki", ...},
-    
-    # 新增 L2A MCPs
+    {"id": "deepwiki", ...},  # 现有的
+
     {
         "id": "l2a-globalization-taxonomy",
         "name": "Globalization Taxonomy",
         "description": "语义搜索国家本地化范围、S/4HANA 能力关系图谱",
         "transport": "streamable_http",
-        "url": "https://glo-taxonomy-kg-mcp-server.daf98e7.kyma.ondemand.com/mcp",
+        "url": "<见 DO_NOT_COMMIT/sap_l2a_mcp_config.md>",
         "headers": {
-            # OIDC 认证：需要先获取 SAP IDP token 填入此处
-            # 或者在运行时动态注入（见下方认证方案）
-            "Authorization": "Bearer ${SAP_OIDC_TOKEN}"
+            "Authorization": f"Bearer {os.environ.get('L2A_TAXONOMY_TOKEN', '')}"
         },
         "author_id": "GUGA",
         "is_public": 1,
@@ -137,10 +121,9 @@ PRESET_MCP_SERVERS: list[dict] = [
         "name": "SAP GLO Repository",
         "description": "搜索 ABAP 对象、CDS 视图、DRC 报表配置",
         "transport": "streamable_http",
-        "url": "https://glo-repo-api-prod.daf98e7.kyma.ondemand.com/mcp/odata",
+        "url": "<见 DO_NOT_COMMIT/sap_l2a_mcp_config.md>",
         "headers": {
-            # OAuth2 认证：用环境变量引用
-            "Authorization": "Bearer ${GLOREPO_ACCESS_TOKEN}"
+            "Authorization": f"Bearer {os.environ.get('L2A_GLOREPO_TOKEN', '')}"
         },
         "author_id": "GUGA",
         "is_public": 1,
@@ -169,31 +152,18 @@ def seed_sap_agent_mcp_links(db: Session) -> int:
 
 ### 认证方案分析
 
-L2A 的 MCP 有两种认证：
+L2A 的 MCP 有两种认证，详细 URL 和 credentials 见 `DO_NOT_COMMIT/sap_l2a_mcp_config.md`：
 
-| 认证类型 | MCP | 说明 |
+| 认证类型 | MCP | 环境变量 |
 |---|---|---|
-| OIDC | `globalization-taxonomy` | SAP IDP 认证，浏览器 SSO，首次使用需登录 |
-| OAuth2 | `sap-mcp-glorepo`、`solution-patterns` | client_id + client_secret 换 token |
+| OIDC | `globalization-taxonomy`、`spec-to-code` | `L2A_TAXONOMY_TOKEN`、`L2A_SPEC_TO_CODE_TOKEN` |
+| OAuth2 | `sap-mcp-glorepo`、`solution-patterns` | `L2A_GLOREPO_TOKEN`、`PATTERN_BLUEPRINT_TOKEN` |
 
-**Demo 阶段推荐方案：**
+**Demo 阶段方案：**
 
-1. **OAuth2 的 MCP**（glorepo、solution-patterns）：把 client credentials 放环境变量，启动时在 `mcp_servers.py` 里用 `os.environ.get()` 读取真实 token 填入 headers：
-
-```python
-import os
-
-{
-    "id": "l2a-sap-mcp-glorepo",
-    "headers": {
-        "Authorization": f"Bearer {os.environ.get('GLOREPO_ACCESS_TOKEN', '')}"
-    },
-}
-```
-
-2. **OIDC 的 MCP**（globalization-taxonomy）：可以先通过浏览器手动获取 token，放入 `.env` 文件，Demo 时使用。长期需要实现 OIDC token 刷新逻辑。
-
-3. **Mock 方案（不需要真实认证）**：如果 Demo 时认证不可用，在 orchestrator prompt 里直接把 taxonomy 数据作为 "已知背景" 粘贴进去，视觉效果一样，只是数据是预置的。
+1. **OAuth2**：通过 client credentials 换取 token，放入 `backend/.env`，seed 里 `os.environ.get()` 读取
+2. **OIDC**：浏览器 SSO 手动获取 token，放入 `backend/.env`，Demo 时使用
+3. **Mock 方案**：认证不可用时，在 orchestrator prompt 里直接粘贴预置的 taxonomy 数据作背景
 
 ---
 
@@ -209,11 +179,7 @@ import os
 
 ## 四、需要进一步讨论的问题
 
-1. **认证 token 如何管理？**
-   - 是否在 AgentHub 前端加一个"MCP 认证配置"页面，让用户填写 OAuth2 credentials？
-   - 还是 Demo 阶段直接用环境变量硬编码？
-
-2. **子 Agent 是否需要直接调用 MCP？**
+1. **子 Agent 是否需要直接调用 MCP？**
    - 当前 AgentHub 架构：子 Agent 无工具权限，orchestrator 调 MCP 再把结果粘贴给子 Agent
    - 这个架构对 SAP Demo 场景是够用的——orchestrator 调 globalization-taxonomy，再派给调研 Agent
    - 如果需要子 Agent 直接调 MCP，需要修改 Adapter 层（Claude Adapter 支持传入 tools 列表）
