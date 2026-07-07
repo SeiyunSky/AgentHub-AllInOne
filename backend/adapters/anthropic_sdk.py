@@ -247,12 +247,25 @@ class AnthropicSDKAdapter(AgentAdapter):
                     result_text: str | None = None
                     if tool_name in mcp_tools_by_name:
                         owning_client, _ = mcp_tools_by_name[tool_name]
+                        logger.info(
+                            "AnthropicSDKAdapter: calling MCP tool=%s input=%s agent=%s",
+                            tool_name, tool_input, inp.agent_id,
+                        )
                         try:
                             result = await owning_client.call_tool(tool_name, tool_input)
                             result_text = _extract_tool_result_text(result)
+                            logger.info(
+                                "AnthropicSDKAdapter: MCP tool=%s succeeded, result_len=%d",
+                                tool_name, len(result_text or ""),
+                            )
                         except Exception as exc:
                             logger.error("MCP tool call failed (%s): %s", tool_name, exc)
                             result_text = f"error: {exc}"
+                    else:
+                        logger.warning(
+                            "AnthropicSDKAdapter: tool=%s not found in mcp_tools_by_name (available: %s)",
+                            tool_name, list(mcp_tools_by_name.keys()),
+                        )
 
                     yield BlockStopEvent(
                         **_base(),
