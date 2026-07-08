@@ -192,12 +192,15 @@ class ContextCompactor:
         head = messages[:-RECENT_MESSAGES_KEEP_AFTER_SUMMARY]
         tail = messages[-RECENT_MESSAGES_KEEP_AFTER_SUMMARY:]
 
+        # 修复 tool_use/tool_result 配对:tail 里的 tool_result 必须能在 tail 里找到
+        # 对应的 tool_use,否则 Anthropic API 报 400 "tool_call_id not found"。
+        # 把 head 里被 tail 引用的 tool_use assistant 消息挪到 tail 开头。
+        head, tail = self._fix_tool_pair_split(head, tail)
+
         # 把 head 序列化成可读文本喂给摘要 LLM
         head_text = self._serialize_messages_for_summary(head)
 
         # 长度保护:head_text 本身可能超过摘要 LLM 的 context 上限
-        # (走到这里就是因为 messages 已经超阈值)。截断头部保留尾部
-        # ——尾部内容更接近"当前任务",对摘要 LLM 推断意图更有帮助。
         if len(head_text) > _SUMMARIZE_HEAD_CHAR_LIMIT:
             keep_tail_len = _SUMMARIZE_HEAD_CHAR_LIMIT - len(_SUMMARIZE_TRUNCATION_MARK)
             head_text = _SUMMARIZE_TRUNCATION_MARK + head_text[-keep_tail_len:]
@@ -273,6 +276,82 @@ class ContextCompactor:
     # --------------------------------------------------------
     # 内部辅助
     # --------------------------------------------------------
+
+    @staticmethod
+    def _fix_tool_pair_split(
+        head: list[dict[str, Any]],
+        tail: list[dict[str, Any]],
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        """
+        确保 tail 里每个 tool_result 的 tool_use_id 都能在 tail 里找到对应的
+        tool_use block。如果对应的 assistant 消息还在 head 里，把它从 head 末尾
+        移到 tail 开头，防止 Anthropic API 报 "tool_call_id not found"。
+        """
+        # 收集 tail 里所有 tool_result 引用的 tool_use_id
+        needed_ids: set[str] = set()
+        for msg in tail:
+            if msg.get("role") != "user":
+                continue
+            content = msg.get("content")
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "tool_result":
+                    uid = block.get("tool_use_id")
+                    if uid:
+                        needed_ids.add(uid)
+
+        if not needed_ids:
+            return head, tail
+
+        # 收集 tail 里已有的 tool_use id
+        existing_ids: set[str] = set()
+        for msg in tail:
+            if msg.get("role") != "assistant":
+                continue
+            content = msg.get("content")
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "tool_use":
+                    uid = block.get("id")
+                    if uid:
+                        existing_ids.add(uid)
+
+        missing_ids = needed_ids - existing_ids
+        if not missing_ids:
+            return head, tail
+
+        # 从 head 末尾往前找包含 missing_ids 的 assistant 消息，移到 tail 开头
+        rescue: list[dict[str, Any]] = []
+        new_head = list(head)
+        for idx in range(len(new_head) - 1, -1, -1):
+            msg = new_head[idx]
+            if msg.get("role") != "assistant":
+                continue
+            content = msg.get("content")
+            if not isinstance(content, list):
+                continue
+            ids_in_msg = {
+                b.get("id")
+                for b in content
+                if isinstance(b, dict) and b.get("type") == "tool_use" and b.get("id")
+            }
+            if ids_in_msg & missing_ids:
+                rescue.append(new_head.pop(idx))
+                missing_ids -= ids_in_msg
+                if not missing_ids:
+                    break
+
+        if rescue:
+            logger.info(
+                "global_summarize: rescued %d assistant message(s) from head to fix tool_use/tool_result pairing",
+                len(rescue),
+            )
+            # rescue 是逆序收集的，反转后拼到 tail 开头
+            tail = list(reversed(rescue)) + list(tail)
+
+        return new_head, tail
 
     @staticmethod
     def _is_tool_result_message(msg: dict[str, Any]) -> bool:
