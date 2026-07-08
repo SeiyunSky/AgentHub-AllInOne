@@ -41,7 +41,7 @@ from backend.hooks.manager import hook_manager
 from backend.hooks.post_execution import PostExecutionHook
 from backend.hooks.pre_execution import PreExecutionHook
 from backend.seeds.agents import seed_agents
-from backend.seeds.mcp_servers import seed_mcp_servers, seed_orchestrator_mcp_links
+from backend.seeds.mcp_servers import seed_mcp_servers, seed_orchestrator_mcp_links, seed_brm_mcp_server
 from backend.seeds.users import seed_users
 
 
@@ -175,6 +175,14 @@ async def lifespan(app: FastAPI):
 
         n_orch_links = seed_orchestrator_mcp_links(db)
         logger.info("seed_orchestrator_mcp_links: %d rows affected", n_orch_links)
+
+        # BRM MCP：异步解析 BTP Destination → 写入 token（方案 A，token 有效期内可用）
+        try:
+            brm_ok = await seed_brm_mcp_server(db)
+            if brm_ok:
+                logger.info("seed_brm_mcp_server: bank-relationship MCP ready")
+        except Exception:
+            logger.exception("seed_brm_mcp_server failed (non-fatal)")
 
         await adapter_registry.seed_from_db(db)
 

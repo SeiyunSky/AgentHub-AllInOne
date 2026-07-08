@@ -225,6 +225,29 @@ PRESET_AGENTS: list[dict] = [
         "is_public": 1,
         "default_skills": ["sui_lore_lookup"],
     },
+    # ====================================================================
+    # SAP 部门 Agent
+    # ====================================================================
+    {
+        "id": "agent-brm-builtin",
+        "user_id": "GUGA",
+        "name": "Bank Relationship Agent",
+        "description": "SAP 企业财资助手，可查询银行账户、余额、付款、银行费用、信用额度及债务/投资组合",
+        "type": "custom",
+        "prompt_key": None,
+        "capabilities": {
+            "supports_code": False,
+            "supports_diff": False,
+            "supports_approval": False,
+            "model": "kimi-k2.5",
+            "api_key": None,
+            "base_url": None,
+        },
+        "avatar": "/static/avatars/avatar-5.jpg",
+        "is_active": 1,
+        "is_public": 1,
+        "default_skills": [],
+    },
 ]
 
 

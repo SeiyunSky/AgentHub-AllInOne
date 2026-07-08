@@ -126,5 +126,31 @@ class Settings(BaseSettings):
         description="OAuth state 在 Redis 中的 TTL（秒）。防 CSRF，默认 5 分钟。",
     )
 
+    # ---- BTP Destination Service — bank-relationship-agent MCP (方案 A) ----
+    BRM_DESTINATION_AUTH_URL: str = Field(
+        default="",
+        description="SAP BTP XSUAA token endpoint for Destination Service",
+    )
+    BRM_DESTINATION_BASE_URL: str = Field(
+        default="",
+        description="SAP BTP Destination Service REST API base URL",
+    )
+    BRM_DESTINATION_CLIENT_ID: str = Field(
+        default="",
+        description="Destination Service OAuth client_id",
+    )
+    BRM_DESTINATION_CLIENT_SECRET: str = Field(
+        default="",
+        description="Destination Service OAuth client_secret",
+    )
+    BRM_MCP_DESTINATION_NAME: str = Field(
+        default="MCP_HUB",
+        description="Destination name that points to the MCP Hub",
+    )
+    BRM_MCP_SERVER_ID: str = Field(
+        default="06fffdd4-18c3-4ff0-8e6c-b4a52b4d3633",
+        description="MCP server path ID under the MCP Hub base URL",
+    )
+
 
 settings = Settings()
