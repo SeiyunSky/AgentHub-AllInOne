@@ -633,6 +633,12 @@ export default {
     filterAll: 'All',
     filterActive: 'Active',
     noMatch: 'No MCP servers match your filter',
+    sapAuthorized: 'Authorized',
+    sapNeedAuth: 'Authorization required',
+    authorize: 'Authorize SAP Account',
+    authorizing: 'Authorizing...',
+    authSuccess: 'SAP authorization successful',
+    authFailed: 'SAP authorization failed, please retry',
   },
 
   // ─── MCP Server Form ──────────────────────────────────────────────────────────

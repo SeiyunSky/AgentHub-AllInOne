@@ -22,6 +22,7 @@ from backend.models.thread import Thread
 from backend.models.audit_log import AuditLog
 from backend.models.workflow import Workflow
 from backend.models.read_receipt import ReadReceipt
+from backend.models.mcp_token import MCPToken
 
 __all__ = [
     "Base",
@@ -38,4 +39,5 @@ __all__ = [
     "AuditLog",
     "Workflow",
     "ReadReceipt",
+    "MCPToken",
 ]

@@ -91,17 +91,22 @@ class AdapterRegistry:
 # Factory
 # ---------------------------------------------------------------------------
 
-async def connect_mcp_clients_for_agent(agent_id: str, db: "Session") -> list[MCPClient]:
+async def connect_mcp_clients_for_agent(
+    agent_id: str, db: "Session", user_id: str | None = None
+) -> list[MCPClient]:
     """Load and connect MCP servers for the given agent_id.
 
     Public helper used by OrchestratorService at startup so the orchestrator
     can call MCP tools directly (without going through an AgentAdapter).
+    user_id 用于注入 OAuth token（SAP MCP 等需要鉴权的服务器）。
     """
     mcp_servers = _load_mcp_servers(agent_id, db)
-    return await _connect_mcp_clients(agent_id, mcp_servers)
+    return await _connect_mcp_clients(agent_id, mcp_servers, user_id=user_id)
 
 
-async def _connect_mcp_clients(agent_id: str, mcp_servers) -> list[MCPClient]:
+async def _connect_mcp_clients(
+    agent_id: str, mcp_servers, user_id: str | None = None
+) -> list[MCPClient]:
     """Connect MCP servers and return live MCPClient instances (for API-based adapters)."""
     clients: list[MCPClient] = []
     for srv in mcp_servers:
@@ -119,7 +124,9 @@ async def _connect_mcp_clients(agent_id: str, mcp_servers) -> list[MCPClient]:
                     continue
                 if srv.transport == "streamable_http":
                     client = await MCPRegistry.get_or_connect_streamable_http(
-                        srv.id, srv.url, headers=dict(srv.headers) if srv.headers else None,
+                        srv.id, srv.url,
+                        headers=dict(srv.headers) if srv.headers else None,
+                        user_id=user_id,
                     )
                 else:
                     client = await MCPRegistry.get_or_connect_sse(
@@ -163,6 +170,8 @@ def _to_mcp_configs(mcp_servers):
 async def _build_adapter(row, db: "Session") -> AgentAdapter:  # type: ignore[name-defined]
     """Build the correct adapter from an ORM Agent row."""
     agent_type: str = row.type
+    # user_id from row (agents belong to a user; GUGA = system)
+    agent_owner: str = getattr(row, "user_id", "GUGA") or "GUGA"
 
     mcp_servers = _load_mcp_servers(row.id, db)
     mcp_configs = _to_mcp_configs(mcp_servers)
@@ -180,7 +189,7 @@ async def _build_adapter(row, db: "Session") -> AgentAdapter:  # type: ignore[na
 
     if agent_type == "custom":
         from backend.adapters.custom import CustomAdapter
-        mcp_clients = await _connect_mcp_clients(row.id, mcp_servers)
+        mcp_clients = await _connect_mcp_clients(row.id, mcp_servers, user_id=agent_owner)
         capabilities: dict = row.capabilities or {}
         return CustomAdapter(
             model=capabilities.get("model"),
@@ -198,7 +207,7 @@ async def _build_adapter(row, db: "Session") -> AgentAdapter:  # type: ignore[na
 
     if agent_type == "anthropic_sdk":
         from backend.adapters.anthropic_sdk import AnthropicSDKAdapter
-        mcp_clients = await _connect_mcp_clients(row.id, mcp_servers)
+        mcp_clients = await _connect_mcp_clients(row.id, mcp_servers, user_id=agent_owner)
         capabilities: dict = row.capabilities or {}
         return AnthropicSDKAdapter(
             model=capabilities.get("model"),

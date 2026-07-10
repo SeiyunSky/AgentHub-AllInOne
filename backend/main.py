@@ -180,6 +180,13 @@ async def lifespan(app: FastAPI):
         if n_sap_links:
             logger.info("seed_sap_agent_mcp_links: %d rows affected", n_sap_links)
 
+        # 预取 Client Credentials token（sap-mcp-glorepo / solution-patterns）
+        try:
+            from backend.services.mcp_token_service import mcp_token_service as _mcp_token_svc
+            await _mcp_token_svc.prefetch_client_credentials_tokens()
+        except Exception:
+            logger.exception("prefetch_client_credentials_tokens failed (non-fatal)")
+
         await adapter_registry.seed_from_db(db)
 
         # 加载 orchestrator 自己的 MCP 客户端，重建单例以注入
@@ -342,6 +349,7 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     from backend.api.v1 import sandbox as sandbox_router
     from backend.api.v1 import preview as preview_router
     from backend.api.v1 import workflows as workflows_router
+    from backend.api.v1 import mcp_auth as mcp_auth_router
 
     app.include_router(auth_router.router, prefix="/api/v1", tags=["auth"])
     app.include_router(chat_router.router, prefix="/api/v1", tags=["chat"])
@@ -359,10 +367,10 @@ def create_app(*, include_lifespan: bool = True) -> FastAPI:
     app.include_router(squads_router.router, prefix="/api/v1", tags=["squads"])
     app.include_router(sandbox_router.router, prefix="/api/v1", tags=["sandbox"])
     app.include_router(workflows_router.router, prefix="/api/v1", tags=["workflows"])
+    app.include_router(mcp_auth_router.router, prefix="/api/v1", tags=["mcp-auth"])
     # preview 不带 /api/v1 前缀:用户分享的 URL 是 http://host/preview/{conv_id}/,
     # 浏览器直接访问的 deploy 应用,不属于 API 范畴
     app.include_router(preview_router.router, tags=["preview"])
-    app.include_router(workflows_router.router, prefix="/api/v1", tags=["workflows"])
 
     # 静态资源：头像等图片文件
     _static_dir = Path(__file__).parent / "static"

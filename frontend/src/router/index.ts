@@ -21,6 +21,12 @@ const router = createRouter({
       component: () => import('@/views/MicrosoftCallbackView.vue'),
     },
     {
+      // MCP 服务器 OAuth/OIDC 回调页：通知父窗口授权完成后自动关闭
+      path: '/mcp-auth/callback',
+      name: 'mcp-auth-callback',
+      component: () => import('@/views/MCPAuthCallbackView.vue'),
+    },
+    {
       path: '/',
       component: () => import('@/components/layout/AppLayout.vue'),
       meta: { requiresAuth: true },

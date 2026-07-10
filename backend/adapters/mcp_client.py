@@ -288,13 +288,31 @@ class MCPRegistry:
         server_id: str,
         url: str,
         headers: dict[str, str] | None = None,
+        user_id: str | None = None,
     ) -> MCPClient:
+        # 如果 user_id 传入，先从 mcp_token_service 取最新 token 注入 Authorization header
+        # 这样 SAP MCP 服务器（Client Credentials）能在每次连接时拿到有效 token
+        if user_id:
+            try:
+                from backend.services.mcp_token_service import mcp_token_service
+                token = await mcp_token_service.get_token(server_id, user_id)
+                if token:
+                    headers = {**(headers or {}), "Authorization": f"Bearer {token}"}
+                    # token 有效，需要重连以携带最新 token（不复用旧连接）
+                    cache_key = f"{server_id}:{token[:16]}"
+                else:
+                    cache_key = server_id
+            except Exception:
+                cache_key = server_id
+        else:
+            cache_key = server_id
+
         async with cls._lock:
-            if server_id not in cls._connections:
-                cls._connections[server_id] = await MCPClient.connect_streamable_http(
+            if cache_key not in cls._connections:
+                cls._connections[cache_key] = await MCPClient.connect_streamable_http(
                     server_id, url, headers=headers
                 )
-            return cls._connections[server_id]
+            return cls._connections[cache_key]
 
     @classmethod
     def get(cls, server_id: str) -> MCPClient | None:

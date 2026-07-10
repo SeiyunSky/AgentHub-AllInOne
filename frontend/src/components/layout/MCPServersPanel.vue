@@ -121,6 +121,34 @@
                 {{ server.transport === 'stdio' ? server.command : server.url }}
               </span>
             </div>
+
+            <!-- SAP OIDC 授权状态 + 按钮 -->
+            <div
+              v-if="isSapOidcServer(server.id)"
+              class="mt-3 pt-3 border-t border-outline-variant flex items-center justify-between"
+              @click.stop
+            >
+              <span
+                class="text-[11px] flex items-center gap-1"
+                :class="authStatuses[server.id]?.authorized ? 'text-emerald-600' : 'text-amber-600'"
+              >
+                <span
+                  class="w-1.5 h-1.5 rounded-full"
+                  :class="authStatuses[server.id]?.authorized ? 'bg-emerald-500' : 'bg-amber-500'"
+                ></span>
+                {{ authStatuses[server.id]?.authorized ? t('mcpServersPanel.sapAuthorized') : t('mcpServersPanel.sapNeedAuth') }}
+              </span>
+              <button
+                class="text-[11px] px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                :class="authingServer === server.id
+                  ? 'bg-surface-container text-on-surface-variant cursor-wait'
+                  : 'bg-brand-light text-brand hover:bg-brand/20'"
+                :disabled="authingServer === server.id"
+                @click.stop="authorizeServer(server.id)"
+              >
+                {{ authingServer === server.id ? t('mcpServersPanel.authorizing') : t('mcpServersPanel.authorize') }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -132,8 +160,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { ElMessage } from 'element-plus'
 import { Connection, Monitor, Plus, Search } from '@element-plus/icons-vue'
 import { useMCPServersStore } from '@/stores/mcp_servers'
+import { mcpAuthApi, isSapOidcServer } from '@/api/mcp_auth'
 import PanelContainer from '@/components/layout/PanelContainer.vue'
 
 const { t } = useI18n()
@@ -163,5 +193,60 @@ onMounted(async () => {
   if (mcpServersStore.servers.length === 0) {
     await mcpServersStore.loadServers()
   }
+  // 加载 SAP OIDC 服务器的授权状态
+  await refreshAllAuthStatuses()
 })
+
+// ── SAP OIDC 授权状态管理 ──
+
+const authStatuses = ref<Record<string, { authorized: boolean; expires_at?: string | null }>>({})
+const authingServer = ref<string | null>(null)
+
+async function refreshAllAuthStatuses() {
+  const sapServers = mcpServersStore.servers.filter(s => isSapOidcServer(s.id))
+  for (const srv of sapServers) {
+    try {
+      const status = await mcpAuthApi.status(srv.id)
+      authStatuses.value[srv.id] = { authorized: status.authorized, expires_at: status.expires_at }
+    } catch {
+      authStatuses.value[srv.id] = { authorized: false }
+    }
+  }
+}
+
+async function authorizeServer(serverId: string) {
+  authingServer.value = serverId
+  try {
+    const res = await mcpAuthApi.start(serverId)
+    if (res.status === 'authorized') {
+      authStatuses.value[serverId] = { authorized: true }
+      ElMessage.success(t('mcpServersPanel.authSuccess'))
+      return
+    }
+    if (res.auth_url) {
+      const popup = window.open(res.auth_url, 'sap-mcp-auth', 'width=600,height=700')
+      const handler = (event: MessageEvent) => {
+        if (event.data?.type === 'mcp-auth-success') {
+          popup?.close()
+          window.removeEventListener('message', handler)
+          authStatuses.value[serverId] = { authorized: true }
+          ElMessage.success(t('mcpServersPanel.authSuccess'))
+          authingServer.value = null
+        }
+      }
+      window.addEventListener('message', handler)
+      // 5 分钟超时清理
+      setTimeout(() => {
+        window.removeEventListener('message', handler)
+        if (authingServer.value === serverId) authingServer.value = null
+      }, 5 * 60 * 1000)
+      return
+    }
+    ElMessage.error(res.message || t('mcpServersPanel.authFailed'))
+  } catch {
+    ElMessage.error(t('mcpServersPanel.authFailed'))
+  } finally {
+    if (authingServer.value === serverId) authingServer.value = null
+  }
+}
 </script>

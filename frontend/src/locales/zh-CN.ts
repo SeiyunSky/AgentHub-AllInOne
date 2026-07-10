@@ -634,6 +634,12 @@ export default {
     filterAll: '全部',
     filterActive: '活跃',
     noMatch: '没有符合筛选条件的 MCP 服务器',
+    sapAuthorized: '已授权',
+    sapNeedAuth: '需要授权',
+    authorize: '授权 SAP 账号',
+    authorizing: '授权中...',
+    authSuccess: 'SAP 授权成功',
+    authFailed: 'SAP 授权失败，请重试',
   },
 
   // ─── MCP 服务器表单 ───────────────────────────────────────────────────────────
