@@ -84,110 +84,12 @@ When the target country is **Vietnam**, agents can use the following verified ba
 
 ## Demo Preset: Vietnam E-Invoicing Analysis
 
-**Trigger phrase for demo**: *"Localize this invoice output class for Vietnam e-invoicing: [PRESET_CODE]"*
+This section provides background context to help agents give accurate, grounded responses when analyzing ABAP code for Vietnam e-invoicing localization.
 
-When the user sends the trigger phrase containing the preset code below, agents should analyze it using the Vietnam background knowledge above and produce the expected outputs described in the "Expected Agent Outputs" section.
+### What the Demo Code Represents
 
-### Preset ABAP Code (paste this into the demo message)
-
-```abap
-CLASS zcl_invoice_output DEFINITION
-  PUBLIC
-  FINAL
-  CREATE PUBLIC.
-
-  PUBLIC SECTION.
-    METHODS:
-      generate_invoice
-        IMPORTING
-          iv_vbeln TYPE vbeln_vf
-        EXPORTING
-          ev_xml   TYPE string,
-
-      validate_tax_data
-        IMPORTING
-          iv_stceg TYPE stceg
-        RETURNING
-          VALUE(rv_valid) TYPE abap_bool.
-
-  PRIVATE SECTION.
-    METHODS:
-      get_invoice_header
-        IMPORTING
-          iv_vbeln   TYPE vbeln_vf
-        RETURNING
-          VALUE(rs_header) TYPE zs_inv_header,
-
-      build_xml_output
-        IMPORTING
-          is_header  TYPE zs_inv_header
-        RETURNING
-          VALUE(rv_xml) TYPE string.
-
-ENDCLASS.
-
-CLASS zcl_invoice_output IMPLEMENTATION.
-
-  METHOD generate_invoice.
-    DATA(ls_header) = get_invoice_header( iv_vbeln ).
-    ev_xml = build_xml_output( ls_header ).
-  ENDMETHOD.
-
-  METHOD validate_tax_data.
-    " Basic tax ID validation - generic format check only
-    IF strlen( iv_stceg ) BETWEEN 10 AND 14.
-      rv_valid = abap_true.
-    ENDIF.
-  ENDMETHOD.
-
-  METHOD get_invoice_header.
-    SELECT SINGLE
-      vbeln, fkdat, waerk, netwr, mwsbp,
-      kunrg, name1, stceg AS seller_tax_id
-    FROM vbrk
-    INTO CORRESPONDING FIELDS OF rs_header
-    WHERE vbeln = iv_vbeln.
-  ENDMETHOD.
-
-  METHOD build_xml_output.
-    " Generic XML output - not country-specific
-    rv_xml = |<Invoice>| &&
-             |<Date>{ is_header-fkdat }</Date>| &&
-             |<Amount>{ is_header-netwr }</Amount>| &&
-             |<Tax>{ is_header-mwsbp }</Tax>| &&
-             |</Invoice>|.
-  ENDMETHOD.
-
-ENDCLASS.
-```
-
-### What This Code Represents
-
-This is a generic invoice output class used across multiple countries. It has no Vietnam-specific logic, missing required VN fields, and uses a generic tax validation that does not enforce Vietnam's 10-digit MST format.
-
-### Expected Agent Outputs (for guiding prompt injection)
-
-**SAP Regulatory Researcher should surface:**
-- Decree 123/2020/ND-CP mandatory fields: MST (10-digit tax code), invoice series, sequential number, digital signature, buyer tax code
-- SAP Notes 3099869 and 3158633 for DRC Vietnam
-- Requirement for transmission to HTKK portal or certified e-invoice provider
-
-**SAP ABAP Explorer should identify:**
-- Package `LOCO_VN`, base class `CL_EDIN_OUTPUT_BASE` to extend
-- Existing `CL_EDIN_VN_*` series as reference
-- Custom table `ZTVINV_SERIES` for invoice series management
-
-**SAP Localization Advisor should flag these gaps in the code:**
-1. `validate_tax_data` — accepts 10-14 chars, must enforce exactly 10 digits for Vietnam MST
-2. `get_invoice_header` — missing buyer tax code (`stceg` on customer master), invoice series, sequential number
-3. `build_xml_output` — generic XML, must follow VN e-invoice XML schema (TTĐT format) with namespace
-4. No digital signature method — must add `sign_invoice` method calling VN CA API
-5. No transmission method — must add `transmit_to_portal` for HTKK or provider API call
-
-**SAP Solution Architect final plan should include:**
-- Extend `zcl_invoice_output` or create `zcl_vn_invoice_output` inheriting from `CL_EDIN_OUTPUT_BASE`
-- Add `validate_vn_tax_id` enforcing `/^[0-9]{10}(-[0-9]{3})?$/` pattern
-- Enrich header query with buyer MST, invoice series from `ZTVINV_SERIES`
-- Implement VN XML schema builder referencing `CL_EDIN_VN_XML_BUILDER`
-- Add digital signature via HTTP call to VNPT-CA endpoint
-- Add async transmission with status tracking in `ZTVINV_STATUS`
+The demo code (`zcl_invoice_output`) is a generic invoice output class with no country-specific logic. It has:
+- A generic tax ID validator that accepts 10–14 characters (not enforcing Vietnam's exact 10-digit MST format)
+- A header query that fetches basic billing fields but misses Vietnam-required fields
+- A generic XML builder with no country-specific schema
+- No digital signature or transmission methods

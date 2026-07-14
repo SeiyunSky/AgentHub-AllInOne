@@ -807,6 +807,7 @@ class ThreadService:
                 from backend.repositories.conversation_repo import ConversationRepository
                 conv_row = ConversationRepository(s).get(thread.conversation_id)
                 conv_mode = (conv_row.mode if conv_row else "single") or "single"
+                conv_user_id: Optional[str] = conv_row.user_id if conv_row else None
                 member_lines: list[str] = []
                 if conv_mode in ("group", "broadcast") and conv_row is not None:
                     other_agent_ids = ConversationRepository(s).list_active_agent_ids(thread.conversation_id)
@@ -886,7 +887,7 @@ class ThreadService:
                 skills=agent_skills,
                 system_prompt=agent_system_prompt,
                 cancel_event=stream_service.get_abort_event(thread.conversation_id),
-                user_id=thread.user_id,
+                user_id=conv_user_id,
             )
 
             summary_parts: list[str] = []
