@@ -216,6 +216,7 @@ async function refreshAllAuthStatuses() {
 
 async function authorizeServer(serverId: string) {
   authingServer.value = serverId
+  let pollingStarted = false
   try {
     const res = await mcpAuthApi.start(serverId)
     if (res.status === 'authorized') {
@@ -224,29 +225,38 @@ async function authorizeServer(serverId: string) {
       return
     }
     if (res.auth_url) {
-      const popup = window.open(res.auth_url, 'sap-mcp-auth', 'width=600,height=700')
-      const handler = (event: MessageEvent) => {
-        if (event.data?.type === 'mcp-auth-success') {
-          popup?.close()
-          window.removeEventListener('message', handler)
-          authStatuses.value[serverId] = { authorized: true }
-          ElMessage.success(t('mcpServersPanel.authSuccess'))
-          authingServer.value = null
+      window.open(res.auth_url, '_blank')
+      pollingStarted = true
+
+      // Poll authorization status every 3s, up to 1 minute
+      let retries = 0
+      const poll = setInterval(async () => {
+        retries++
+        if (retries > 20) {
+          clearInterval(poll)
+          if (authingServer.value === serverId) authingServer.value = null
+          return
         }
-      }
-      window.addEventListener('message', handler)
-      // 5 分钟超时清理
-      setTimeout(() => {
-        window.removeEventListener('message', handler)
-        if (authingServer.value === serverId) authingServer.value = null
-      }, 5 * 60 * 1000)
+        try {
+          const status = await mcpAuthApi.status(serverId)
+          if (status.authorized) {
+            clearInterval(poll)
+            authStatuses.value[serverId] = { authorized: true, expires_at: status.expires_at }
+            ElMessage.success(t('mcpServersPanel.authSuccess'))
+            authingServer.value = null
+          }
+        } catch {
+          // ignore polling errors, keep retrying
+        }
+      }, 3000)
       return
     }
     ElMessage.error(res.message || t('mcpServersPanel.authFailed'))
   } catch {
     ElMessage.error(t('mcpServersPanel.authFailed'))
   } finally {
-    if (authingServer.value === serverId) authingServer.value = null
+    // Don't clear authingServer if polling started — the poll interval manages it
+    if (!pollingStarted && authingServer.value === serverId) authingServer.value = null
   }
 }
 </script>

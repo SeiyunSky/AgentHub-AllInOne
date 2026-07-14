@@ -52,10 +52,12 @@ class AnthropicSDKAdapter(AgentAdapter):
         api_key: str | None = None,
         base_url: str | None = None,
         mcp_clients: list[MCPClient] | None = None,
+        mcp_server_configs: list[dict] | None = None,
     ) -> None:
         from backend.config import settings
         self.model = model or os.environ.get("ANTHROPIC_MODEL") or settings.EXTERNAL_MODEL
         self._mcp_clients = mcp_clients or []
+        self._mcp_server_configs = mcp_server_configs or []
         self._client = anthropic.AsyncAnthropic(
             api_key=api_key or settings.EXTERNAL_API_KEY,
             base_url=base_url or settings.EXTERNAL_API_BASE or None,
@@ -65,7 +67,7 @@ class AnthropicSDKAdapter(AgentAdapter):
         return AgentCapabilities(
             supports_code=True,
             supports_diff=True,
-            supports_approval=bool(self._mcp_clients),
+            supports_approval=bool(self._mcp_clients or self._mcp_server_configs),
         )
 
     async def stream(self, inp: StreamInput) -> AsyncIterator[AgentEvent]:  # type: ignore[override]
@@ -82,10 +84,30 @@ class AnthropicSDKAdapter(AgentAdapter):
             inp.system_prompt, inp.skills, inp.history, inp.prompt
         )
 
-        # Collect MCP tool definitions
+        # Collect MCP tool definitions — dynamically reconnect if mcp_server_configs provided
+        # (ensures latest token from DB is used, rather than the stale connection from startup)
         tool_definitions: list[dict[str, Any]] = []
         mcp_tools_by_name: dict[str, tuple[MCPClient, MCPTool]] = {}
-        for mcp_client in self._mcp_clients:
+
+        if self._mcp_server_configs:
+            from backend.adapters.mcp_client import MCPRegistry
+            effective_clients: list[MCPClient] = []
+            user_id = getattr(inp, "user_id", None)
+            for cfg in self._mcp_server_configs:
+                try:
+                    client = await MCPRegistry.get_or_connect_streamable_http(
+                        cfg["server_id"],
+                        cfg["url"],
+                        headers=cfg.get("headers"),
+                        user_id=user_id or cfg.get("user_id"),
+                    )
+                    effective_clients.append(client)
+                except Exception as exc:
+                    logger.warning("Failed to connect MCP %s: %s", cfg["server_id"], exc)
+        else:
+            effective_clients = self._mcp_clients
+
+        for mcp_client in effective_clients:
             try:
                 mcp_tools = await mcp_client.list_tools()
                 for t in mcp_tools:

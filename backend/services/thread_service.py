@@ -886,6 +886,7 @@ class ThreadService:
                 skills=agent_skills,
                 system_prompt=agent_system_prompt,
                 cancel_event=stream_service.get_abort_event(thread.conversation_id),
+                user_id=thread.user_id,
             )
 
             summary_parts: list[str] = []

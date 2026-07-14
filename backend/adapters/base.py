@@ -63,6 +63,7 @@ class StreamInput:
     system_prompt: Optional[str] = None
     skills: list[SkillWithContent] = field(default_factory=list)
     cancel_event: Optional[Event] = None
+    user_id: Optional[str] = None
 
 
 # ============================================================
