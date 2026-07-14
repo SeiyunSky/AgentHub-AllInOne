@@ -1,8 +1,9 @@
 {
   "id": "sap_localization_squad",
-  "name": "SAP 本地化研究小队",
-  "description": "并行调研目标国家法规要求，结合现有 ABAP 实现，生成本地化开发方案",
+  "name": "SAP Localization Squad",
+  "description": "Parallel research on target country regulations, existing ABAP implementations, and code analysis — consolidated into an actionable development plan",
   "icon": "global",
+  "scene_prompt_key": "sap_localization_scene",
   "agent_ids": [
     "agent-sap-law-researcher",
     "agent-sap-abap-explorer",
