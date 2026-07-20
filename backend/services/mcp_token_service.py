@@ -30,22 +30,22 @@ from backend.core.utils import gen_uuid
 logger = logging.getLogger(__name__)
 
 # ============================================================
-# SAP IDP 参数（从 L2A install-mcps.sh 提取）
+# SAP IDP 参数（从环境变量读取，避免硬编码敏感信息）
 # ============================================================
 
-_SAP_OAUTH_BASE = "https://apcx1h072.accounts.ondemand.com"
+_SAP_OAUTH_BASE = os.environ.get("SAP_OAUTH_BASE", "")
 _SAP_TOKEN_URL  = f"{_SAP_OAUTH_BASE}/oauth2/token"
 _SAP_AUTH_URL   = f"{_SAP_OAUTH_BASE}/oauth2/authorize"
 
 # Client Credentials：机器对机器，无需用户授权
 _CLIENT_CREDENTIALS_SERVERS: dict[str, dict] = {
     "l2a-sap-mcp-glorepo": {
-        "client_id":     "f213949c-1c04-4486-afdd-d7e9f1892bb0",
-        "client_secret": "lPJ/d0[Exy0-/2Xy4[FIm=A.w9hYpJ:r]?R",
+        "client_id":     os.environ.get("L2A_GLOREPO_CLIENT_ID", ""),
+        "client_secret": os.environ.get("L2A_GLOREPO_CLIENT_SECRET", ""),
     },
     "l2a-solution-patterns": {
-        "client_id":     "52e9b959-d69b-4613-9e00-95a868354974",
-        "client_secret": "?mf1RWJ?3S1-Wz[xwM=f7aqauE-g6:",
+        "client_id":     os.environ.get("L2A_SOLUTION_PATTERNS_CLIENT_ID", ""),
+        "client_secret": os.environ.get("L2A_SOLUTION_PATTERNS_CLIENT_SECRET", ""),
     },
 }
 
