@@ -229,17 +229,32 @@ PRESET_AGENTS: list[dict] = [
     # SAP 部门 Agent
     # ====================================================================
     {
+        "id": "agent-margin-analysis",
+        "user_id": "GUGA",
+        "name": "Margin Analysis Agent",
+        "description": "SAP 财务利润分析助手，可查询公司利润率、收入、成本、项目亏损根因，并生成图表（DEMO 模式使用模拟数据）",
+        "type": "a2a",
+        "prompt_key": None,
+        "capabilities": {
+            "base_url": "http://localhost:9000",
+        },
+        "avatar": "/static/avatars/avatar-5.jpg",
+        "is_active": 1,
+        "is_public": 1,
+        "default_skills": [],
+    },
+    {
         "id": "agent-brm-builtin",
         "user_id": "GUGA",
         "name": "Bank Relationship Agent",
         "description": "SAP 企业财资助手，可查询银行账户、余额、付款、银行费用、信用额度及债务/投资组合",
-        "type": "custom",
+        "type": "anthropic_sdk",
         "prompt_key": None,
         "capabilities": {
             "supports_code": False,
             "supports_diff": False,
             "supports_approval": False,
-            "model": "kimi-k2.5",
+            "model": None,
             "api_key": None,
             "base_url": None,
         },

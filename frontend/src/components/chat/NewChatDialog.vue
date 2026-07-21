@@ -347,9 +347,10 @@ async function createChat() {
   if (!canCreate.value) return
   creating.value = true
   try {
+    const effectiveMode = selectedAgents.value.length === 1 ? 'single' : chatMode.value
     const conv = await conversationsStore.create(
       title.value.trim(),
-      chatMode.value,
+      effectiveMode,
       selectedAgents.value.map((a) => a.id)
     )
     visible.value = false

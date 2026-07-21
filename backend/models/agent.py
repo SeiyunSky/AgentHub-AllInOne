@@ -38,7 +38,7 @@ class Agent(Base, TimestampMixin):
         comment="Agent 头像 URL；为空时前端用首字母色块兜底",
     )
     type = Column(
-        Enum("claude", "codex", "opencode", "custom", name="agent_type"),
+        Enum("claude", "codex", "opencode", "custom", "anthropic_sdk", "a2a", name="agent_type"),
         nullable=False,
         comment="路由到对应 Adapter",
     )

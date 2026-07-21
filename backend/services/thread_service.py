@@ -130,6 +130,7 @@ def _build_runtime_context_header(
     conversation_id: str,
     conversation_mode: str,           # "single" | "group" | "broadcast"
     member_lines: list[str],          # 群聊/broadcast 时的成员简介列表;单聊为空
+    agent_type: str = "claude",       # 用于区分是否有 MCP 工具权限
 ) -> str:
     """组装注入子 Agent system_prompt 顶部的运行环境 header。"""
     role_line = f"- 角色: {agent_description}" if agent_description else ""
@@ -173,6 +174,20 @@ def _build_runtime_context_header(
 - 群聊场景: 主 Agent 已决定派给你,专注做你擅长的部分;
   需要其他 Agent 配合时,在回答里说"还需要 X 处理 Y",主 Agent 决定是否再派"""
 
+    # anthropic_sdk / custom 类型 Agent 配备了 MCP 工具，告知 LLM 可以直接调用
+    if agent_type in ("anthropic_sdk", "custom"):
+        work_section = """【工作方式】
+你配备了 MCP 工具，可以直接调用来完成任务。
+- 系统已将可用工具注入你的工具列表，直接调用即可，无需询问权限
+- 需要文件落地时，产出带 filepath 注释的代码块，主 Agent 负责写入磁盘"""
+    else:
+        work_section = """【工作方式】
+你是无工具的子 Agent。所有真实操作(写文件、改代码、部署等)都由主 Agent 执行。
+你的产出是**文本** —— 主 Agent 读你的回答后,决定调什么工具、怎么落地、是否找用户审批。
+
+需要文件落地时:在回答里给出完整内容(代码块,首行 filepath 注释),
+主 Agent 会通过 create_file / edit_file 工具写入,触发用户审批流程。"""
+
     return f"""=== 运行环境 ===
 你在 AgentHub 平台运行,身份是子 Agent。
 
@@ -185,12 +200,7 @@ def _build_runtime_context_header(
 - 会话 ID: {conversation_id}
 - 模式: {conversation_mode}{members_section}
 
-【工作方式】
-你是无工具的子 Agent。所有真实操作(写文件、改代码、部署等)都由主 Agent 执行。
-你的产出是**文本** —— 主 Agent 读你的回答后,决定调什么工具、怎么落地、是否找用户审批。
-
-需要文件落地时:在回答里给出完整内容(代码块,首行 filepath 注释),
-主 Agent 会通过 create_file / edit_file 工具写入,触发用户审批流程。
+{work_section}
 
 【沙箱】
 你的"工作目录"概念上是会话级沙箱: sandbox/{conversation_id}/
@@ -791,6 +801,7 @@ class ThreadService:
                 agent_avatar: Optional[str] = agent_row.avatar if agent_row else None
                 agent_description: Optional[str] = agent_row.description if agent_row else None
                 agent_system_prompt_raw: Optional[str] = agent_row.system_prompt if agent_row else None
+                agent_type_str: str = agent_row.type if agent_row else "claude"
 
                 # 查会话 + 群聊成员,组装运行环境 header
                 from backend.repositories.conversation_repo import ConversationRepository
@@ -843,6 +854,7 @@ class ThreadService:
                 conversation_id=thread.conversation_id,
                 conversation_mode=conv_mode,
                 member_lines=member_lines,
+                agent_type=agent_type_str,
             )
             if agent_system_prompt_raw:
                 agent_system_prompt: Optional[str] = runtime_header + "\n\n" + agent_system_prompt_raw

@@ -40,11 +40,13 @@ class MCPServerConfig(BaseModel):
 
 
 class AgentType(str, Enum):
-    """Agent 类型,决定 Adapter 路由(claude / codex / opencode / custom)"""
+    """Agent 类型,决定 Adapter 路由(claude / codex / opencode / custom / anthropic_sdk / a2a)"""
     CLAUDE = "claude"
     CODEX = "codex"
     OPENCODE = "opencode"
     CUSTOM = "custom"
+    ANTHROPIC_SDK = "anthropic_sdk"
+    A2A = "a2a"
 
 
 class AgentCapabilities(BaseModel):
