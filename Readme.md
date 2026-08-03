@@ -292,12 +292,13 @@ deploy_app 工具调用
 ### 5.1 提交量统计
 
 > 注：「涉及文件数」含大量无效文件，不具参考价值，改用**有效净增代码行数**（已排除噪音文件）。贡献度占比为基于代码阅读的综合评估，兼顾代码量、模块复杂度与 Prompt 工程工作量。
+> 8.3更新，根据实际情况重新更新本说明
 
 | 贡献者 | 总 commits | 有效净增行 | Feat commits | Fix commits | 贡献度占比 | 主要领域 |
 |---|---|---|---|---|---|---|
-| **SeiyunSky / 沫路**（同一人） | 86 | ~33,800 | — | — | **~52%** | 整体架构设计、核心功能全栈实现、核心Agent Loop、Orchestrator完整实现、Prompt工程、前端设计优化 |
-| **musuyin** | 48 | ~8,900 | — | — | **~26%** | Adapter全链路打通、后端特性实现 |
-| **Wang / Uzemiu**（同一人） | 55 | ~11,600 | — | — | **~20%** | 前端框架 + UI 功能 |
+| **SeiyunSky / 沫路**（同一人） | 86 | ~33,800 | — | — | **~52%** | 整体架构设计、核心功能全栈实现、核心Agent Loop、Orchestrator完整实现、Prompt工程、前端设计实现、沙盒预览 修复了大量前端bug |
+| **musuyin** | 48 | ~16000 | — | — | **~40%** | Adapter全链路打通、agent、skill、接入sapcore后端特性实现 修复了大量前端bug 前端优化|
+| **Wang / Uzemiu**（同一人） | 55 | ~11,600 | — | — | **~5%** | 照搬前端框架，带来了大量bug，这个5%，如果由一位不懂编程的人来做，都能在两个小时内完成，如果是让懂编程的人来做，会在20分钟内做到远超5%的效果 |
 
 ### 5.2 各人核心贡献领域（按功能模块）
 
@@ -372,8 +373,6 @@ deploy_app 工具调用
 #### 前端多 Agent 并行 Streaming（chat.ts / useSSE）
 **adam** — `streamingMap<convId, Map<agentId, AgentStreamingState>>` 设计（解决群聊多气泡并发 streaming 问题）；`handleSchedulingTool`（从 tool_use block input 虚拟出 ThreadActivity 调度卡片）；`isSentinelOnly` 检测（丢弃纯 `__READ_RECEIPT__` 气泡）；stop 流程前端侧
 
-**Wang/Uzemiu** — streaming commit 时从 conversationsStore 兜底头像名称；`appendPersistedMessage` ID 碰撞保护
-
 ---
 
 #### Workflow 视图（WorkflowView + workflow.ts + 后端持久化）
@@ -386,14 +385,12 @@ deploy_app 工具调用
 #### Agent / Skill 子系统
 **Musuyin** — Agent/Skill CRUD 后端实装；AgentBuilderService（LLM 辅助创建）；Skill content 从文件迁至 DB；编辑页只读 UI（非创建者禁用）；GUGA 系统用户统一写权限；Agent type 可修改；Skill 修改不落文件
 
-**Wang/Uzemiu** — 前端 Agent/Skill CRUD 页面；Skill CRUD（list/create/edit/delete）
+**Musuyin** — 前端 Agent/Skill CRUD 页面；Skill CRUD（list/create/edit/delete）
 
 ---
 
 #### Agent 头像全链路
 **Musuyin** — 后端静态服务 + 消息携带头像快照；头像透传（适配器 / SSE / Workflow / 气泡）
-
-**Wang/Uzemiu** — 前端气泡头像显示；会话设置中头像；streaming commit 时头像兜底
 
 ---
 
